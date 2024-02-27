@@ -325,31 +325,31 @@ module {
                 ]),
                 
             ]); immutable= false},
-            {name = "com.origyn.royalties.ogy.fixed.default"; value=#Array([
+            {name = "com.origyn.royalties.fixed.default"; value=#Array([
                 #Class([
                     {name = "tag"; value=#Text("com.origyn.royalty.broker"); immutable= true},
-                    {name = "fixedXDR"; value=#Nat(100000000); immutable= true},
+                    {name = "fixedXDR"; value=#Float(100000000); immutable= true},
                     {name = "tokenCanister"; value=#Principal(ledgerToken.canister); immutable= true},
                     {name = "tokenSymbol"; value=#Text(ledgerToken.symbol); immutable= true},
                     {name = "tokenDecimals"; value=#Nat(ledgerToken.decimals); immutable= true},
                 ]),
                 #Class([
                     {name = "tag"; value=#Text("com.origyn.royalty.node"); immutable= true},
-                    {name = "fixedXDR"; value=#Nat(100000000); immutable= true},
+                    {name = "fixedXDR"; value=#Float(100000000); immutable= true},
                     {name = "tokenCanister"; value=#Principal(ledgerToken.canister); immutable= true},
                     {name = "tokenSymbol"; value=#Text(ledgerToken.symbol); immutable= true},
                     {name = "tokenDecimals"; value=#Nat(ledgerToken.decimals); immutable= true},
                 ]),
                 #Class([
                     {name = "tag"; value=#Text("com.origyn.royalty.originator"); immutable= true},
-                    {name = "fixedXDR"; value=#Nat(100000000); immutable= true},
+                    {name = "fixedXDR"; value=#Float(100000000); immutable= true},
                     {name = "tokenCanister"; value=#Principal(ledgerToken.canister); immutable= true},
                     {name = "tokenSymbol"; value=#Text(ledgerToken.symbol); immutable= true},
                     {name = "tokenDecimals"; value=#Nat(ledgerToken.decimals); immutable= true},
                 ]),
                 #Class([
                     {name = "tag"; value=#Text("com.origyn.royalty.custom"); immutable= true},
-                    {name = "fixedXDR"; value=#Nat(100000000); immutable= true},
+                    {name = "fixedXDR"; value=#Float(100000000); immutable= true},
                     {name = "tokenCanister"; value=#Principal(ledgerToken.canister); immutable= true},
                     {name = "tokenSymbol"; value=#Text(ledgerToken.symbol); immutable= true},
                     {name = "tokenDecimals"; value=#Nat(ledgerToken.decimals); immutable= true},
@@ -357,7 +357,7 @@ module {
                 ]),
                 #Class([
                     {name = "tag"; value=#Text("com.origyn.royalty.network"); immutable= true},
-                    {name = "fixedXDR"; value=#Nat(100000000); immutable= true},
+                    {name = "fixedXDR"; value=#Float(100000000); immutable= true},
                     {name = "tokenCanister"; value=#Principal(ledgerToken.canister); immutable= true},
                     {name = "tokenSymbol"; value=#Text(ledgerToken.symbol); immutable= true},
                     {name = "tokenDecimals"; value=#Nat(ledgerToken.decimals); immutable= true},

@@ -285,6 +285,18 @@ module {
 
   public type AskConfigShared = ?[AskFeature];
 
+  public type Royalty = {
+    #fixed : {
+      tag: Text;
+      fixedXDR: Float;
+      token : ?TokenSpec;
+    };
+    #dynamic : {
+      tag: Text;
+      rate: Float;
+    };
+  };
+
 public func ask_feature_set_eq (a: AskFeatureKey, b: AskFeatureKey) : Bool {
 
     switch(a,b){
@@ -331,6 +343,9 @@ public func ask_feature_set_eq (a: AskFeatureKey, b: AskFeatureKey) : Bool {
         return true;
       };
       case(#fee_accounts, #fee_accounts){
+        return true;
+      };
+      case(#fee_schema, #fee_schema){
         return true;
       };
       case(_,_) {
@@ -386,6 +401,9 @@ public func ask_feature_set_eq (a: AskFeatureKey, b: AskFeatureKey) : Bool {
       };
       case(#fee_accounts){
         return 14345670;
+      };
+      case(#fee_schema){
+        return 14345671;
       };
     };
   };
@@ -448,6 +466,9 @@ public func ask_feature_set_eq (a: AskFeatureKey, b: AskFeatureKey) : Bool {
         };
         case(#fee_accounts(e)){
           return #fee_accounts;
+        };
+        case(#fee_schema(e)){
+          return #fee_schema;
         };
       };
   };
