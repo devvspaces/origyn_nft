@@ -757,6 +757,7 @@ module {
         sales : [EscrowRecord];
         stake : [StakeRecord];
         offers : [EscrowRecord];
+        //todo: fee_deposits
     };
 
     public type LocalStageLibraryResponse = {

@@ -1058,6 +1058,7 @@ module {
               //move the payment to the sale revenue account
               //nyi: use transfer batch to split across royalties
 
+              
               let (trx_id : Types.TransactionID, account_hash : ?Blob, fee : ?Nat) = switch(winning_escrow.token){
                 case(#ic(token)){
                   switch(token.standard){
@@ -1070,6 +1071,7 @@ module {
                               (val.0,?val.1.account.sub_account, token.fee);
                           };
                           case(#err(err)){
+                              //check if we have to roll back fees
                               //put the escrow back because the payment failed
                               switch(verify_escrow_receipt(state, winning_escrow, ?owner, null)){
                                 case(#ok(reverify)){
@@ -1165,6 +1167,12 @@ module {
                 };
                 case(#extensible(val)) return #err(#awaited(Types.errors(?state.canistergeekLogger,  #nyi, "end_sale_nft_origyn - extensible token nyi - " # debug_show(val), ?caller)));
               };
+
+              //try to move fees
+                //if fauiure record all details of failure and continue but don't release the lock
+                  //lock detail
+                  //sale detail
+
 
               //change owner
               var new_metadata : CandyTypes.CandyShared = switch(Metadata.set_nft_owner(state, token_id, winning_escrow.buyer, caller)){
@@ -2695,6 +2703,9 @@ module {
                 let tmp_locked_fees = Buffer.Buffer<(MigrationTypes.Current.Account, MigrationTypes.Current.TokenSpec, Nat)>(5);
                 // check if fund are provisioned by #fee_deposit
                 for ((royalties_name, account) in fee_accounts.vals()) {
+                  //todo: check if account is the seller principal and throw improper_interface otherwise
+                  //todo: write a test to make sure youcan't provide someone else's account
+
                   let fees = 0;  //TODO need fixed fees here, this feature is not available for no-fixed fees
 
                   switch (lock_token_fee_balance(state, {
