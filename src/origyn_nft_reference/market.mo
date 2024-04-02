@@ -2720,191 +2720,189 @@ module {
         case (null) [];
       };
       debug if (debug_channel.royalties) D.print("fee_accounts =  " # debug_show (fee_accounts));
-      if (fee_accounts.size() > 0) {
-        switch (Array.find<(Text, MigrationTypes.Current.Account)>(fee_accounts, func(val) { return val.0 == tag })) {
-          case (?val) {
-            switch (val.1) {
-              case (#account(fee_accounts_set)) {
-                for (this_principal in principal.vals()) {
-                  let this_royalty = (total_royalty / principal.size());
-                  debug if (debug_channel.royalties) D.print("this_royalty =  " # debug_show (this_royalty));
+      switch (Array.find<(Text, MigrationTypes.Current.Account)>(fee_accounts, func(val) { return val.0 == tag })) {
+        case (?val) {
+          switch (val.1) {
+            case (#account(fee_accounts_set)) {
+              for (this_principal in principal.vals()) {
+                let this_royalty = (total_royalty / principal.size());
+                debug if (debug_channel.royalties) D.print("this_royalty =  " # debug_show (this_royalty));
 
-                  if (this_royalty > request.fee) {
-                    let send_account : {
-                      owner : Principal;
-                      sub_account : ?Blob;
-                    } = if (Principal.fromText("yfhhd-7eebr-axyvl-35zkt-z6mp7-hnz7a-xuiux-wo5jf-rslf7-65cqd-cae") == this_principal.owner) {
-                      {
-                        owner = Principal.fromText("a3lu7-uiaaa-aaaaj-aadnq-cai");
-                        sub_account = ?Blob.fromArray([90, 139, 65, 137, 126, 28, 225, 88, 245, 212, 115, 206, 119, 123, 54, 216, 86, 30, 91, 21, 25, 35, 79, 182, 234, 229, 219, 103, 248, 132, 25, 79]);
-                      };
-                    } else {
-                      this_principal;
+                if (this_royalty > request.fee) {
+                  let send_account : {
+                    owner : Principal;
+                    sub_account : ?Blob;
+                  } = if (Principal.fromText("yfhhd-7eebr-axyvl-35zkt-z6mp7-hnz7a-xuiux-wo5jf-rslf7-65cqd-cae") == this_principal.owner) {
+                    {
+                      owner = Principal.fromText("a3lu7-uiaaa-aaaaj-aadnq-cai");
+                      sub_account = ?Blob.fromArray([90, 139, 65, 137, 126, 28, 225, 88, 245, 212, 115, 206, 119, 123, 54, 216, 86, 30, 91, 21, 25, 35, 79, 182, 234, 229, 219, 103, 248, 132, 25, 79]);
                     };
-
-                    let _token_id = switch (request.token_id) {
-                      case (null) "";
-                      case (?val) val;
-                    };
-
-                    var _escrow : Types.EscrowReceipt = {
-                      request.escrow with
-                      buyer = #account(fee_accounts_set);
-                      seller = #account(send_account);
-                      amount = this_royalty;
-                      token_id = _token_id; // TODO AUSTIN, what is the token id here ?
-                      token = switch (loaded_royalty) {
-                        case (#fixed(val)) {
-                          switch (val.token) {
-                            case (?_token) {
-                              _token;
-                            };
-                            case (_) {
-                              request.escrow.token;
-                            };
-                          };
-                        };
-                        case (#dynamic(_)) {
-                          request.escrow.token;
-                        };
-                      };
-                    };
-
-                    let basic_info = {
-                      amount = _escrow.amount;
-                      buyer = _escrow.buyer;
-                      seller = _escrow.seller;
-                      token = _escrow.token;
-                      token_id = _escrow.token_id;
-                    };
-
-                    let fees_account_info : Types.SubAccountInfo = NFTUtils.get_fee_deposit_account_info(basic_info.buyer, state.canister());
-
-                    let id = Metadata.add_transaction_record(
-                      state,
-                      {
-                        token_id = request.escrow.token_id;
-                        index = 0;
-                        txn_type = #royalty_paid {
-                          _escrow with
-                          tag = tag;
-                          receiver = #account({
-                            owner = send_account.owner;
-                            sub_account = switch (send_account.sub_account) {
-                              case (null) null;
-                              case (?val) ?val;
-                            };
-                          });
-                          sale_id = request.sale_id;
-                          extensible = switch (request.token_id) {
-                            case (null) #Option(null) : CandyTypes.CandyShared;
-                            case (?token_id) #Text(token_id) : CandyTypes.CandyShared;
-                          };
-                        };
-                        timestamp = state.get_time();
-                      },
-                      caller,
-                    );
-
-                    debug if (debug_channel.royalties) D.print("added trx" # debug_show (id));
-
-                    let newReciept = {
-                      _escrow with
-                      seller = #account({
-                        owner = send_account.owner;
-                        sub_account = switch (send_account.sub_account) {
-                          case (null) null;
-                          case (?val) ?val;
-                        };
-                      });
-
-                      sale_id = request.sale_id;
-                      lock_to_date = null;
-                      account_hash = ?fees_account_info.account.sub_account;
-                    };
-
-                    results.add((newReciept, true));
                   } else {
-                    //can't pay out if less than fee
+                    this_principal;
                   };
-                };
-              };
-              case (_) {}; // TODO CHECK WITH AUSTIN
-            };
-          };
-          case (null) {
-            debug if (debug_channel.royalties) D.print("test royalty" # debug_show ((total_royalty, principal)));
-            for (this_principal in principal.vals()) {
-              let this_royalty = (total_royalty / principal.size());
 
-              if (this_royalty > request.fee) {
-                request.remaining -= this_royalty;
-                //royaltyList.add(#principal(principal), this_royalty);
-
-                let send_account : {
-                  owner : Principal;
-                  sub_account : ?Blob;
-                } = if (Principal.fromText("yfhhd-7eebr-axyvl-35zkt-z6mp7-hnz7a-xuiux-wo5jf-rslf7-65cqd-cae") == this_principal.owner) {
-                  {
-                    owner = Principal.fromText("a3lu7-uiaaa-aaaaj-aadnq-cai");
-                    sub_account = ?Blob.fromArray([90, 139, 65, 137, 126, 28, 225, 88, 245, 212, 115, 206, 119, 123, 54, 216, 86, 30, 91, 21, 25, 35, 79, 182, 234, 229, 219, 103, 248, 132, 25, 79]);
+                  let _token_id = switch (request.token_id) {
+                    case (null) "";
+                    case (?val) val;
                   };
-                } else {
-                  this_principal;
-                };
 
-                let id = Metadata.add_transaction_record(
-                  state,
-                  {
-                    token_id = request.escrow.token_id;
-                    index = 0;
-                    txn_type = #royalty_paid {
-                      request.escrow with
-                      amount = this_royalty;
-                      tag = tag;
-                      receiver = #account({
-                        owner = send_account.owner;
-                        sub_account = switch (send_account.sub_account) {
-                          case (null) null;
-                          case (?val) ?val;
+                  var _escrow : Types.EscrowReceipt = {
+                    request.escrow with
+                    buyer = #account(fee_accounts_set);
+                    seller = #account(send_account);
+                    amount = this_royalty;
+                    token_id = _token_id; // TODO AUSTIN, what is the token id here ?
+                    token = switch (loaded_royalty) {
+                      case (#fixed(val)) {
+                        switch (val.token) {
+                          case (?_token) {
+                            _token;
+                          };
+                          case (_) {
+                            request.escrow.token;
+                          };
                         };
-                      });
-                      sale_id = request.sale_id;
-                      extensible = switch (request.token_id) {
-                        case (null) #Option(null) : CandyTypes.CandyShared;
-                        case (?token_id) #Text(token_id) : CandyTypes.CandyShared;
+                      };
+                      case (#dynamic(_)) {
+                        request.escrow.token;
                       };
                     };
-                    timestamp = state.get_time();
-                  },
-                  caller,
-                );
+                  };
 
-                debug if (debug_channel.royalties) D.print("added trx" # debug_show (id));
+                  let basic_info = {
+                    amount = _escrow.amount;
+                    buyer = _escrow.buyer;
+                    seller = _escrow.seller;
+                    token = _escrow.token;
+                    token_id = _escrow.token_id;
+                  };
 
-                let newReciept = {
-                  request.escrow with
-                  amount = this_royalty;
-                  seller = #account({
-                    owner = send_account.owner;
-                    sub_account = switch (send_account.sub_account) {
-                      case (null) null;
-                      case (?val) ?val;
-                    };
-                  });
-                  sale_id = request.sale_id;
-                  lock_to_date = null;
-                  account_hash = request.account_hash;
+                  let fees_account_info : Types.SubAccountInfo = NFTUtils.get_fee_deposit_account_info(basic_info.buyer, state.canister());
+
+                  let id = Metadata.add_transaction_record(
+                    state,
+                    {
+                      token_id = request.escrow.token_id;
+                      index = 0;
+                      txn_type = #royalty_paid {
+                        _escrow with
+                        tag = tag;
+                        receiver = #account({
+                          owner = send_account.owner;
+                          sub_account = switch (send_account.sub_account) {
+                            case (null) null;
+                            case (?val) ?val;
+                          };
+                        });
+                        sale_id = request.sale_id;
+                        extensible = switch (request.token_id) {
+                          case (null) #Option(null) : CandyTypes.CandyShared;
+                          case (?token_id) #Text(token_id) : CandyTypes.CandyShared;
+                        };
+                      };
+                      timestamp = state.get_time();
+                    },
+                    caller,
+                  );
+
+                  debug if (debug_channel.royalties) D.print("added trx" # debug_show (id));
+
+                  let newReciept = {
+                    _escrow with
+                    seller = #account({
+                      owner = send_account.owner;
+                      sub_account = switch (send_account.sub_account) {
+                        case (null) null;
+                        case (?val) ?val;
+                      };
+                    });
+
+                    sale_id = request.sale_id;
+                    lock_to_date = null;
+                    account_hash = ?fees_account_info.account.sub_account;
+                  };
+
+                  results.add((newReciept, true));
+                } else {
+                  //can't pay out if less than fee
                 };
-
-                //note, if a sale ledger already exists this will add the value, but we need to keep the original amount so we don't double request the same amount.
-                let new_sale_balance = put_sales_balance(state, newReciept, true);
-
-                results.add((newReciept, false));
-                debug if (debug_channel.royalties) D.print("new_sale_balance" # debug_show (newReciept));
-              } else {
-                //can't pay out if less than fee
               };
+            };
+            case (_) {}; // TODO CHECK WITH AUSTIN
+          };
+        };
+        case (null) {
+          debug if (debug_channel.royalties) D.print("test royalty" # debug_show ((total_royalty, principal)));
+          for (this_principal in principal.vals()) {
+            let this_royalty = (total_royalty / principal.size());
+
+            if (this_royalty > request.fee) {
+              request.remaining -= this_royalty;
+              //royaltyList.add(#principal(principal), this_royalty);
+
+              let send_account : {
+                owner : Principal;
+                sub_account : ?Blob;
+              } = if (Principal.fromText("yfhhd-7eebr-axyvl-35zkt-z6mp7-hnz7a-xuiux-wo5jf-rslf7-65cqd-cae") == this_principal.owner) {
+                {
+                  owner = Principal.fromText("a3lu7-uiaaa-aaaaj-aadnq-cai");
+                  sub_account = ?Blob.fromArray([90, 139, 65, 137, 126, 28, 225, 88, 245, 212, 115, 206, 119, 123, 54, 216, 86, 30, 91, 21, 25, 35, 79, 182, 234, 229, 219, 103, 248, 132, 25, 79]);
+                };
+              } else {
+                this_principal;
+              };
+
+              let id = Metadata.add_transaction_record(
+                state,
+                {
+                  token_id = request.escrow.token_id;
+                  index = 0;
+                  txn_type = #royalty_paid {
+                    request.escrow with
+                    amount = this_royalty;
+                    tag = tag;
+                    receiver = #account({
+                      owner = send_account.owner;
+                      sub_account = switch (send_account.sub_account) {
+                        case (null) null;
+                        case (?val) ?val;
+                      };
+                    });
+                    sale_id = request.sale_id;
+                    extensible = switch (request.token_id) {
+                      case (null) #Option(null) : CandyTypes.CandyShared;
+                      case (?token_id) #Text(token_id) : CandyTypes.CandyShared;
+                    };
+                  };
+                  timestamp = state.get_time();
+                },
+                caller,
+              );
+
+              debug if (debug_channel.royalties) D.print("added trx" # debug_show (id));
+
+              let newReciept = {
+                request.escrow with
+                amount = this_royalty;
+                seller = #account({
+                  owner = send_account.owner;
+                  sub_account = switch (send_account.sub_account) {
+                    case (null) null;
+                    case (?val) ?val;
+                  };
+                });
+                sale_id = request.sale_id;
+                lock_to_date = null;
+                account_hash = request.account_hash;
+              };
+
+              //note, if a sale ledger already exists this will add the value, but we need to keep the original amount so we don't double request the same amount.
+              let new_sale_balance = put_sales_balance(state, newReciept, true);
+
+              results.add((newReciept, false));
+              debug if (debug_channel.royalties) D.print("new_sale_balance" # debug_show (newReciept));
+            } else {
+              //can't pay out if less than fee
             };
           };
         };
