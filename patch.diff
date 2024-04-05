@@ -1,0 +1,51 @@
+From cb82aba2bffa1fa818aba488f3f0fc74749c0661 Mon Sep 17 00:00:00 2001
+From: skilesare <austin.fatheree@gmail.com>
+Date: Thu, 31 Aug 2023 09:51:21 -0500
+Subject: [PATCH] fixing local bm deploy
+
+---
+ projects/bm/def.json | 8 ++------
+ 1 file changed, 2 insertions(+), 6 deletions(-)
+
+diff --git a/projects/bm/def.json b/projects/bm/def.json
+index 0a42682..9a91b6c 100644
+--- a/projects/bm/def.json
++++ b/projects/bm/def.json
+@@ -155,8 +155,7 @@
+                 {
+                     "name": "default_royalty_primary",
+                     "value": {
+-                        "Array": {
+-                            "thawed": [
++                        "Array": [
+                                 {
+                                     "Class": [
+                                         {
+@@ -204,15 +203,13 @@
+                                     ]
+                                 }
+                             ]
+-                        }
+                     },
+                     "immutable": false
+                 },
+                 {
+                     "name": "default_royalty_secondary",
+                     "value": {
+-                        "Array": {
+-                            "thawed": [
++                        "Array": [
+                                 {
+                                     "Class": [
+                                         {
+@@ -306,7 +303,6 @@
+                                     ]
+                                 }
+                             ]
+-                        }
+                     },
+                     "immutable": false
+                 }
+-- 
+2.41.0
+
