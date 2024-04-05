@@ -97,22 +97,19 @@ shared (deployer) actor class test_runner(dfx_ledger : Principal, dfx_ledger2 : 
     let suite = S.suite(
       "test nft",
       [
-
-        //    S.test("testAuction_v3", switch(await testAuction_v3()){case(#success){true};case(_){false};}, M.equals<Bool>(T.bool(true))),
-        //  S.test("testDutch", switch (await testDutch()) { case (#success) { true }; case (_) { false } }, M.equals<Bool>(T.bool(true))),
-        //   S.test("testRecognizeEscrow", switch (await testRecognizeEscrow()) { case (#success) { true }; case (_) { false } }, M.equals<Bool>(T.bool(true))),
-
-        //   S.test("testRoyalties", switch (await testRoyalties()) { case (#success) { true }; case (_) { false } }, M.equals<Bool>(T.bool(true))),
-
-        //   S.test("testAuction", switch(await testAuction()){case(#success){true};case(_){false};}, M.equals<Bool>(T.bool(true))),
-        //   S.test("testAuction_v2", switch(await testAuction_v2()){case(#success){true};case(_){false};}, M.equals<Bool>(T.bool(true))),
-        //   S.test("testDeposits", switch(await testDeposit()){case(#success){true};case(_){false};}, M.equals<Bool>(T.bool(true))),
-        //   S.test("testStandardLedger", switch(await testStandardLedger()){case(#success){true};case(_){false};}, M.equals<Bool>(T.bool(true))),
-        //   S.test("testMarketTransfer", switch(await testMarketTransfer()){case(#success){true};case(_){false};}, M.equals<Bool>(T.bool(true))),
-        //   S.test("testOwnerTransfer", switch(await testOwnerTransfer()){case(#success){true};case(_){false};}, M.equals<Bool>(T.bool(true))),
-        //   S.test("testOffer", switch(await testOffers()){case(#success){true};case(_){false};}, M.equals<Bool>(T.bool(true)))
-        S.test("testRoyaltiesFixed", switch (await testRoyaltiesFixed()) { case (#success) { true }; case (_) { false } }, M.equals<Bool>(T.bool(true)))
-
+        // S.test("testAuction_v3", switch (await testAuction_v3()) { case (#success) { true }; case (_) { false } }, M.equals<Bool>(T.bool(true))),
+        // S.test("testDutch", switch (await testDutch()) { case (#success) { true }; case (_) { false } }, M.equals<Bool>(T.bool(true))),
+        // S.test("testRecognizeEscrow", switch (await testRecognizeEscrow()) { case (#success) { true }; case (_) { false } }, M.equals<Bool>(T.bool(true))),
+        // S.test("testRoyalties", switch (await testRoyalties()) { case (#success) { true }; case (_) { false } }, M.equals<Bool>(T.bool(true))),
+        // S.test("testAuction", switch (await testAuction()) { case (#success) { true }; case (_) { false } }, M.equals<Bool>(T.bool(true))),
+        // S.test("testAuction_v2", switch (await testAuction_v2()) { case (#success) { true }; case (_) { false } }, M.equals<Bool>(T.bool(true))),
+        // S.test("testDeposits", switch (await testDeposit()) { case (#success) { true }; case (_) { false } }, M.equals<Bool>(T.bool(true))),
+        // S.test("testStandardLedger", switch (await testStandardLedger()) { case (#success) { true }; case (_) { false } }, M.equals<Bool>(T.bool(true))),
+        // S.test("testMarketTransfer", switch (await testMarketTransfer()) { case (#success) { true }; case (_) { false } }, M.equals<Bool>(T.bool(true))),
+        // S.test("testOwnerTransfer", switch (await testOwnerTransfer()) { case (#success) { true }; case (_) { false } }, M.equals<Bool>(T.bool(true))),
+        // S.test("testOffer", switch (await testOffers()) { case (#success) { true }; case (_) { false } }, M.equals<Bool>(T.bool(true))) S.test("testRoyaltiesFixed", switch (await testRoyaltiesFixed()) { case (#success) { true }; case (_) { false } }, M.equals<Bool>(T.bool(true))),
+        // S.test("testRoyaltiesFixed", switch (await testRoyaltiesFixed()) { case (#success) { true }; case (_) { false } }, M.equals<Bool>(T.bool(true))),
+        S.test("testRoyaltiesFixedDifferentToken", switch (await testRoyaltiesFixedDifferentToken()) { case (#success) { true }; case (_) { false } }, M.equals<Bool>(T.bool(true))),
       ],
     );
     S.run(suite);
@@ -2854,6 +2851,442 @@ shared (deployer) actor class test_runner(dfx_ledger : Principal, dfx_ledger2 : 
         S.test("fail if network does not get first royalty", net_balance5, M.equals<Nat>(T.nat(800000))),
         S.test("fail if originator does not get first royalty", o_balance5, M.equals<Nat>(T.nat(800000))),
         S.test("fail if fee wallet balance wallet didnt paid", fee_wallet_balance5, M.equals<Nat>(T.nat(999000000))), // 1000000000 - 1000000 = 999000000
+
+        //todo: add test to make sure the ignore broker pathway has consistent fees totals and royalties
+
+      ],
+    );
+
+    S.run(suite);
+
+    return #success;
+  };
+
+  public shared func testRoyaltiesFixedDifferentToken() : async {
+    #success;
+    #fail : Text;
+  } {
+    D.print("running testRoyaltiesFixedDifferentToken");
+    D.print("making wallets");
+
+    let a_wallet = await TestWalletDef.test_wallet(); //purchaser
+    let b_wallet = await TestWalletDef.test_wallet(); //broker
+    let n_wallet = await TestWalletDef.test_wallet(); //node
+    let o_wallet = await TestWalletDef.test_wallet(); //originator
+    let net_wallet = await TestWalletDef.test_wallet(); //net
+
+    let net_account = {
+      owner = Principal.fromActor(net_wallet);
+      subaccount = ?Market.get_network_royalty_account(Principal.fromActor(dfx), null);
+    };
+
+    D.print("have the net account " # debug_show (net_account));
+
+    D.print("making factory");
+
+    let newPrincipal = try {
+      await g_canister_factory.create({
+        owner = Principal.fromActor(this);
+        storage_space = null;
+      });
+    } catch (e) {
+      D.print(Error.message(e));
+      return #fail(Error.message(e));
+    };
+
+    D.print("have canister");
+    let dfxspec2 = {
+      canister = Principal.fromActor(dfx2);
+      standard = #Ledger;
+      decimals = 8;
+      symbol = "LGY";
+      fee = ?200000;
+      id = null;
+    };
+
+    let canister : Types.Service = actor (Principal.toText(newPrincipal));
+    let standardStage_collection = await utils.buildCollection(
+      canister,
+      Principal.fromActor(canister),
+      Principal.fromActor(n_wallet),
+      Principal.fromActor(this),
+      2048000,
+      false,
+      dfxspec2,
+    );
+
+    let updateNetwork = canister.collection_update_nft_origyn(#UpdateNetwork(?Principal.fromActor(net_wallet)));
+
+    D.print("calling stage");
+
+    let standardStage = await utils.buildStandardNFT("1", canister, Principal.fromActor(canister), 1024, false, Principal.fromActor(o_wallet));
+    let standardStage2 = await utils.buildStandardNFT("2", canister, Principal.fromActor(canister), 1024, false, Principal.fromActor(o_wallet));
+    let standardStage3 = await utils.buildStandardNFT("3", canister, Principal.fromActor(canister), 1024, false, Principal.fromActor(o_wallet));
+
+    let mint_attempt3 = await canister.mint_nft_origyn("2", #principal(Principal.fromActor(this)));
+    let mint_attempt4 = await canister.mint_nft_origyn("3", #principal(Principal.fromActor(this)));
+
+    D.print("finished stage");
+    D.print(debug_show (standardStage.0));
+
+    //fund a_wallet
+    let funding_result = await dfx.icrc1_transfer({
+      to = { owner = Principal.fromActor(a_wallet); subaccount = null };
+      fee = ?200_000;
+      memo = utils.memo_one;
+      from_subaccount = null;
+      created_at_time = null;
+      amount = 1000 * 10 ** 8;
+    });
+
+    D.print("funding result a");
+    D.print(debug_show (funding_result));
+
+    let funding_result2 = await dfx.icrc1_transfer({
+      to = { owner = Principal.fromActor(b_wallet); subaccount = null };
+      fee = ?200_000;
+      memo = utils.memo_one;
+      from_subaccount = null;
+      created_at_time = null;
+      amount = 1000 * 10 ** 8;
+    });
+
+    //send a payment to the ledger
+    D.print("sending tokens to canisters");
+    let a_wallet_send_tokens_to_canister = await a_wallet.send_ledger_deposit(Principal.fromActor(dfx), (5 * 10 ** 8) + 400000, Principal.fromActor(canister));
+
+    D.print("send to canister a wallet royalties");
+    D.print(debug_show (a_wallet_send_tokens_to_canister));
+
+    let block = switch (a_wallet_send_tokens_to_canister) {
+      case (#ok(ablock)) {
+        ablock;
+      };
+      case (#err(other)) {
+        D.print("ledger didnt work");
+        return #fail("ledger didnt work");
+      };
+    };
+
+    let a_balance = await dfx.icrc1_balance_of({
+      owner = Principal.fromActor(a_wallet);
+      subaccount = null;
+    });
+    let b_balance = await dfx2.icrc1_balance_of({
+      owner = Principal.fromActor(b_wallet);
+      subaccount = null;
+    });
+    let n_balance = await dfx2.icrc1_balance_of({
+      owner = Principal.fromActor(n_wallet);
+      subaccount = null;
+    });
+    let o_balance = await dfx2.icrc1_balance_of({
+      owner = Principal.fromActor(o_wallet);
+      subaccount = null;
+    });
+    let canister_balance = await dfx2.icrc1_balance_of({
+      owner = Principal.fromActor(canister);
+      subaccount = null;
+    });
+    D.print("network account is " # debug_show (net_account));
+    let net_balance = await dfx2.icrc1_balance_of(net_account);
+    D.print("a_balance " # debug_show ((Principal.fromActor(a_wallet), a_balance)));
+    D.print("b_balance " # debug_show ((Principal.fromActor(b_wallet), b_balance)));
+    D.print("n_balance " # debug_show ((Principal.fromActor(n_wallet), n_balance)));
+    D.print("o_balance " # debug_show ((Principal.fromActor(o_wallet), o_balance)));
+    D.print("canister wallet " # debug_show ((Principal.fromActor(canister), canister_balance)));
+
+    D.print(debug_show (Principal.fromActor(b_wallet)));
+
+    let #ok(#fee_deposit_info(sellerFeeDepositAccount)) = await canister.sale_info_nft_origyn(#fee_deposit_info(? #account { owner = Principal.fromActor(this); sub_account = null })) else {
+      D.print("failed to get sellerFeeDepositAccount");
+      return #fail("failed to get sellerFeeDepositAccount");
+    };
+
+    let fee_deposit_request : Types.FeeDepositRequest = {
+      account = #account({
+        owner = Principal.fromActor(this);
+        sub_account = null;
+      });
+      token = #ic({
+        canister = Principal.fromActor(dfx2);
+        standard = #Ledger;
+        decimals = 8;
+        symbol = "LDY";
+        fee = ?200000;
+        id = null;
+      });
+    };
+
+    let fee_deposit_ret = await canister.sale_nft_origyn(#fee_deposit(fee_deposit_request));
+    D.print("fee_deposit_ret = " # debug_show (fee_deposit_ret));
+    // no fund has been sent to fees wallet, balance = 0
+    switch (fee_deposit_ret) {
+      case (#ok(val)) {
+        switch (val) {
+          case (#fee_deposit(info)) {
+            if (info.balance != 0) {
+              return #fail("Balance should be == 0");
+            };
+          };
+          case (_) {
+            return #fail("Should have returned a #fee_deposit");
+          };
+        };
+      };
+      case (_) {
+        return #fail("sale_nft_origyn #fee_deposit failed : Should have returned a #ok(#fee_deposit)");
+      };
+    };
+
+    let add_fund_to_fees_wallet = await dfx2.icrc1_transfer({
+      to = {
+        owner = sellerFeeDepositAccount.account.principal;
+        subaccount = ?Blob.toArray(sellerFeeDepositAccount.account.sub_account);
+      };
+      fee = ?200_000;
+      memo = utils.memo_one;
+      from_subaccount = null;
+      created_at_time = null;
+      amount = 10 * 10 ** 8;
+    });
+
+    let fee_wallet_balance = await dfx2.icrc1_balance_of({
+      owner = sellerFeeDepositAccount.account.principal;
+      subaccount = ?Blob.toArray(sellerFeeDepositAccount.account.sub_account);
+    });
+    D.print("fee_wallet_balance = " # debug_show (fee_wallet_balance));
+
+    let fee_deposit_ret2 = await canister.sale_nft_origyn(#fee_deposit(fee_deposit_request));
+    D.print("fee_deposit_ret2 = " # debug_show (fee_deposit_ret2));
+    // fund has been sent to fees wallet, balance > 0
+    switch (fee_deposit_ret2) {
+      case (#ok(val)) {
+        switch (val) {
+          case (#fee_deposit(info)) {
+            if (info.balance == 0) {
+              return #fail("Balance should be > 0");
+            };
+          };
+          case (_) {
+            return #fail("Should have returned a #fee_deposit");
+          };
+        };
+      };
+      case (_) {
+        return #fail("sale_nft_origyn #fee_deposit failed : Should have returned a #ok(#fee_deposit)");
+      };
+    };
+
+    D.print("sellerFeeDepositAccount = " # debug_show (sellerFeeDepositAccount));
+    let option_buffer_should_fail = Buffer.fromArray<MigrationTypes.Current.AskFeature>([
+      #reserve(1),
+      #token(#ic({ canister = Principal.fromActor(dfx); standard = #Ledger; decimals = 8; symbol = "LDG"; fee = ?200000; id = null })),
+      #buy_now(1),
+      #start_price(1),
+      #ending(#date(get_time() + DAY_LENGTH)),
+      #fee_accounts([("com.origyn.royalty.node", #account({ owner = Principal.fromActor(this); sub_account = null }))]),
+      #fee_schema("com.origyn.royalties.fixed"),
+    ]);
+
+    let start_auction_attempt_owner_should_fail = await canister.market_transfer_nft_origyn({
+      token_id = "3";
+      sales_config = {
+        escrow_receipt = null;
+        broker_id = null;
+        pricing = #ask(?Buffer.toArray<MigrationTypes.Current.AskFeature>(option_buffer_should_fail));
+      };
+    });
+
+    D.print("get sale id");
+    // verify that auction fail with startprice < all fees that user has to pay
+    switch (start_auction_attempt_owner_should_fail) {
+      case (#ok(val)) {
+        D.print("auction should have fail with startprice < all fees that user has to pay");
+        return #fail("error with auction start");
+      };
+      case (#err(item)) {
+        if (item.flag_point != "market_transfer_nft_origyn - start price cannot be less than mininal fee") {
+          D.print("error with auction start");
+          D.print(item.flag_point);
+          return #fail("error with auction start");
+        };
+      };
+    };
+
+    // This one should not fail
+    D.print("sellerFeeDepositAccount = " # debug_show (sellerFeeDepositAccount));
+    let option_buffer_should_fail2 = Buffer.fromArray<MigrationTypes.Current.AskFeature>([
+      #reserve(1 * 10 ** 8),
+      #token(#ic({ canister = Principal.fromActor(dfx); standard = #Ledger; decimals = 8; symbol = "LDG"; fee = ?200000; id = null })),
+      #buy_now(1 * 10 ** 8),
+      #start_price(1 * 10 ** 8),
+      #ending(#date(get_time() + DAY_LENGTH)),
+      #fee_accounts([("com.origyn.royalty.node", #account({ owner = Principal.fromActor(this); sub_account = null }))]),
+      #fee_schema("com.origyn.royalties.fixed"),
+    ]);
+
+    let start_auction_attempt_owner_should_fail2 = await canister.market_transfer_nft_origyn({
+      token_id = "3";
+      sales_config = {
+        escrow_receipt = null;
+        broker_id = null;
+        pricing = #ask(?Buffer.toArray<MigrationTypes.Current.AskFeature>(option_buffer_should_fail2));
+      };
+    });
+
+    D.print("get sale id");
+    // verify that auction fail with startprice < all fees that user has to pay
+    switch (start_auction_attempt_owner_should_fail2) {
+      case (#ok(val)) {
+        D.print("market_transfer_nft_origyn specific token set for this royalty : \"com.origyn.royalty.broker\" but no fee_account setted to pay this royalty.");
+        return #fail("error with auction start");
+      };
+      case (#err(item)) {
+        if (item.flag_point != "market_transfer_nft_origyn specific token set for this royalty : \"com.origyn.royalty.broker\" but no fee_account setted to pay this royalty.") {
+          D.print("error with auction start");
+          D.print(item.flag_point);
+          return #fail("error with auction start");
+        };
+      };
+    };
+
+    // This one should not fail
+    D.print("sellerFeeDepositAccount = " # debug_show (sellerFeeDepositAccount));
+    let option_buffer = Buffer.fromArray<MigrationTypes.Current.AskFeature>([
+      #reserve(1 * 10 ** 8),
+      #token(#ic({ canister = Principal.fromActor(dfx); standard = #Ledger; decimals = 8; symbol = "LDG"; fee = ?200000; id = null })),
+      #buy_now(1 * 10 ** 8),
+      #start_price(1 * 10 ** 8),
+      #ending(#date(get_time() + DAY_LENGTH)),
+      #fee_accounts([
+        ("com.origyn.royalty.node", #account({ owner = Principal.fromActor(this); sub_account = null })),
+        ("com.origyn.royalty.broker", #account({ owner = Principal.fromActor(this); sub_account = null })),
+        ("com.origyn.royalty.originator", #account({ owner = Principal.fromActor(this); sub_account = null })),
+        ("com.origyn.royalty.custom", #account({ owner = Principal.fromActor(this); sub_account = null })),
+        ("com.origyn.royalty.network", #account({ owner = Principal.fromActor(this); sub_account = null })),
+      ]),
+      #fee_schema("com.origyn.royalties.fixed"),
+    ]);
+
+    let start_auction_attempt_owner = await canister.market_transfer_nft_origyn({
+      token_id = "3";
+      sales_config = {
+        escrow_receipt = null;
+        broker_id = null;
+        pricing = #ask(?Buffer.toArray<MigrationTypes.Current.AskFeature>(option_buffer));
+      };
+    });
+
+    D.print("get sale id");
+    // verify that auction fail with startprice < all fees that user has to pay
+    let current_sales_id = switch (start_auction_attempt_owner) {
+      case (#ok(val)) {
+        switch (val.txn_type) {
+          case (#sale_opened(sale_data)) {
+            sale_data.sale_id;
+          };
+          case (_) {
+            D.print("Didn't find expected sale_opened");
+            return #fail("Didn't find expected sale_opened");
+          };
+        };
+      };
+      case (#err(item)) {
+        D.print("error with auction start");
+        D.print(item.flag_point);
+        return #fail("error with auction start");
+      };
+    };
+
+    //place escrow
+    let end_date = get_time() + DAY_LENGTH + DAY_LENGTH;
+    D.print("sending tokens to canisters");
+
+    D.print("Sending real escrow now a wallet try escrow");
+    //claiming first escrow
+    let a_wallet_try_escrow_general_staged2 = await a_wallet.try_escrow_specific_staged(Principal.fromActor(this), Principal.fromActor(canister), Principal.fromActor(dfx), null, 1 * 10 ** 8, "3", ?current_sales_id, null, null);
+
+    //place a valid bid MKT0027
+    let a_wallet_try_bid_valid = await a_wallet.try_bid(Principal.fromActor(canister), Principal.fromActor(this), Principal.fromActor(dfx), 1 * 10 ** 8, "3", current_sales_id, ?Principal.fromActor(b_wallet));
+    D.print("a_wallet_try_bid_valid " # debug_show (a_wallet_try_bid_valid));
+
+    //create fake wallet for time duration
+    let fake_wallet3 = await TestWalletDef.test_wallet();
+    //create fake wallet for time duration
+    let fake_wallet4 = await TestWalletDef.test_wallet();
+    //create fake wallet for time duration
+    let fake_wallet5 = await TestWalletDef.test_wallet();
+    let fake_wallet57 = await TestWalletDef.test_wallet();
+    let fake_wallet58 = await TestWalletDef.test_wallet();
+    let fake_wallet575 = await TestWalletDef.test_wallet();
+    let fake_wallet585 = await TestWalletDef.test_wallet();
+
+    //advance time
+    let mode = canister.__set_time_mode(#test);
+    let time_result = await canister.__advance_time(end_date + 1);
+    D.print("new time");
+    D.print(debug_show (time_result));
+
+    //end auction
+    let end_proper = await canister.sale_nft_origyn(#end_sale("3"));
+    D.print("end proper");
+    D.print(debug_show (end_proper));
+
+    //create wallets to force rounds
+    let fake_wallet66 = await TestWalletDef.test_wallet();
+    let fake_wallet67 = await TestWalletDef.test_wallet();
+    let fake_wallet78 = await TestWalletDef.test_wallet();
+    let fake_wallet69 = await TestWalletDef.test_wallet();
+    let fake_wallet79 = await TestWalletDef.test_wallet();
+    let fake_wallet697 = await TestWalletDef.test_wallet();
+    let fake_wallet797 = await TestWalletDef.test_wallet();
+
+    let a_balance5 = await dfx.icrc1_balance_of({
+      owner = Principal.fromActor(a_wallet);
+      subaccount = null;
+    });
+    let b_balance5 = await dfx2.icrc1_balance_of({
+      owner = Principal.fromActor(b_wallet);
+      subaccount = null;
+    });
+    let n_balance5 = await dfx2.icrc1_balance_of({
+      owner = Principal.fromActor(n_wallet);
+      subaccount = null;
+    });
+    let o_balance5 = await dfx2.icrc1_balance_of({
+      owner = Principal.fromActor(o_wallet);
+      subaccount = null;
+    });
+    let canister_balance5 = await dfx2.icrc1_balance_of({
+      owner = Principal.fromActor(canister);
+      subaccount = null;
+    });
+    let net_balance5 = await dfx2.icrc1_balance_of(net_account);
+
+    let fee_wallet_balance5 = await dfx2.icrc1_balance_of({
+      owner = sellerFeeDepositAccount.account.principal;
+      subaccount = ?Blob.toArray(sellerFeeDepositAccount.account.sub_account);
+    });
+
+    D.print("fee_wallet_balance5 = " # debug_show (fee_wallet_balance5));
+    D.print("a wallet " # debug_show ((Principal.fromActor(a_wallet), a_balance, a_balance5)));
+    D.print("b wallet " # debug_show ((Principal.fromActor(b_wallet), b_balance + 800000 /* 1_000_000 - 200_000 token fees*/, b_balance5)));
+    D.print("n wallet " # debug_show ((Principal.fromActor(n_wallet), n_balance + 800000 /* 1_000_000 - 200_000 token fees*/, n_balance5)));
+    D.print("o wallet " # debug_show ((Principal.fromActor(o_wallet), o_balance + 800000 /* 1_000_000 - 200_000 token fees*/, o_balance5)));
+    D.print("net wallet token 1 " # debug_show ((Principal.fromActor(net_wallet), net_balance + 800000 /* 1_000_000 - 200_000 token fees*/, net_balance5)));
+    D.print("canister wallet token 2 " # debug_show ((Principal.fromActor(canister), canister_balance, canister_balance5)));
+
+    let suite = S.suite(
+      "test royalties fixed",
+      [
+        //todo: add test to make sure that the deposit has been reduced
+        S.test("fail if seller doest not get his monney", a_balance5, M.equals<Nat>(T.nat(99_499_400_000))), // 1000000000 - 1000000 = 999000000
+        S.test("fail if broker does not get first royalty", b_balance5, M.equals<Nat>(T.nat(800000))),
+        S.test("fail if node does not get first royalty", n_balance5, M.equals<Nat>(T.nat(800000))),
+        S.test("fail if network does not get first royalty", net_balance5, M.equals<Nat>(T.nat(800000))),
+        S.test("fail if originator does not get first royalty", o_balance5, M.equals<Nat>(T.nat(800000))),
+        S.test("fail if fee wallet balance wallet didnt paid", fee_wallet_balance5, M.equals<Nat>(T.nat(995000000))), // 1000000000 - (5 * 1000000) = 995000000
 
         //todo: add test to make sure the ignore broker pathway has consistent fees totals and royalties
 
