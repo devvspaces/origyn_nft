@@ -113,7 +113,11 @@ shared (deployer) actor class Storage_Canister(__initargs : Types.StorageInitArg
     // *************************
 
     //the library needs to stay unstable for maleable access to the Buffers that make up the file chunks
-    private var nft_library : TrieMap.TrieMap<Text, TrieMap.TrieMap<Text, CandyTypes.Workspace>> = NFTUtils.build_library(nft_library_stable);
+    private var nft_library : TrieMap.TrieMap<Text, TrieMap.TrieMap<Text, CandyTypes.Workspace>> = if(nft_library_stable.size() > 0){
+      NFTUtils.build_library(nft_library_stable);
+    } else {
+      NFTUtils.build_library_new(nft_library_stable_2)
+    };
     //store access tokens for owner assets to owner specific data
     private var tokens : TrieMap.TrieMap<Text, MigrationTypes.Current.HttpAccess> = TrieMap.fromEntries<Text, MigrationTypes.Current.HttpAccess>(tokens_stable.vals(), Text.equal, Text.hash);
 
@@ -169,7 +173,7 @@ shared (deployer) actor class Storage_Canister(__initargs : Types.StorageInitArg
     };
 
     // get current network of the nft
-    public query func get_collection_network_nft_origynt() : async ?Principal.Principal {
+    public query func get_collection_network_nft_origyn() : async ?Principal.Principal {
         state_current.collection_data.network;
     };
 
@@ -443,10 +447,10 @@ shared (deployer) actor class Storage_Canister(__initargs : Types.StorageInitArg
     * @param {Nat} chunk - The chunk number of the entry.
     * @returns {Hash.Hash} - The hash ID for the entry.
     */
-    public query func get_btree_hash_id(tokenId : Text, libraryId : Text, i : Nat, chunk : Nat) : async Hash.Hash {
+    /* public query func get_btree_hash_id(tokenId : Text, libraryId : Text, i : Nat, chunk : Nat) : async Hash.Hash {
 
         Text.hash("token:" # tokenId # "/library:" # libraryId # "/index:" # Nat.toText(i) # "/chunk:" # Nat.toText(chunk));
-    };
+    }; */
 
     /**
     * Inserts a value into the btree storage.
@@ -457,7 +461,7 @@ shared (deployer) actor class Storage_Canister(__initargs : Types.StorageInitArg
     * @param {Blob} value - The value to insert.
     * @returns {void}
     */
-    public func insert_btree(tokenId : Text, libraryId : Text, i : Nat, chunk : Nat, value : Blob) : async () {
+    /* public func insert_btree(tokenId : Text, libraryId : Text, i : Nat, chunk : Nat, value : Blob) : async () {
         let key = Text.hash("token:" # tokenId # "/library:" # libraryId # "/index:" # Nat.toText(i) # "/chunk:" # Nat.toText(chunk));
 
         let bytes = Blob.toArray(value);
@@ -465,14 +469,14 @@ shared (deployer) actor class Storage_Canister(__initargs : Types.StorageInitArg
 
         ();
 
-    };
+    }; */
 
     /**
     * Retrieves a btree entry by key.
     * @param {Nat32} key - The key of the entry.
     * @returns {void}
     */
-    public func get_btree_entry(key : Nat32) : async () {
+    /* public func get_btree_entry(key : Nat32) : async () {
         // let k = await hash_id(Nat32.toNat(key));
         let result = btreemap_storage.get(key);
         switch (result) {
@@ -483,13 +487,13 @@ shared (deployer) actor class Storage_Canister(__initargs : Types.StorageInitArg
             };
         };
         ();
-    };
+    }; */
 
     /**
     * Retrieves all entries in the btree storage as an array of tuples containing the key and value.
     * @returns {Array.<{0: Nat32, 1: Array.<Nat8>}>} - An array of tuples containing the key and value of each entry in the btree storage.
     */
-    public query func show_btree_entries() : async [(Nat32, [Nat8])] {
+    /* public query func show_btree_entries() : async [(Nat32, [Nat8])] {
 
         let vals = btreemap_storage.iter();
         let localBuf = Buffer.Buffer<(Nat32, [Nat8])>(0);
@@ -500,13 +504,13 @@ shared (deployer) actor class Storage_Canister(__initargs : Types.StorageInitArg
         };
 
         Buffer.toArray(localBuf);
-    };
+    }; */
 
     /**
     * Retrieves all keys in the btree storage as an array.
     * @returns {Array.<Nat32>} - An array of all the keys in the btree storage.
     */
-    public query func show_btree_entries_keys() : async [(Nat32)] {
+    /* public query func show_btree_entries_keys() : async [(Nat32)] {
 
         let vals = btreemap_storage.iter();
         let localBuf = Buffer.Buffer<(Nat32)>(0);
@@ -517,7 +521,7 @@ shared (deployer) actor class Storage_Canister(__initargs : Types.StorageInitArg
         };
 
         Buffer.toArray(localBuf);
-    };
+    }; */
 
 
     // *************************
@@ -541,6 +545,10 @@ shared (deployer) actor class Storage_Canister(__initargs : Types.StorageInitArg
 
     };
 
+    public query func __version() : async  Text {
+        return "0.1.4-20240405";
+    };
+
     system func preupgrade() {
 
         tokens_stable := Iter.toArray(tokens.entries());
@@ -560,6 +568,8 @@ shared (deployer) actor class Storage_Canister(__initargs : Types.StorageInitArg
 
     system func postupgrade() {
         nft_library_stable := [];
+
+        nft_library_stable_2 := [];
         tokens_stable := [];
     };
 };

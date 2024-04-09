@@ -158,6 +158,11 @@ module {
 
         if(rEnd - rStart : Nat > __MAX_STREAM_CHUNK){
                                 debug if(debug_channel.streaming) D.print("handling big branch");
+
+        if(rEnd >= size){
+            rEnd:= size - 1;
+        };
+
             
             let cbt = _stream_media(token_id, library_id, rStart, data, rStart, rEnd, size);
 
@@ -188,6 +193,11 @@ module {
         } else  {
             //just one chunk
                                 debug if(debug_channel.streaming) D.print("returning short array");
+
+            if(rEnd >= size){
+              rEnd:= size - 1;
+            };
+
 
             let cbt = _stream_media(token_id, library_id, rStart, data, rStart, rEnd, size);
 

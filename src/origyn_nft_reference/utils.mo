@@ -181,6 +181,26 @@ module {
         return aMap;
     };
 
+    public func build_library2(items: [(Text,[(Text,CandyTypes.AddressedChunkArray)])]) : TrieMap.TrieMap<Text, TrieMap.TrieMap<Text, CandyTypes.Workspace>>{
+        
+        let aMap = TrieMap.TrieMap<Text, TrieMap.TrieMap<Text, CandyTypes.Workspace>>(Text.equal,Text.hash);
+        for(this_item in items.vals()){
+            let bMap = TrieMap.TrieMap<Text, CandyTypes.Workspace>(Text.equal,Text.hash);
+            for(thatItem in this_item.1.vals()){
+                //upgrade Addressed chunk array
+                let newItems = Buffer.Buffer<CandyTypes.AddressedChunk>(thatItem.1.size());
+                for(thisOldItem in thatItem.1.vals()){
+                  newItems.add((thisOldItem.0, thisOldItem.1, thisOldItem.2));
+                };
+                bMap.put(thatItem.0, Workspace.fromAddressedChunks(Buffer.toArray(newItems)));
+            };
+            aMap.put(this_item.0, bMap);
+        };
+
+        return aMap;
+    };
+
+
     public func build_library_new(items: [(Text,[(Text,CandyTypes.AddressedChunkArray)])]) : TrieMap.TrieMap<Text, TrieMap.TrieMap<Text, CandyTypes.Workspace>>{
         
         let aMap = TrieMap.TrieMap<Text, TrieMap.TrieMap<Text, CandyTypes.Workspace>>(Text.equal,Text.hash);

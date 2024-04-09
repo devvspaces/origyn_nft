@@ -58,6 +58,9 @@
   "dev_sales_canister": {
     "ic": "4wwlz-ciaaa-aaaaj-ae2cq-cai"
   },
+  "storage_canister_1": {
+    "ic": "ut5th-hiaaa-aaaap-abmiq-cai"
+  },
   "yumi-gold-test": {
     "ic": "gtzpn-mqaaa-aaaal-qbvga-cai"
   }
