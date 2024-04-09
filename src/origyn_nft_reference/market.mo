@@ -3131,13 +3131,13 @@ module {
               case (?val) {
                 if (val != Types.metadata.__system_fixed_royalty) {
                   debug if (debug_channel.market) D.print("but __system_fixed_royalty bad value, only com.origyn.royalties.fixed can be used -> error");
-                  return #err(Types.errors(?state.canistergeekLogger, #malformed_metadata, "market_transfer_nft_origyn fee_accounts need fixed ogy fee_schema. Not compatible yet with default royalty schema.", ?caller));
+                  return #err(Types.errors(?state.canistergeekLogger, #malformed_metadata, "market_transfer_nft_origyn fee_accounts need fixed fee_schema. Not compatible yet others royalties schema.", ?caller));
                 };
                 val;
               };
               case (null) {
                 debug if (debug_channel.market) D.print("but __system_fixed_royalty is not set -> error");
-                return #err(Types.errors(?state.canistergeekLogger, #malformed_metadata, "market_transfer_nft_origyn fee_accounts need fixed ogy fee_schema. Not compatible yet with default royalty schema.", ?caller));
+                return #err(Types.errors(?state.canistergeekLogger, #malformed_metadata, "market_transfer_nft_origyn fee_accounts need fixed fee_schema. Not compatible yet others royalties schema.", ?caller));
               };
             };
 
@@ -3157,7 +3157,7 @@ module {
                     // case (#dynamic(v)) {v;}; TODO not available now
                     case (_) {
                       debug if (debug_channel.market) D.print("but __system_fixed_royalty is not set -> error");
-                      return #err(Types.errors(?state.canistergeekLogger, #malformed_metadata, "market_transfer_nft_origyn fee_accounts need fixed ogy fee_schema. Not compatible yet with default royalty schema.", ?caller));
+                      return #err(Types.errors(?state.canistergeekLogger, #malformed_metadata, "market_transfer_nft_origyn fee_accounts need fixed fee_schema. Not compatible yet others royalties schema.", ?caller));
                     };
                   };
                 };
@@ -3165,7 +3165,9 @@ module {
               };
 
               let (token_spec, specific_token_set) = switch (loaded_royalty.token) {
-                case (?val) { (val, true) };
+                case (?val) {
+                  if (val == ret.token) { (val, false) } else { (val, true) };
+                };
                 case (_) { (ret.token, false) };
               };
 

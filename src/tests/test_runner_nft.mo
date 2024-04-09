@@ -108,8 +108,8 @@ shared (deployer) actor class test_runner(dfx_ledger : Principal, dfx_ledger2 : 
         // S.test("testMarketTransfer", switch (await testMarketTransfer()) { case (#success) { true }; case (_) { false } }, M.equals<Bool>(T.bool(true))),
         // S.test("testOwnerTransfer", switch (await testOwnerTransfer()) { case (#success) { true }; case (_) { false } }, M.equals<Bool>(T.bool(true))),
         // S.test("testOffer", switch (await testOffers()) { case (#success) { true }; case (_) { false } }, M.equals<Bool>(T.bool(true))) S.test("testRoyaltiesFixed", switch (await testRoyaltiesFixed()) { case (#success) { true }; case (_) { false } }, M.equals<Bool>(T.bool(true))),
-        // S.test("testRoyaltiesFixed", switch (await testRoyaltiesFixed()) { case (#success) { true }; case (_) { false } }, M.equals<Bool>(T.bool(true))),
-        S.test("testRoyaltiesFixedDifferentToken", switch (await testRoyaltiesFixedDifferentToken()) { case (#success) { true }; case (_) { false } }, M.equals<Bool>(T.bool(true))),
+        S.test("testRoyaltiesFixed", switch (await testRoyaltiesFixed()) { case (#success) { true }; case (_) { false } }, M.equals<Bool>(T.bool(true))),
+        // S.test("testRoyaltiesFixedDifferentToken", switch (await testRoyaltiesFixedDifferentToken()) { case (#success) { true }; case (_) { false } }, M.equals<Bool>(T.bool(true))),
       ],
     );
     S.run(suite);
@@ -2503,34 +2503,6 @@ shared (deployer) actor class test_runner(dfx_ledger : Principal, dfx_ledger2 : 
     D.print("finished stage");
     D.print(debug_show (standardStage.0));
 
-    let noBrokerCanister : Types.Service = actor (Principal.toText(noBrokerPrincipal));
-
-    let standardStage_collection_noBroker = await utils.buildCollection(
-      noBrokerCanister,
-      Principal.fromActor(noBrokerCanister),
-      Principal.fromActor(n_wallet),
-      Principal.fromActor(this),
-      2048000,
-      true,
-      dfxspec,
-    );
-
-    D.print("has broker canister");
-    D.print(debug_show (newPrincipal));
-
-    D.print("no broker canister");
-    D.print(debug_show (noBrokerPrincipal, standardStage_collection_noBroker));
-
-    let standardStage_no_broker = await utils.buildStandardNFT("1", noBrokerCanister, Principal.fromActor(noBrokerCanister), 1024, false, Principal.fromActor(o_wallet));
-
-    D.print("stage no broker");
-    D.print(debug_show (standardStage_no_broker));
-
-    let mint_attempt6 = await noBrokerCanister.mint_nft_origyn("1", #principal(Principal.fromActor(this)));
-
-    D.print("mint no broker");
-    D.print(debug_show (mint_attempt6));
-
     //fund a_wallet
     let funding_result = await dfx.icrc1_transfer({
       to = { owner = Principal.fromActor(a_wallet); subaccount = null };
@@ -2552,8 +2524,6 @@ shared (deployer) actor class test_runner(dfx_ledger : Principal, dfx_ledger2 : 
       created_at_time = null;
       amount = 1000 * 10 ** 8;
     });
-
-    //todo:  Fund the fee deposit account so that the node payment can come out of that account.
 
     //send a payment to the ledger
     D.print("sending tokens to canisters");
@@ -2682,38 +2652,35 @@ shared (deployer) actor class test_runner(dfx_ledger : Principal, dfx_ledger2 : 
       };
     };
 
-    D.print("sellerFeeDepositAccount = " # debug_show (sellerFeeDepositAccount));
-    let option_buffer = Buffer.fromArray<MigrationTypes.Current.AskFeature>([
-      #reserve(1),
-      #token(#ic({ canister = Principal.fromActor(dfx); standard = #Ledger; decimals = 8; symbol = "LDG"; fee = ?200000; id = null })),
-      #buy_now(1),
-      #start_price(1),
-      #ending(#date(get_time() + DAY_LENGTH)),
-      #fee_accounts([("com.origyn.royalty.node", #account({ owner = Principal.fromActor(this); sub_account = null }))]),
-      #fee_schema("com.origyn.royalties.fixed"),
-    ]);
+    let _invalid_option_buffer_array = [
+      (Buffer.fromArray<MigrationTypes.Current.AskFeature>([#reserve(1), #token(#ic({ canister = Principal.fromActor(dfx); standard = #Ledger; decimals = 8; symbol = "LDG"; fee = ?200000; id = null })), #buy_now(1), #start_price(1), #ending(#date(get_time() + DAY_LENGTH)), #fee_accounts([("com.origyn.royalty.node", #account({ owner = Principal.fromActor(this); sub_account = null }))]), #fee_schema("com.origyn.royalties.fixed")]), "market_transfer_nft_origyn - start price cannot be less than mininal fee", "auction should have fail with startprice < all fees that user has to pay"),
+      (Buffer.fromArray<MigrationTypes.Current.AskFeature>([#reserve(1 * 10 ** 8), #token(#ic({ canister = Principal.fromActor(dfx); standard = #Ledger; decimals = 8; symbol = "LDG"; fee = ?200000; id = null })), #buy_now(1 * 10 ** 8), #start_price(1 * 10 ** 8), #ending(#date(get_time() + DAY_LENGTH)), #fee_accounts([("com.origyn.royalty.AAAAAA", #account({ owner = Principal.fromActor(this); sub_account = null }))]), #fee_schema("com.origyn.royalties.fixed")]), "market_transfer_nft_origyn bad royalty name = \"com.origyn.royalty.AAAAAA\" and should be one of [\"com.origyn.royalty.broker\", \"com.origyn.royalty.node\", \"com.origyn.royalty.originator\", \"com.origyn.royalty.custom\", \"com.origyn.royalty.network\"]", "auction should have fail with bad royalty name = \"com.origyn.royalty.AAAAAA\""),
+      (Buffer.fromArray<MigrationTypes.Current.AskFeature>([#reserve(1 * 10 ** 8), #token(#ic({ canister = Principal.fromActor(dfx); standard = #Ledger; decimals = 8; symbol = "LDG"; fee = ?200000; id = null })), #buy_now(1 * 10 ** 8), #start_price(1 * 10 ** 8), #ending(#date(get_time() + DAY_LENGTH)), #fee_accounts([("com.origyn.royalty.node", #account({ owner = Principal.fromActor(this); sub_account = null }))]), #fee_schema("com.origyn.royalties.fixedAAAA")]), "market_transfer_nft_origyn fee_accounts need fixed fee_schema. Not compatible yet others royalties schema.", "auction should have fail with fee_accounts need fixed fee_schema"),
+      (Buffer.fromArray<MigrationTypes.Current.AskFeature>([#reserve(1 * 10 ** 8), #token(#ic({ canister = Principal.fromActor(dfx); standard = #Ledger; decimals = 8; symbol = "LDG"; fee = ?200000; id = null })), #buy_now(1 * 10 ** 8), #start_price(1 * 10 ** 8), #ending(#date(get_time() + DAY_LENGTH)), #fee_accounts([("com.origyn.royalty.node", #account({ owner = Principal.fromActor(this); sub_account = null }))])]), "market_transfer_nft_origyn fee_accounts need fixed fee_schema. Not compatible yet others royalties schema.", "auction should have fail with fee_accounts need fixed fee_schema"),
+    ];
 
-    let start_auction_attempt_owner = await canister.market_transfer_nft_origyn({
-      token_id = "3";
-      sales_config = {
-        escrow_receipt = null;
-        broker_id = null;
-        pricing = #ask(?Buffer.toArray<MigrationTypes.Current.AskFeature>(option_buffer));
-      };
-    });
+    for ((_invalid_option_buffer, err_msg_return, err_msg_to_print_in_case_of_error) in _invalid_option_buffer_array.vals()) {
+      D.print("sellerFeeDepositAccount = " # debug_show (sellerFeeDepositAccount));
+      let start_auction_attempt_owner = await canister.market_transfer_nft_origyn({
+        token_id = "3";
+        sales_config = {
+          escrow_receipt = null;
+          broker_id = null;
+          pricing = #ask(?Buffer.toArray<MigrationTypes.Current.AskFeature>(_invalid_option_buffer));
+        };
+      });
 
-    D.print("get sale id");
-    // verify that auction fail with startprice < all fees that user has to pay
-    switch (start_auction_attempt_owner) {
-      case (#ok(val)) {
-        D.print("auction should have fail with startprice < all fees that user has to pay");
-        return #fail("error with auction start");
-      };
-      case (#err(item)) {
-        if (item.flag_point != "market_transfer_nft_origyn - start price cannot be less than mininal fee") {
-          D.print("error with auction start");
-          D.print(item.flag_point);
+      switch (start_auction_attempt_owner) {
+        case (#ok(val)) {
+          D.print(err_msg_to_print_in_case_of_error);
           return #fail("error with auction start");
+        };
+        case (#err(item)) {
+          if (item.flag_point != err_msg_return) {
+            D.print("error with auction start");
+            D.print(item.flag_point);
+            return #fail("error with auction start");
+          };
         };
       };
     };
@@ -2774,17 +2741,6 @@ shared (deployer) actor class test_runner(dfx_ledger : Principal, dfx_ledger2 : 
     //place a valid bid MKT0027
     let a_wallet_try_bid_valid = await a_wallet.try_bid(Principal.fromActor(canister), Principal.fromActor(this), Principal.fromActor(dfx), 1 * 10 ** 8, "3", current_sales_id, ?Principal.fromActor(b_wallet));
     D.print("a_wallet_try_bid_valid " # debug_show (a_wallet_try_bid_valid));
-
-    //create fake wallet for time duration
-    let fake_wallet3 = await TestWalletDef.test_wallet();
-    //create fake wallet for time duration
-    let fake_wallet4 = await TestWalletDef.test_wallet();
-    //create fake wallet for time duration
-    let fake_wallet5 = await TestWalletDef.test_wallet();
-    let fake_wallet57 = await TestWalletDef.test_wallet();
-    let fake_wallet58 = await TestWalletDef.test_wallet();
-    let fake_wallet575 = await TestWalletDef.test_wallet();
-    let fake_wallet585 = await TestWalletDef.test_wallet();
 
     //advance time
     let mode = canister.__set_time_mode(#test);
