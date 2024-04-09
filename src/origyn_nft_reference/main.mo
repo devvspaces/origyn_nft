@@ -3031,7 +3031,7 @@ shared (deployer) actor class Nft_Canister() = this {
     ?120;
   };
 
-  public query (msg) func icrc7_token_metadata(token_ids : [Nat]) : async [?{metadata: [(Text, ICRC7.Value)]}] {
+  public query (msg) func icrc7_token_metadata(token_ids : [Nat]) : async [?[(Text, ICRC7.Value)]] {
 
     let state = get_state();
 
@@ -3051,7 +3051,7 @@ shared (deployer) actor class Nft_Canister() = this {
       };
     };
 
-    return Buffer.toArray<?{metadata:[(Text, ICRC7.Value)]}>(aBuf);
+    return Buffer.toArray<?[(Text, ICRC7.Value)]>(aBuf);
   };
 
   public query (msg) func icrc7_owner_of(token_ids : [Nat]) : async [?ICRC7.Account] {
