@@ -41,6 +41,37 @@ module {
   let account_handler = MigrationTypes.Current.account_handler;
   let token_handler = MigrationTypes.Current.token_handler;
 
+  private func _access_fee_balance<T>(
+    state : StateAccess,
+    default_request : {
+      account : Types.Account;
+      token : Types.TokenSpec;
+    },
+    request : T,
+    f : (T, MigrationTypes.Current.FeeDepositDetail) -> Result.Result<Nat, Types.OrigynError>,
+  ) : Result.Result<Nat, Types.OrigynError> {
+    debug if (debug_channel.market) D.print("_access_fee_balance: state.state.fee_deposit_balances  " # debug_show (state.state.fee_deposit_balances));
+
+    return switch (Map.get<Types.Account, Map.Map<Types.TokenSpec, MigrationTypes.Current.FeeDepositDetail>>(state.state.fee_deposit_balances, account_handler, default_request.account)) {
+      case (null) {
+        debug if (debug_channel.market) D.print("_access_fee_balance: _access_fee_balance - account not found  " # debug_show (default_request.account));
+        return #err(Types.errors(?state.canistergeekLogger, #content_not_found, "_access_fee_balance - account not found  " # debug_show (default_request.account), null));
+      };
+      case (?val) {
+        switch (Map.get<Types.TokenSpec, MigrationTypes.Current.FeeDepositDetail>(val, token_handler, default_request.token)) {
+          case (null) {
+            debug if (debug_channel.market) D.print("_access_fee_balance: _access_fee_balance - token not found  " # debug_show (default_request.token));
+            return #err(Types.errors(?state.canistergeekLogger, #content_not_found, "_access_fee_balance - token not found  " # debug_show (default_request.token), null));
+          };
+          case (?token) {
+            return f(request, token);
+          };
+        };
+      };
+    };
+
+  };
+
   /**
     * @param {StateAccess} state - The state access object.
     * @param {Types.FeeDepositRequest} FeeDepositRequest - The request record to be processed.
@@ -55,39 +86,34 @@ module {
       sale_id : Text;
     },
   ) : Result.Result<Nat, Types.OrigynError> {
-    debug if (debug_channel.market) D.print("lock_token_fee_balance: state.state.fee_deposit_balances  " # debug_show (state.state.fee_deposit_balances));
-
-    return switch (Map.get<Types.Account, Map.Map<Types.TokenSpec, MigrationTypes.Current.FeeDepositDetail>>(state.state.fee_deposit_balances, account_handler, request.account)) {
-      case (null) {
-        debug if (debug_channel.market) D.print("lock_token_fee_balance: lock_token_fee_balance - account not found  " # debug_show (request.account));
-        return #err(Types.errors(?state.canistergeekLogger, #content_not_found, "lock_token_fee_balance - account not found  " # debug_show (request.account), null));
-      };
-      case (?val) {
-        switch (Map.get<Types.TokenSpec, MigrationTypes.Current.FeeDepositDetail>(val, token_handler, request.token)) {
-          case (null) {
-            debug if (debug_channel.market) D.print("lock_token_fee_balance: lock_token_fee_balance - token not found  " # debug_show (request.token));
-            return #err(Types.errors(?state.canistergeekLogger, #content_not_found, "lock_token_fee_balance - token not found  " # debug_show (request.token), null));
-          };
-          case (?token) {
-            var all_locked_value : Nat = 0;
-            for (lock_value in Map.vals(token.locks)) {
-              all_locked_value += lock_value;
-            };
-
-            debug if (debug_channel.market) D.print("lock_token_fee_balance: total_balance = " # debug_show (token.total_balance) # " all_locked_value = " # debug_show (all_locked_value) # " token_to_lock " # debug_show (request.token_to_lock));
-
-            if (token.total_balance - all_locked_value : Nat > request.token_to_lock) {
-              let new_token_lock_value = all_locked_value + request.token_to_lock;
-              let _ = Map.put<Text, Nat>(token.locks, Map.thash, request.sale_id, new_token_lock_value);
-
-              return #ok(token.total_balance - new_token_lock_value);
-            } else {
-              return #err(Types.errors(?state.canistergeekLogger, #low_fee_balance, "lock_token_fee_balance - low_fee_balance  ", null));
-            };
-          };
+    return _access_fee_balance<{ token_to_lock : Nat; sale_id : Text }>(
+      state,
+      {
+        account = request.account;
+        token = request.token;
+      },
+      {
+        token_to_lock = request.token_to_lock;
+        sale_id = request.sale_id;
+      },
+      func((request, token)) {
+        var all_locked_value : Nat = 0;
+        for (lock_value in Map.vals(token.locks)) {
+          all_locked_value += lock_value;
         };
-      };
-    };
+
+        debug if (debug_channel.market) D.print("lock_token_fee_balance: total_balance = " # debug_show (token.total_balance) # " all_locked_value = " # debug_show (all_locked_value) # " token_to_lock " # debug_show (request.token_to_lock));
+
+        if (token.total_balance - all_locked_value : Nat > request.token_to_lock) {
+          let new_token_lock_value = all_locked_value + request.token_to_lock;
+          let _ = Map.put<Text, Nat>(token.locks, Map.thash, request.sale_id, new_token_lock_value);
+
+          return #ok(token.total_balance - new_token_lock_value);
+        } else {
+          return #err(Types.errors(?state.canistergeekLogger, #low_fee_balance, "lock_token_fee_balance - low_fee_balance  ", null));
+        };
+      },
+    );
   };
 
   /**
@@ -102,31 +128,23 @@ module {
       token : Types.TokenSpec;
     },
   ) : Result.Result<Nat, Types.OrigynError> {
-    debug if (debug_channel.market) D.print("lock_token_fee_balance: state.state.fee_deposit_balances  " # debug_show (state.state.fee_deposit_balances));
-
-    return switch (Map.get<Types.Account, Map.Map<Types.TokenSpec, MigrationTypes.Current.FeeDepositDetail>>(state.state.fee_deposit_balances, account_handler, request.account)) {
-      case (null) {
-        debug if (debug_channel.market) D.print("lock_token_fee_balance: lock_token_fee_balance - account not found  " # debug_show (request.account));
-        return #err(Types.errors(?state.canistergeekLogger, #content_not_found, "lock_token_fee_balance - account not found  " # debug_show (request.account), null));
-      };
-      case (?val) {
-        switch (Map.get<Types.TokenSpec, MigrationTypes.Current.FeeDepositDetail>(val, token_handler, request.token)) {
-          case (null) {
-            debug if (debug_channel.market) D.print("lock_token_fee_balance: lock_token_fee_balance - token not found  " # debug_show (request.token));
-            return #err(Types.errors(?state.canistergeekLogger, #content_not_found, "lock_token_fee_balance - token not found  " # debug_show (request.token), null));
-          };
-          case (?token) {
-            var all_locked_value : Nat = 0;
-            for (lock_value in Map.vals(token.locks)) {
-              all_locked_value += lock_value;
-            };
-
-            debug if (debug_channel.market) D.print("lock_token_fee_balance: total_balance = " # debug_show (token.total_balance) # " all_locked_value = " # debug_show (all_locked_value));
-            return #ok(token.total_balance - all_locked_value);
-          };
+    return _access_fee_balance<{}>(
+      state,
+      {
+        account = request.account;
+        token = request.token;
+      },
+      {},
+      func((request, token)) {
+        var all_locked_value : Nat = 0;
+        for (lock_value in Map.vals(token.locks)) {
+          all_locked_value += lock_value;
         };
-      };
-    };
+
+        debug if (debug_channel.market) D.print("lock_token_fee_balance: total_balance = " # debug_show (token.total_balance) # " all_locked_value = " # debug_show (all_locked_value));
+        return #ok(token.total_balance - all_locked_value);
+      },
+    );
   };
 
   /**
@@ -142,37 +160,33 @@ module {
       sale_id : Text;
     },
   ) : Result.Result<Nat, Types.OrigynError> {
-    return switch (Map.get<Types.Account, Map.Map<Types.TokenSpec, MigrationTypes.Current.FeeDepositDetail>>(state.state.fee_deposit_balances, account_handler, request.account)) {
-      case (null) {
-        return #err(Types.errors(?state.canistergeekLogger, #content_not_found, "lock_token_fee_balance - account not found  " # debug_show (request.account), null));
-      };
-      case (?val) {
-        switch (Map.get<Types.TokenSpec, MigrationTypes.Current.FeeDepositDetail>(val, token_handler, request.token)) {
-          case (null) {
-            return #err(Types.errors(?state.canistergeekLogger, #content_not_found, "lock_token_fee_balance - token not found  " # debug_show (request.token), null));
-          };
-          case (?token) {
-            // let previous_balance : Nat = switch(Map.get<Text, Nat>(token.locks, Map.thash, request.sale_id)) {
-            //   case(?val) {val};
-            //   case(null) {
-            //     return #err(Types.errors(?state.canistergeekLogger,  #content_not_found, "lock_token_fee_balance - no fees locked for token" # debug_show(request.token), null));
-            //   };
-            // };
-            // let new_balance : Nat = token.total_balance - previous_balance;
-            let _ = Map.remove<Text, Nat>(token.locks, Map.thash, request.sale_id);
+    return _access_fee_balance<{ sale_id : Text }>(
+      state,
+      {
+        account = request.account;
+        token = request.token;
+      },
+      { sale_id = request.sale_id },
+      func((request, token)) {
+        // let previous_balance : Nat = switch(Map.get<Text, Nat>(token.locks, Map.thash, request.sale_id)) {
+        //   case(?val) {val};
+        //   case(null) {
+        //     return #err(Types.errors(?state.canistergeekLogger,  #content_not_found, "lock_token_fee_balance - no fees locked for token" # debug_show(request.token), null));
+        //   };
+        // };
+        // let new_balance : Nat = token.total_balance - previous_balance;
 
-            // let _ = Map.put<Types.TokenSpec, MigrationTypes.Current.FeeDepositDetail>(val, token_handler,
-            // request.token,
-            // {
-            //   total_balance = new_balance;
-            //   locks = token.locks;
-            // });
+        let _ = Map.remove<Text, Nat>(token.locks, Map.thash, request.sale_id);
 
-            return #ok(token.total_balance);
-          };
-        };
-      };
-    };
+        // let _ = Map.put<Types.TokenSpec, MigrationTypes.Current.FeeDepositDetail>(val, token_handler,
+        // request.token,
+        // {
+        //   total_balance = new_balance;
+        //   locks = token.locks;
+        // });
+
+        return #ok(token.total_balance);
+      },
+    );
   };
-
 };
