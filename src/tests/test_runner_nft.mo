@@ -23,6 +23,7 @@ import DFXTypes "../origyn_nft_reference/dfxtypes";
 import Instant "test_runner_instant_transfer";
 import Metadata "../origyn_nft_reference/metadata";
 import NFTUtils "../origyn_nft_reference/utils";
+import Royalties "../origyn_nft_reference/market/royalties";
 import TestWalletDef "test_wallet";
 import Types "../origyn_nft_reference/types";
 import Market "../origyn_nft_reference/market";
@@ -1889,7 +1890,7 @@ shared (deployer) actor class test_runner(dfx_ledger : Principal, dfx_ledger2 : 
 
     let net_account = {
       owner = Principal.fromActor(net_wallet);
-      subaccount = ?Market.get_network_royalty_account(Principal.fromActor(dfx), null);
+      subaccount = ?Royalties.get_network_royalty_account(Principal.fromActor(dfx), null);
     };
 
     let alist = [
@@ -1902,7 +1903,7 @@ shared (deployer) actor class test_runner(dfx_ledger : Principal, dfx_ledger2 : 
     ];
 
     for (thisItem in alist.vals()) {
-      D.print("codes for network:" # debug_show ((thisItem.0, thisItem.1, { owner = Principal.fromText("a3lu7-uiaaa-aaaaj-aadnq-cai"); subaccount = ?Market.get_network_royalty_account(Principal.fromText(thisItem.1), null) }, AccountIdentifier.toText(AccountIdentifier.fromPrincipal(Principal.fromText("a3lu7-uiaaa-aaaaj-aadnq-cai"), ?Market.get_network_royalty_account(Principal.fromText(thisItem.1), null))))));
+      D.print("codes for network:" # debug_show ((thisItem.0, thisItem.1, { owner = Principal.fromText("a3lu7-uiaaa-aaaaj-aadnq-cai"); subaccount = ?Royalties.get_network_royalty_account(Principal.fromText(thisItem.1), null) }, AccountIdentifier.toText(AccountIdentifier.fromPrincipal(Principal.fromText("a3lu7-uiaaa-aaaaj-aadnq-cai"), ?Royalties.get_network_royalty_account(Principal.fromText(thisItem.1), null))))));
     };
 
     D.print("have the net account " # debug_show (net_account));
@@ -2449,7 +2450,7 @@ shared (deployer) actor class test_runner(dfx_ledger : Principal, dfx_ledger2 : 
 
     let net_account = {
       owner = Principal.fromActor(net_wallet);
-      subaccount = ?Market.get_network_royalty_account(Principal.fromActor(dfx), null);
+      subaccount = ?Royalties.get_network_royalty_account(Principal.fromActor(dfx), null);
     };
 
     D.print("have the net account " # debug_show (net_account));
@@ -2833,7 +2834,7 @@ shared (deployer) actor class test_runner(dfx_ledger : Principal, dfx_ledger2 : 
 
     let net_account = {
       owner = Principal.fromActor(net_wallet);
-      subaccount = ?Market.get_network_royalty_account(Principal.fromActor(dfx), null);
+      subaccount = ?Royalties.get_network_royalty_account(Principal.fromActor(dfx), null);
     };
 
     D.print("have the net account " # debug_show (net_account));
