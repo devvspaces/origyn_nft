@@ -82,34 +82,13 @@ module {
 
   public func _load_royalty(fee_schema : Text, royalty : CandyTypes.CandyShared) : Result.Result<MigrationTypes.Current.Royalty, Types.OrigynError> {
     debug if (debug_channel.royalties) D.print("_load_royalty" # debug_show (royalty));
-    let tag = switch (Properties.getClassPropertyShared(royalty, "tag")) {
-      case (null) {
-        return #err(Types.errors(null, #malformed_metadata, "_load_royalty - missing tag in royalty  ", null));
-      };
-      case (?val) {
-        switch (val.value) {
-          case (#Text(val)) val;
-          case (_) {
-            return #err(Types.errors(null, #malformed_metadata, "_load_royalty - missing tag in royalty  ", null));
-          };
-        };
-      };
-    };
+
+    let ?properties : ?CandyTypes.PropertyShared = Properties.getClassPropertyShared(royalty, "tag") else return #err(Types.errors(null, #malformed_metadata, "_load_royalty - missing tag in royalty  ", null));
+    let #Text(tag) = properties.value else return #err(Types.errors(null, #malformed_metadata, "_load_royalty - missing tag in royalty  ", null));
 
     if (fee_schema == Types.metadata.__system_fixed_royalty) {
-      let fixedXDR = switch (Properties.getClassPropertyShared(royalty, "fixedXDR")) {
-        case (null) {
-          return #err(Types.errors(null, #malformed_metadata, "_load_royalty - missing fixedXDR in fixed royalty  ", null));
-        };
-        case (?val) {
-          switch (val.value) {
-            case (#Float(val)) { val };
-            case (_) {
-              return #err(Types.errors(null, #malformed_metadata, "_load_royalty - missing fixedXDR in fixed royalty  ", null));
-            };
-          };
-        };
-      };
+      let ?properties_2 : ?CandyTypes.PropertyShared = Properties.getClassPropertyShared(royalty, "fixedXDR") else return #err(Types.errors(null, #malformed_metadata, "_load_royalty - missing fixedXDR in fixed royalty  ", null));
+      let #Float(fixedXDR) = properties_2.value else return #err(Types.errors(null, #malformed_metadata, "_load_royalty - missing fixedXDR in fixed royalty  ", null));
 
       let tokenCanister : ?Principal = switch (Properties.getClassPropertyShared(royalty, "tokenCanister")) {
         case (null) { null };
@@ -171,19 +150,8 @@ module {
 
       return #ok(#fixed({ tag = tag; fixedXDR = fixedXDR; token = token }));
     } else {
-      let rate = switch (Properties.getClassPropertyShared(royalty, "rate")) {
-        case (null) {
-          return #err(Types.errors(null, #malformed_metadata, "_load_royalty - missing rate in dynamic royalty  ", null));
-        };
-        case (?val) {
-          switch (val.value) {
-            case (#Float(val)) val;
-            case (_) {
-              return #err(Types.errors(null, #malformed_metadata, "_load_royalty - missing rate in dynamic royalty  ", null));
-            };
-          };
-        };
-      };
+      let ?properties_2 : ?CandyTypes.PropertyShared = Properties.getClassPropertyShared(royalty, "rate") else return #err(Types.errors(null, #malformed_metadata, "_load_royalty - missing rate in dynamic royalty  ", null));
+      let #Float(rate) = properties_2.value else return #err(Types.errors(null, #malformed_metadata, "_load_royalty - missing rate in dynamic royalty  ", null));
 
       return #ok(#dynamic({ tag = tag; rate = rate }));
     };
@@ -209,7 +177,7 @@ module {
       fee_schema : Text;
     },
     caller : Principal,
-  ) : async* Star.Star<(Nat, [(Types.EscrowRecord, Bool)]), Types.OrigynError> {
+  ) : Result.Result<(Nat, [(Types.EscrowRecord, Bool)]), Types.OrigynError> {
 
     let dev_fund : { owner : Principal; sub_account : ?Blob } = {
       owner = Principal.fromText("a3lu7-uiaaa-aaaaj-aadnq-cai");
@@ -219,7 +187,6 @@ module {
     debug if (debug_channel.royalties) D.print("in process royalty" # debug_show (request));
 
     let results = Buffer.Buffer<(Types.EscrowRecord, Bool)>(1);
-    var awaited = false;
 
     label royaltyLoop for (this_item in request.royalty.vals()) {
       let the_array = switch (this_item) {
@@ -232,11 +199,7 @@ module {
       let loaded_royalty = switch (_load_royalty(request.fee_schema, this_item)) {
         case (#ok(val)) { val };
         case (#err(err)) {
-          if (awaited == true) {
-            return #err(#awaited(Types.errors(?state.canistergeekLogger, #malformed_metadata, "_process_royalties - error _load_royalty ", ?caller)));
-          } else {
-            return #err(#trappable(Types.errors(?state.canistergeekLogger, #malformed_metadata, "_process_royalties - error _load_royalty ", ?caller)));
-          };
+          return #err(Types.errors(?state.canistergeekLogger, #malformed_metadata, "_process_royalties - error _load_royalty ", ?caller));
         };
       };
 
@@ -347,10 +310,8 @@ module {
       };
 
       // Check if fee_accounts is set for this royalty
-      let fee_accounts : MigrationTypes.Current.FeeAccountsParams = switch (request.fee_accounts) {
-        case (?val) val;
-        case (null) [];
-      };
+      let fee_accounts : MigrationTypes.Current.FeeAccountsParams = Option.get(request.fee_accounts, []);
+
       debug if (debug_channel.royalties) D.print("fee_accounts =  " # debug_show (fee_accounts));
       switch (Array.find<(Text, MigrationTypes.Current.Account)>(fee_accounts, func(val) { return val.0 == tag })) {
         case (?val) {
@@ -373,17 +334,12 @@ module {
                     this_principal;
                   };
 
-                  let _token_id = switch (request.token_id) {
-                    case (null) "";
-                    case (?val) val;
-                  };
-
                   var _escrow : Types.EscrowReceipt = {
                     request.escrow with
                     buyer = #account(fee_accounts_set);
                     seller = #account(send_account);
                     amount = this_royalty;
-                    token_id = _token_id; // TODO AUSTIN, what is the token id here ?
+                    token_id = Option.get(request.token_id, "");
                     token = switch (loaded_royalty) {
                       case (#fixed(val)) {
                         switch (val.token) {
@@ -421,10 +377,7 @@ module {
                         tag = tag;
                         receiver = #account({
                           owner = send_account.owner;
-                          sub_account = switch (send_account.sub_account) {
-                            case (null) null;
-                            case (?val) ?val;
-                          };
+                          sub_account = send_account.sub_account;
                         });
                         sale_id = request.sale_id;
                         extensible = switch (request.token_id) {
@@ -540,10 +493,7 @@ module {
         };
       };
     };
-    if (awaited == true) {
-      return #awaited(request.remaining, Buffer.toArray(results));
-    } else {
-      return #trappable(request.remaining, Buffer.toArray(results));
-    };
+
+    return #ok(request.remaining, Buffer.toArray(results));
   };
 };

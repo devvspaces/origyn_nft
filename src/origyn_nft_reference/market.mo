@@ -1112,7 +1112,7 @@ module {
           //this should really be prevented elsewhere
 
           let royalty_result = switch (
-            await* Royalties._process_royalties(
+            Royalties._process_royalties(
               state,
               {
                 name = _fee_schema;
@@ -1134,8 +1134,7 @@ module {
               caller,
             )
           ) {
-            case (#trappable(val)) { val };
-            case (#awaited(val)) { val };
+            case (#ok(val)) { val };
             case (#err(err)) {
               return #err(#awaited(Types.errors(?state.canistergeekLogger, #malformed_metadata, "end_sale_nft_origyn - error _process_royalties ", ?caller)));
             };
@@ -1728,28 +1727,26 @@ module {
           debug if (debug_channel.royalties) D.print("calling process royalty" # debug_show ((total, remaining)));
 
           let royalty_result = switch (
-            Star.toResult(
-              await* Royalties._process_royalties(
-                state,
-                {
-                  name = _fee_schema;
-                  var remaining = remaining;
-                  total = total;
-                  fee = fee;
-                  escrow = escrow;
-                  royalty = royalty;
-                  sale_id = null;
-                  broker_id = request.sales_config.broker_id;
-                  original_broker_id = null;
-                  account_hash = account_hash;
-                  metadata = metadata;
-                  token_id = ?request.token_id;
-                  token = escrow.token;
-                  fee_accounts = null; // not sure here
-                  fee_schema = _fee_schema;
-                },
-                caller,
-              )
+            Royalties._process_royalties(
+              state,
+              {
+                name = _fee_schema;
+                var remaining = remaining;
+                total = total;
+                fee = fee;
+                escrow = escrow;
+                royalty = royalty;
+                sale_id = null;
+                broker_id = request.sales_config.broker_id;
+                original_broker_id = null;
+                account_hash = account_hash;
+                metadata = metadata;
+                token_id = ?request.token_id;
+                token = escrow.token;
+                fee_accounts = null; // not sure here
+                fee_schema = _fee_schema;
+              },
+              caller,
             )
           ) {
             case (#ok(val)) { val };
