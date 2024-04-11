@@ -549,4 +549,11 @@ module {
 
   };
 
+  public func create_principal_with_no_subaccount(principal : Principal) : {
+    owner : Principal;
+    sub_account : ?Blob;
+  } {
+    return { owner = principal; sub_account = null };
+  };
+
 };

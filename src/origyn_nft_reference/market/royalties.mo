@@ -193,11 +193,6 @@ module {
     let results = Buffer.Buffer<(Types.EscrowRecord, Bool)>(1);
 
     label royaltyLoop for (this_item in request.royalty.vals()) {
-      let the_array = switch (this_item) {
-        case (#Class(the_array)) the_array;
-        case (_) { continue royaltyLoop };
-      };
-
       debug if (debug_channel.royalties) D.print("getting items from class " # debug_show (this_item));
 
       let loaded_royalty = switch (_load_royalty(request.fee_schema, this_item)) {
@@ -246,10 +241,7 @@ module {
         };
         case (?val) {
           switch (val.value) {
-            case (#Principal(val)) [{
-              owner = val;
-              sub_account = null;
-            }];
+            case (#Principal(val)) [NFTUtils.create_principal_with_no_subaccount(val)];
             case (_) [dev_fund()]; //dev fund
           };
         };
@@ -272,10 +264,7 @@ module {
                     owner : Principal;
                     sub_account : ?Blob;
                   } = if (Principal.fromText("yfhhd-7eebr-axyvl-35zkt-z6mp7-hnz7a-xuiux-wo5jf-rslf7-65cqd-cae") == this_principal.owner) {
-                    {
-                      owner = Principal.fromText("a3lu7-uiaaa-aaaaj-aadnq-cai");
-                      sub_account = ?Blob.fromArray([90, 139, 65, 137, 126, 28, 225, 88, 245, 212, 115, 206, 119, 123, 54, 216, 86, 30, 91, 21, 25, 35, 79, 182, 234, 229, 219, 103, 248, 132, 25, 79]);
-                    };
+                    dev_fund();
                   } else {
                     this_principal;
                   };
@@ -375,10 +364,7 @@ module {
                 owner : Principal;
                 sub_account : ?Blob;
               } = if (Principal.fromText("yfhhd-7eebr-axyvl-35zkt-z6mp7-hnz7a-xuiux-wo5jf-rslf7-65cqd-cae") == this_principal.owner) {
-                {
-                  owner = Principal.fromText("a3lu7-uiaaa-aaaaj-aadnq-cai");
-                  sub_account = ?Blob.fromArray([90, 139, 65, 137, 126, 28, 225, 88, 245, 212, 115, 206, 119, 123, 54, 216, 86, 30, 91, 21, 25, 35, 79, 182, 234, 229, 219, 103, 248, 132, 25, 79]);
-                };
+                dev_fund();
               } else {
                 this_principal;
               };
@@ -465,10 +451,7 @@ module {
 
     switch (val) {
       case (#Option(null)) [dev_fund()]; //dev fund
-      case (#Principal(val)) [{
-        owner = val;
-        sub_account = null;
-      }];
+      case (#Principal(val)) [NFTUtils.create_principal_with_no_subaccount(val)];
       case (_) [dev_fund()];
     };
   };
@@ -481,10 +464,7 @@ module {
 
     switch (val) {
       case (#Option(null)) [dev_fund()]; //dev fund
-      case (#Principal(val)) [{
-        owner = val;
-        sub_account = null;
-      }];
+      case (#Principal(val)) [NFTUtils.create_principal_with_no_subaccount(val)];
       case (_) [dev_fund()];
     };
   };
@@ -511,25 +491,15 @@ module {
         if (override) {
           state.canistergeekLogger.logMessage("_build_royalties_broker_account overriding " # debug_show (request.token_id), #Bool(override), null);
           return [];
+        } else {
+          state.canistergeekLogger.logMessage("_build_royalties_broker_account override result using dev fund" # debug_show (request.token_id), #Bool(override), null);
+          [dev_fund()];
         };
-
-        state.canistergeekLogger.logMessage("_build_royalties_broker_account override result using dev fund" # debug_show (request.token_id), #Bool(override), null);
-
-        [dev_fund()];
       }; //dev fund
-      case (?val, null) [{
-        owner = val;
-        sub_account = null;
-      }];
-      case (null, ?val2) [{
-        owner = val2;
-        sub_account = null;
-      }];
+      case (?val, null) [NFTUtils.create_principal_with_no_subaccount(val)];
+      case (null, ?val2) [NFTUtils.create_principal_with_no_subaccount(val2)];
       case (?val, ?val2) {
-        if (val == val2)[{
-          owner = val;
-          sub_account = null;
-        }] else [{ owner = val; sub_account = null }, { owner = val2; sub_account = null }];
+        if (val == val2)[NFTUtils.create_principal_with_no_subaccount(val)] else [NFTUtils.create_principal_with_no_subaccount(val), NFTUtils.create_principal_with_no_subaccount(val2)];
       };
     };
 
