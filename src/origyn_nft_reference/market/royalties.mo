@@ -25,6 +25,7 @@ import MapUtil "mo:map/utils";
 
 import Star "mo:star/star";
 import SHA256 "mo:crypto/SHA/SHA256";
+import Parser "mo:parser-combinators/Parser";
 
 import PutBalance "./put_balance";
 import Ledger_Interface "../ledger_interface";
@@ -47,6 +48,23 @@ module {
   let Conversions = MigrationTypes.Current.Conversions;
   let Properties = MigrationTypes.Current.Properties;
 
+  type ProcessRoyaltiesRequest = {
+    var remaining : Nat;
+    total : Nat;
+    fee : Nat;
+    account_hash : ?Blob;
+    royalty : [CandyTypes.CandyShared];
+    escrow : Types.EscrowReceipt;
+    broker_id : ?Principal;
+    original_broker_id : ?Principal;
+    sale_id : ?Text;
+    metadata : CandyTypes.CandyShared;
+    token_id : ?Text;
+    token : Types.TokenSpec;
+    fee_accounts : ?MigrationTypes.Current.FeeAccountsParams;
+    fee_schema : Text;
+  };
+
   let account_handler = MigrationTypes.Current.account_handler;
   let token_handler = MigrationTypes.Current.token_handler;
 
@@ -57,6 +75,13 @@ module {
     "com.origyn.royalty.custom",
     "com.origyn.royalty.network",
   ];
+
+  private func dev_fund() : { owner : Principal; sub_account : ?Blob } {
+    {
+      owner = Principal.fromText("a3lu7-uiaaa-aaaaj-aadnq-cai");
+      sub_account = ?Blob.fromArray([90, 139, 65, 137, 126, 28, 225, 88, 245, 212, 115, 206, 119, 123, 54, 216, 86, 30, 91, 21, 25, 35, 79, 182, 234, 229, 219, 103, 248, 132, 25, 79]);
+    };
+  };
 
   /**
     * Calculates the network royalty account for a given principal.
@@ -160,30 +185,9 @@ module {
   //handles royalty distribution
   public func _process_royalties(
     state : StateAccess,
-    request : {
-      var remaining : Nat;
-      total : Nat;
-      fee : Nat;
-      account_hash : ?Blob;
-      royalty : [CandyTypes.CandyShared];
-      escrow : Types.EscrowReceipt;
-      broker_id : ?Principal;
-      original_broker_id : ?Principal;
-      sale_id : ?Text;
-      metadata : CandyTypes.CandyShared;
-      token_id : ?Text;
-      token : Types.TokenSpec;
-      fee_accounts : ?MigrationTypes.Current.FeeAccountsParams;
-      fee_schema : Text;
-    },
+    request : ProcessRoyaltiesRequest,
     caller : Principal,
   ) : Result.Result<(Nat, [(Types.EscrowRecord, Bool)]), Types.OrigynError> {
-
-    let dev_fund : { owner : Principal; sub_account : ?Blob } = {
-      owner = Principal.fromText("a3lu7-uiaaa-aaaaj-aadnq-cai");
-      sub_account = ?Blob.fromArray([90, 139, 65, 137, 126, 28, 225, 88, 245, 212, 115, 206, 119, 123, 54, 216, 86, 30, 91, 21, 25, 35, 79, 182, 234, 229, 219, 103, 248, 132, 25, 79]);
-    };
-
     debug if (debug_channel.royalties) D.print("in process royalty" # debug_show (request));
 
     let results = Buffer.Buffer<(Types.EscrowRecord, Bool)>(1);
@@ -225,86 +229,28 @@ module {
             debug if (debug_channel.royalties) D.print("not an IC token spec so continuing " # debug_show (request.token));
             continue royaltyLoop;
           }; //we only support ic token specs for royalties
-          if (tag == Types.metadata.royalty_network) {
-            debug if (debug_channel.royalties) D.print("found the network" # debug_show (get_network_royalty_account(tokenSpec.canister, tokenSpec.id)));
-            switch (state.state.collection_data.network) {
-              case (null) [dev_fund]; //dev fund
-              case (?val) [{
-                owner = val;
-                sub_account = ?Blob.fromArray(get_network_royalty_account(tokenSpec.canister, tokenSpec.id));
-              }];
-            };
-          } else if (tag == Types.metadata.royalty_node) {
-            let val = Metadata.get_system_var(request.metadata, Types.metadata.__system_node);
-            switch (val) {
-              case (#Option(null)) [dev_fund]; //dev fund
-              case (#Principal(val)) [{
-                owner = val;
-                sub_account = null;
-              }];
-              case (_) [dev_fund];
-            };
-          } else if (tag == Types.metadata.royalty_originator) {
-            let val = Metadata.get_system_var(request.metadata, Types.metadata.__system_originator);
-            switch (val) {
-              case (#Option(null)) [dev_fund]; //dev fund
-              case (#Principal(val)) [{
-                owner = val;
-                sub_account = null;
-              }];
-              case (_) [dev_fund];
-            };
-          } else if (tag == Types.metadata.royalty_broker) {
-            switch (request.broker_id, request.original_broker_id) {
-              case (null, null) {
-                let ?collection = Map.get(state.state.nft_metadata, Map.thash, "") else {
-                  state.canistergeekLogger.logMessage("process royalties cannot find collection metatdata. this should not happene" # debug_show (request.token_id), #Bool(false), null);
-                  D.trap("process royalties cannot find collection metatdata. this should not happen");
-                };
 
-                let override = switch (Metadata.get_nft_bool_property(collection, Types.metadata.broker_royalty_dev_fund_override)) {
-                  case (#ok(val)) val;
-                  case (_) {
-                    state.canistergeekLogger.logMessage("_process_royalties overriding error candy type" # debug_show (collection) # debug_show (request.token_id), #Bool(false), null);
-                    false;
-                  };
-                };
+          let _association_table : [(Text, f : (state : StateAccess, request : ProcessRoyaltiesRequest, tokenSpec : Types.ICTokenSpec) -> [{ owner : Principal; sub_account : ?Blob }])] = [
+            (Types.metadata.royalty_network, _build_network_account),
+            (Types.metadata.royalty_node, _build_royalties_node_account),
+            (Types.metadata.royalty_originator, _build_royalties_originator_account),
+            (Types.metadata.royalty_broker, _build_royalties_broker_account),
+          ];
 
-                if (override) {
-                  state.canistergeekLogger.logMessage("_process_royalties overriding " # debug_show (request.token_id), #Bool(override), null);
-                  continue royaltyLoop;
-                };
-
-                state.canistergeekLogger.logMessage("_process_royalties override result using dev fund" # debug_show (request.token_id), #Bool(override), null);
-
-                [dev_fund];
-              }; //dev fund
-              case (?val, null) [{
-                owner = val;
-                sub_account = null;
-              }];
-              case (null, ?val2) [{
-                owner = val2;
-                sub_account = null;
-              }];
-              case (?val, ?val2) {
-                if (val == val2)[{
-                  owner = val;
-                  sub_account = null;
-                }] else [{ owner = val; sub_account = null }, { owner = val2; sub_account = null }];
-              };
-            };
-          } else {
-            [dev_fund]; //dev fund
+          let _current_royalty = Array.find<(Text, f : (state : StateAccess, request : ProcessRoyaltiesRequest, tokenSpec : Types.ICTokenSpec) -> [{ owner : Principal; sub_account : ?Blob }])>(_association_table, func x = tag == x.0);
+          switch (_current_royalty) {
+            case (?val) { val.1 (state, request, tokenSpec) };
+            case (null) { [dev_fund()] }; //dev fund
           };
-        }; //dev fund
+
+        };
         case (?val) {
           switch (val.value) {
             case (#Principal(val)) [{
               owner = val;
               sub_account = null;
             }];
-            case (_) [dev_fund]; //dev fund
+            case (_) [dev_fund()]; //dev fund
           };
         };
       };
@@ -495,5 +441,97 @@ module {
     };
 
     return #ok(request.remaining, Buffer.toArray(results));
+  };
+
+  private func _build_network_account(state : StateAccess, request : ProcessRoyaltiesRequest, tokenSpec : Types.ICTokenSpec) : [{
+    owner : Principal;
+    sub_account : ?Blob;
+  }] {
+    debug if (debug_channel.royalties) D.print("found the network" # debug_show (get_network_royalty_account(tokenSpec.canister, tokenSpec.id)));
+    switch (state.state.collection_data.network) {
+      case (null) [dev_fund()]; //dev fund
+      case (?val) [{
+        owner = val;
+        sub_account = ?Blob.fromArray(get_network_royalty_account(tokenSpec.canister, tokenSpec.id));
+      }];
+    };
+  };
+
+  private func _build_royalties_node_account(state : StateAccess, request : ProcessRoyaltiesRequest, tokenSpec : Types.ICTokenSpec) : [{
+    owner : Principal;
+    sub_account : ?Blob;
+  }] {
+    let val = Metadata.get_system_var(request.metadata, Types.metadata.__system_node);
+
+    switch (val) {
+      case (#Option(null)) [dev_fund()]; //dev fund
+      case (#Principal(val)) [{
+        owner = val;
+        sub_account = null;
+      }];
+      case (_) [dev_fund()];
+    };
+  };
+
+  private func _build_royalties_originator_account(state : StateAccess, request : ProcessRoyaltiesRequest, tokenSpec : Types.ICTokenSpec) : [{
+    owner : Principal;
+    sub_account : ?Blob;
+  }] {
+    let val = Metadata.get_system_var(request.metadata, Types.metadata.__system_originator);
+
+    switch (val) {
+      case (#Option(null)) [dev_fund()]; //dev fund
+      case (#Principal(val)) [{
+        owner = val;
+        sub_account = null;
+      }];
+      case (_) [dev_fund()];
+    };
+  };
+
+  private func _build_royalties_broker_account(state : StateAccess, request : ProcessRoyaltiesRequest, tokenSpec : Types.ICTokenSpec) : [{
+    owner : Principal;
+    sub_account : ?Blob;
+  }] {
+    switch (request.broker_id, request.original_broker_id) {
+      case (null, null) {
+        let ?collection = Map.get(state.state.nft_metadata, Map.thash, "") else {
+          state.canistergeekLogger.logMessage("_build_royalties_broker_account cannot find collection metatdata. this should not happene" # debug_show (request.token_id), #Bool(false), null);
+          D.trap("_build_royalties_broker_account cannot find collection metatdata. this should not happen");
+        };
+
+        let override = switch (Metadata.get_nft_bool_property(collection, Types.metadata.broker_royalty_dev_fund_override)) {
+          case (#ok(val)) val;
+          case (_) {
+            state.canistergeekLogger.logMessage("_build_royalties_broker_account overriding error candy type" # debug_show (collection) # debug_show (request.token_id), #Bool(false), null);
+            false;
+          };
+        };
+
+        if (override) {
+          state.canistergeekLogger.logMessage("_build_royalties_broker_account overriding " # debug_show (request.token_id), #Bool(override), null);
+          return [];
+        };
+
+        state.canistergeekLogger.logMessage("_build_royalties_broker_account override result using dev fund" # debug_show (request.token_id), #Bool(override), null);
+
+        [dev_fund()];
+      }; //dev fund
+      case (?val, null) [{
+        owner = val;
+        sub_account = null;
+      }];
+      case (null, ?val2) [{
+        owner = val2;
+        sub_account = null;
+      }];
+      case (?val, ?val2) {
+        if (val == val2)[{
+          owner = val;
+          sub_account = null;
+        }] else [{ owner = val; sub_account = null }, { owner = val2; sub_account = null }];
+      };
+    };
+
   };
 };
