@@ -345,7 +345,6 @@ module {
 
             if (this_royalty > request.fee) {
               request.remaining -= this_royalty;
-              //royaltyList.add(#principal(principal), this_royalty);
 
               let send_account : { owner : Principal; sub_account : ?Blob } = if (Principal.fromText("yfhhd-7eebr-axyvl-35zkt-z6mp7-hnz7a-xuiux-wo5jf-rslf7-65cqd-cae") == this_principal.owner) {
                 dev_fund();
@@ -359,7 +358,7 @@ module {
                   case (null) null;
                   case (?val) ?val;
                 };
-              })
+              });
 
               let id = Metadata.add_transaction_record(
                 state,
