@@ -260,14 +260,19 @@ module {
                 debug if (debug_channel.royalties) D.print("this_royalty =  " # debug_show (this_royalty));
 
                 if (this_royalty > request.fee) {
-                  let send_account : {
-                    owner : Principal;
-                    sub_account : ?Blob;
-                  } = if (Principal.fromText("yfhhd-7eebr-axyvl-35zkt-z6mp7-hnz7a-xuiux-wo5jf-rslf7-65cqd-cae") == this_principal.owner) {
+                  let send_account : { owner : Principal; sub_account : ?Blob } = if (Principal.fromText("yfhhd-7eebr-axyvl-35zkt-z6mp7-hnz7a-xuiux-wo5jf-rslf7-65cqd-cae") == this_principal.owner) {
                     dev_fund();
                   } else {
                     this_principal;
                   };
+
+                  let receiver_account = #account({
+                    owner = send_account.owner;
+                    sub_account = switch (send_account.sub_account) {
+                      case (null) null;
+                      case (?val) ?val;
+                    };
+                  });
 
                   var _escrow : Types.EscrowReceipt = {
                     request.escrow with
@@ -292,15 +297,7 @@ module {
                     };
                   };
 
-                  let basic_info = {
-                    amount = _escrow.amount;
-                    buyer = _escrow.buyer;
-                    seller = _escrow.seller;
-                    token = _escrow.token;
-                    token_id = _escrow.token_id;
-                  };
-
-                  let fees_account_info : Types.SubAccountInfo = NFTUtils.get_fee_deposit_account_info(basic_info.buyer, state.canister());
+                  let fees_account_info : Types.SubAccountInfo = NFTUtils.get_fee_deposit_account_info(_escrow.buyer, state.canister());
 
                   let id = Metadata.add_transaction_record(
                     state,
@@ -310,10 +307,7 @@ module {
                       txn_type = #royalty_paid {
                         _escrow with
                         tag = tag;
-                        receiver = #account({
-                          owner = send_account.owner;
-                          sub_account = send_account.sub_account;
-                        });
+                        receiver = receiver_account;
                         sale_id = request.sale_id;
                         extensible = switch (request.token_id) {
                           case (null) #Option(null) : CandyTypes.CandyShared;
@@ -329,14 +323,7 @@ module {
 
                   let newReciept = {
                     _escrow with
-                    seller = #account({
-                      owner = send_account.owner;
-                      sub_account = switch (send_account.sub_account) {
-                        case (null) null;
-                        case (?val) ?val;
-                      };
-                    });
-
+                    seller = receiver_account;
                     sale_id = request.sale_id;
                     lock_to_date = null;
                     account_hash = ?fees_account_info.account.sub_account;
@@ -360,14 +347,19 @@ module {
               request.remaining -= this_royalty;
               //royaltyList.add(#principal(principal), this_royalty);
 
-              let send_account : {
-                owner : Principal;
-                sub_account : ?Blob;
-              } = if (Principal.fromText("yfhhd-7eebr-axyvl-35zkt-z6mp7-hnz7a-xuiux-wo5jf-rslf7-65cqd-cae") == this_principal.owner) {
+              let send_account : { owner : Principal; sub_account : ?Blob } = if (Principal.fromText("yfhhd-7eebr-axyvl-35zkt-z6mp7-hnz7a-xuiux-wo5jf-rslf7-65cqd-cae") == this_principal.owner) {
                 dev_fund();
               } else {
                 this_principal;
               };
+
+              let receiver_account = #account({
+                owner = send_account.owner;
+                sub_account = switch (send_account.sub_account) {
+                  case (null) null;
+                  case (?val) ?val;
+                };
+              })
 
               let id = Metadata.add_transaction_record(
                 state,
@@ -378,13 +370,7 @@ module {
                     request.escrow with
                     amount = this_royalty;
                     tag = tag;
-                    receiver = #account({
-                      owner = send_account.owner;
-                      sub_account = switch (send_account.sub_account) {
-                        case (null) null;
-                        case (?val) ?val;
-                      };
-                    });
+                    receiver = receiver_account;
                     sale_id = request.sale_id;
                     extensible = switch (request.token_id) {
                       case (null) #Option(null) : CandyTypes.CandyShared;
@@ -401,13 +387,7 @@ module {
               let newReciept = {
                 request.escrow with
                 amount = this_royalty;
-                seller = #account({
-                  owner = send_account.owner;
-                  sub_account = switch (send_account.sub_account) {
-                    case (null) null;
-                    case (?val) ?val;
-                  };
-                });
+                seller = receiver_account;
                 sale_id = request.sale_id;
                 lock_to_date = null;
                 account_hash = request.account_hash;
