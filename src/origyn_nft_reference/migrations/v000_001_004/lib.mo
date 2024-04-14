@@ -20,7 +20,7 @@ module {
 
   let { ihash; nhash; thash; phash; calcHash } = Map_lib;
 
-  public func upgrade(prev_migration_state: MigrationTypes.State, args: MigrationTypes.Args): MigrationTypes.State {
+  public func upgrade(prev_migration_state: MigrationTypes.State, args: MigrationTypes.Args, caller: Principal): MigrationTypes.State {
 
     let state = switch (prev_migration_state) { case (#v0_1_3(#data(state))) state; case (_) D.trap("Unexpected migration state") };
 
@@ -455,7 +455,7 @@ module {
    }));
   };
 
-   public func downgrade(migration_state: MigrationTypes.State, args: MigrationTypes.Args): MigrationTypes.State {
+   public func downgrade(migration_state: MigrationTypes.State, args: MigrationTypes.Args, caller: Principal): MigrationTypes.State {
     return #v0_0_0(#data);
   };
 

@@ -1,20 +1,36 @@
 import v0_1_5 "../v000_001_005/types";
 
-import D "mo:base/Debug";
-
 import Text "mo:base/Text";
+
+import Array "mo:base/Array";
+import Blob "mo:base/Blob";
+import Bool "mo:base/Bool";
+import Buffer "mo:base/Buffer";
+import Float "mo:base/Float";
+import Nat8 "mo:base/Nat8";
+import Nat16 "mo:base/Nat16";
 import Nat32 "mo:base/Nat32";
+import Nat64 "mo:base/Nat64";
 import Nat "mo:base/Nat";
+import Int "mo:base/Int";
+import Int8 "mo:base/Int8";
+import Int16 "mo:base/Int16";
+import Int32 "mo:base/Int32";
+import Int64 "mo:base/Int64";
+import Iter "mo:base/Iter";
 import Principal "mo:base/Principal";
 import Deque "mo:base/Deque";
 import MapUtils "mo:map_7_0_0/utils";
-import Buffer "mo:base/Buffer";
+
+import ICRC3 "mo:icrc3-mo";
 
 import Droute "mo:droute_client/Droute";
 
 import Set "mo:map_7_0_0/Set";
 
 import KYCTypes "mo:icrc17_kyc/types";
+
+import CertTree "mo:cert/CertTree";
 
 // please do not import any types from your project outside migrations folder here
 // it can lead to bugs when you change those types later, because migration types should not be changed
@@ -971,6 +987,329 @@ module {
 
   public type VerifiedReciept = v0_1_5.VerifiedReciept;
 
+  public func account_to_value(account : Account) : ICRC3.Value {
+    switch (account) {
+      case (#principal(value)) return #Array([#Blob(Principal.toBlob(value))]);
+      case (#account(value)) return #Array([
+        #Blob(Principal.toBlob(value.owner)),
+        switch (value.sub_account) {
+          case (null) return #Blob("" : Blob);
+          case (?subaccount) return #Blob(subaccount);
+        },
+      ]);
+      case (#account_id(value)) return #Text(value);
+      case (#extensible(value)) return candySharedToValue(value);
+    };
+  };
+
+  public func tokenspec_to_value(token : TokenSpec) : ICRC3.Value {
+    //todo: extensible values should be checked for size
+    switch (token) {
+      case (#ic(value)) {
+        let newMap = Buffer.Buffer<(Text, ICRC3.Value)>(1);
+        newMap.add(("canister", #Blob(Principal.toBlob(value.canister))));
+        newMap.add("symbol", #Text(value.symbol));
+        newMap.add(("decimals", #Nat(value.decimals)));
+
+        switch (value.fee) {
+          case (null) {};
+          case (?fee) newMap.add(("fee", #Nat(fee)));
+        };
+
+        switch (value.id) {
+          case (null) {};
+          case (?id) newMap.add(("id", #Nat(id)));
+        };
+
+        newMap.add((
+          "standard",
+          switch (value.standard) {
+            case (#DIP20) #Text("DIP20");
+            case (#Ledger) #Text("Ledger");
+            case (#EXTFungible) #Text("EXTFungible");
+            case (#ICRC1) #Text("ICRC1");
+            case (#Other(val)) candySharedToValue(val);
+          },
+        ));
+
+        return #Map(Buffer.toArray(newMap));
+      };
+      case (#extensible(value)) return candySharedToValue(value);
+    };
+
+  };
+
+  public func dutchparams_to_value(value : DutchParams) : ICRC3.Value {
+    let newMap = Buffer.Buffer<(Text, ICRC3.Value)>(1);
+
+    switch (value.time_unit) {
+      case (#hour(hours)) {
+        newMap.add(("time_unit", #Text("hours")));
+        newMap.add(("time_amount", #Nat(hours)));
+      };
+      case (#day(day)) {
+        newMap.add(("time_unit", #Text("day")));
+        newMap.add(("time_amount", #Nat(day)));
+      };
+      case (#minute(minutes)) {
+        newMap.add(("time_unit", #Text("minute")));
+        newMap.add(("time_amount", #Nat(minutes)));
+      };
+    };
+
+    switch (value.decay_type) {
+      case (#flat(flat)) {
+        newMap.add(("decay_type", #Text("flat")));
+        newMap.add(("decay_amount", #Nat(flat)));
+      };
+      case (#percent(percent)) {
+        newMap.add(("decay_type", #Text("percent")));
+        newMap.add(("decay_amount", #Text(Float.format(#exact, percent))));
+      };
+    };
+
+    return #Map(Buffer.toArray(newMap));
+  };
+
+  public func ask_features_to_value(features : [AskFeature]) : ICRC3.Value {
+    let newMap = Buffer.Buffer<(Text, ICRC3.Value)>(1);
+
+    for (thisItem in features.vals()) {
+      switch (thisItem) {
+        case (#atomic) newMap.add(("atomic", #Text("atomic")));
+        case (#buy_now(value)) newMap.add(("buy_now", #Text("buy_now")));
+        case (#wait_for_quiet(value)) {
+          newMap.add(("wait_for_quiet_extension", #Nat(Nat64.toNat(value.extension))));
+          newMap.add(("wait_for_quiet_fade", #Text(Float.format(#exact, value.fade))));
+          newMap.add(("wait_for_quiet_max", #Nat(value.max)));
+        };
+        case (#allow_list(value)) {
+          let list = Buffer.Buffer<ICRC3.Value>(value.size());
+          for (principal in value.vals()) {
+            list.add(#Blob(Principal.toBlob(principal)));
+          };
+          newMap.add(("allow_list", #Array(Buffer.toArray(list))));
+        };
+        case (#notify(value)) {
+          let notifyList = Buffer.Buffer<ICRC3.Value>(value.size());
+          for (principal in value.vals()) {
+            notifyList.add(#Blob(Principal.toBlob(principal)));
+          };
+          newMap.add(("notify", #Array(Buffer.toArray(notifyList))));
+        };
+        case (#reserve(value)) newMap.add(("reserve", #Nat(value)));
+        case (#start_date(value)) newMap.add(("start_date", #Nat(Int.abs(value))));
+        case (#start_price(value)) newMap.add(("start_price", #Nat(value)));
+        case (#min_increase(#percentage(value))) {
+          newMap.add(("min_increase_float", #Text(Float.format(#exact, value))));
+        };
+        case (#min_increase(#amount(value))) {
+          newMap.add(("min_increase_amount", #Nat(value)));
+        };
+        case (#ending(#date(value))) {
+
+          newMap.add(("ending_date", #Nat(Int.abs(value))));
+        };
+        case (#ending(#timeout(value))) {
+          newMap.add(("ending_timeout", #Nat(Int.abs(value))));
+        };
+        case (#token(value)) newMap.add(("token", tokenspec_to_value(value)));
+        case (#dutch(value)) newMap.add(("dutch", dutchparams_to_value(value)));
+        case (#kyc(value)) newMap.add(("kyc", #Blob(Principal.toBlob(value))));
+        case (#nifty_settlement(value)) {
+
+          switch (value.duration) {
+            case (null) {};
+            case (?duration) newMap.add(("nifty_settlement_duration", #Nat(Int.abs(duration))));
+          };
+          switch (value.expiration) {
+            case (null) {};
+            case (?expiration) newMap.add(("nifty_settlment_expiration", #Nat(Int.abs(expiration))));
+          };
+          newMap.add(("nifty_settlement_fixed", #Text(Bool.toText(value.fixed))));
+          newMap.add(("nifty_settlement_lenderOffer", #Text(Bool.toText(value.lenderOffer))));
+          newMap.add(("nifty_settlement_interestRatePerSecond", #Text(Float.format(#exact, value.interestRatePerSecond))));
+        };
+        case (#fee_accounts(value)) {
+          let feeAccounts = Buffer.Buffer<ICRC3.Value>(value.size());
+          for (account in value.vals()) {
+            feeAccounts.add(#Array([#Text(account)]));
+          };
+          newMap.add(("fee_accounts", #Array(Buffer.toArray(feeAccounts))));
+        };
+        case (#fee_schema(value)) newMap.add(("fee_schema", #Text(value)));
+      };
+    };
+
+    return #Map(Buffer.toArray(newMap));
+  };
+
+  public func pricing_config_to_value(config : PricingConfigShared) : ICRC3.Value {
+    //todo: extensible values should be checked for size
+    switch (config) {
+      case (#instant) return #Text("Instant");
+      case (#auction(value)) {
+        let newMap = Buffer.Buffer<(Text, ICRC3.Value)>(1);
+
+        switch (value.reserve) {
+          case (null) {};
+          case (?reserve) newMap.add(("reserve", #Nat(reserve)));
+        };
+        switch (value.buy_now) {
+          case (null) {};
+          case (?buy_now) newMap.add(("buy_now", #Nat(buy_now)));
+        };
+
+        newMap.add(("token", tokenspec_to_value(value.token)));
+
+        newMap.add(("start_price", #Nat(value.start_price)));
+        newMap.add(("start_date", #Nat(Int.abs(value.start_date))));
+        newMap.add((
+          "ending",
+          switch (value.ending) {
+            case (#date(val)) #Nat(Int.abs(val));
+            case (#wait_for_quiet(val)) #Map([
+              ("date", #Nat(Int.abs(val.date))),
+              ("extension", #Nat(Nat64.toNat(val.extension))),
+              ("fade", #Text(Float.format(#exact, val.fade))),
+              ("max", #Nat(val.max)),
+            ]);
+          },
+        ));
+
+        newMap.add((
+          "min_increase",
+          switch (value.min_increase) {
+            case (#percentage(val)) #Text(Float.format(#exact, val));
+            case (#amount(val)) #Nat(val);
+          },
+        ));
+
+        switch (value.allow_list) {
+          case (null) {};
+          case (
+            ?allow
+          ) {
+            let newAllow = Buffer.Buffer<ICRC3.Value>(allow.size());
+            for (thisAllow in allow.vals()) {
+              newAllow.add(#Blob(Principal.toBlob(thisAllow)));
+            };
+            newMap.add(("allow_list", #Array(Buffer.toArray(newAllow))));
+          };
+        };
+
+        return #Map(Buffer.toArray(newMap));
+
+      };
+
+      case (#ask(?value)) {
+        return (ask_features_to_value(Iter.toArray(value.vals())));
+      };
+      case (#ask(null)) { #Text("Ask") };
+      case (#extensible(value)) return candySharedToValue(value);
+    };
+  };
+
+  ///refactor the below away when whe get Candy 3.0 because it is the default there:
+
+  public type ValueShared = {
+    #Int : Int;
+    #Nat : Nat;
+    #Text : Text;
+    #Blob : Blob;
+    #Array : [ValueShared];
+    #Map : [(Text, ValueShared)];
+  };
+
+  ///converts a candyshared value to the reduced set of ValueShared used in many places like ICRC3.  Some types not recoverable
+  public func candySharedToValue(x : CandyTypes.CandyShared) : ValueShared {
+    switch (x) {
+      case (#Text(x)) #Text(x);
+      case (#Map(x)) {
+        let buf = Buffer.Buffer<(Text, ValueShared)>(1);
+        for (thisItem in x.vals()) {
+          switch (thisItem.0) {
+            case (#Text(x)) buf.add((x, candySharedToValue(thisItem.1)));
+            case (_) {};
+          };
+        };
+        #Map(Buffer.toArray(buf));
+      };
+      case (#Class(x)) {
+        let buf = Buffer.Buffer<(Text, ValueShared)>(1);
+        for (thisItem in x.vals()) {
+          buf.add((thisItem.name, candySharedToValue(thisItem.value)));
+        };
+        #Map(Buffer.toArray(buf));
+      };
+      case (#Int(x)) #Int(x);
+      case (#Int8(x)) #Int(Int8.toInt(x));
+      case (#Int16(x)) #Int(Int16.toInt(x));
+      case (#Int32(x)) #Int(Int32.toInt(x));
+      case (#Int64(x)) #Int(Int64.toInt(x));
+      case (#Ints(x)) {
+        #Array(Array.map<Int, ValueShared>(x, func(x : Int) : ValueShared { #Int(x) }));
+      };
+      case (#Nat(x)) #Nat(x);
+      case (#Nat8(x)) #Nat(Nat8.toNat(x));
+      case (#Nat16(x)) #Nat(Nat16.toNat(x));
+      case (#Nat32(x)) #Nat(Nat32.toNat(x));
+      case (#Nat64(x)) #Nat(Nat64.toNat(x));
+      case (#Nats(x)) {
+        #Array(Array.map<Nat, ValueShared>(x, func(x : Nat) : ValueShared { #Nat(x) }));
+      };
+      case (#Bytes(x)) {
+        #Blob(Blob.fromArray(x));
+      };
+      case (#Array(x)) {
+        #Array(Array.map<CandyTypes.CandyShared, ValueShared>(x, candySharedToValue));
+      };
+      case (#Blob(x)) #Blob(x);
+      case (#Bool(x)) #Blob(Blob.fromArray([if (x == true) { 1 : Nat8 } else { 0 : Nat8 }]));
+      case (#Float(x)) { #Text(Float.format(#exact, x)) };
+      case (#Floats(x)) {
+        #Array(Array.map<Float, ValueShared>(x, func(x : Float) : ValueShared { candySharedToValue(#Float(x)) }));
+      };
+      case (#Option(x)) {
+        //empty array is null
+        switch (x) {
+          case (null) #Array([]);
+          case (?x) #Array([candySharedToValue(x)]);
+        };
+      };
+      case (#Principal(x)) {
+        #Blob(Principal.toBlob(x));
+      };
+      case (#Set(x)) {
+        #Array(
+          Array.map<CandyTypes.CandyShared, ValueShared>(x, func(x : CandyTypes.CandyShared) : ValueShared { candySharedToValue(x) })
+        );
+      };
+      /* case(#ValueMap(x)) {
+        #Array(Array.map<(CandyShared,CandyShared),ValueShared>(x, func(x: (CandyShared,CandyShared)) : ValueShared { #Array([candySharedToValue(x.0), candySharedToValue(x.1)])}));
+      }; */
+      //case(_){assert(false);/*unreachable*/#Nat(0);};
+    };
+
+  };
+
+  public let defaultICRC3Config = func(caller : Principal) : ICRC3.InitArgs {
+    ?{
+      maxActiveRecords = 4000;
+      settleToRecords = 2000;
+      maxRecordsInArchiveInstance = 1_000_000;
+      maxArchivePages = 62500; //allows up to 993 bytes per record
+      archiveIndexType = #Stable;
+      maxRecordsToArchive = 10_000;
+      archiveCycles = 6_000_000_000_000; //six trillion
+      archiveControllers = ??[
+        caller,
+        Principal.fromText("5vdms-kaaaa-aaaap-aa3uq-cai"), //blackhole for cycleops
+      ];
+      supportedBlocks = [];
+    };
+  };
+
   public type State = {
     // this is the data you previously had as stable variables inside your actor class
     var collection_data : CollectionData;
@@ -991,6 +1330,8 @@ module {
     var droute : Droute.Droute;
     var kyc_cache : Map.Map<KYCTypes.KYCRequest, KYCTypes.KYCResultFuture>;
     var use_stableBTree : Bool;
+    var icrc3_migration_state : ICRC3.State;
+    var cert_store : CertTree.Store;
 
     //add certification type here
 

@@ -92,6 +92,10 @@ module {
     approval_info : ApprovalInfo;
   };
 
+  public type ApprovalResult = [{
+    token_id : Nat;
+    approval_result : { #Ok : Nat; #Err : ApprovalError };
+  }];
   public type ApproveCollectionResult = {
     #Ok : Nat; // Transaction index for successful approval
     #Err : ApproveCollectionError;

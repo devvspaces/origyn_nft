@@ -2,19 +2,14 @@
 import Array "mo:base/Array";
 import Blob "mo:base/Blob";
 import Buffer "mo:base/Buffer";
-import Char "mo:base/Char";
 import Cycles "mo:base/ExperimentalCycles";
 import D "mo:base/Debug";
 import Error "mo:base/Error";
-import Float "mo:base/Float";
-import Hash "mo:base/Hash";
 import Int "mo:base/Int";
 import Iter "mo:base/Iter";
 import Nat "mo:base/Nat";
 import Nat32 "mo:base/Nat32";
 import Nat64 "mo:base/Nat64";
-import Nat8 "mo:base/Nat8";
-import Nat16 "mo:base/Nat16";
 import Option "mo:base/Option";
 import Principal "mo:base/Principal";
 import Result "mo:base/Result";
@@ -42,7 +37,6 @@ import Star "mo:star/star";
 //todo: remove in 0.1.5
 import CandyTypesOld "mo:candy_0_1_12/types";
 
-import Current "migrations/v000_001_000/types";
 import DIP721 "DIP721";
 import Governance "governance";
 import Market "market";
@@ -55,11 +49,17 @@ import Owner "owner";
 import Types "./types";
 import data "data";
 import http "http";
+import BlockTypes "ledger/block_types";
 
 import StableBTree "mo:stableBTree/btreemap";
 import MemoryManager "mo:stableBTree/memoryManager";
 import Memory "mo:stableBTree/memory";
 import TypesModule "mo:canistergeekold/typesModule";
+
+import ICRC3 "mo:icrc3-mo";
+import CertifiedData "mo:base/CertifiedData";
+
+import CertTree "mo:cert/CertTree";
 
 shared (deployer) actor class Nft_Canister() = this {
 
@@ -75,14 +75,14 @@ shared (deployer) actor class Nft_Canister() = this {
   };
 
   let CandyTypes = MigrationTypes.Current.CandyTypes;
-  let Conversions = MigrationTypes.Current.Conversions;
+
   let Properties = MigrationTypes.Current.Properties;
   let Workspace = MigrationTypes.Current.Workspace;
   let JSON = MigrationTypes.Current.JSON;
 
   debug if (debug_channel.instantiation) D.print("creating a canister");
 
-  let { ihash; nhash; thash; phash; calcHash } = Map;
+  let { thash } = Map;
 
   // A standard file chunk size.  The IC limits intercanister messages to ~2MB+ so we set that here
   stable var SIZE_CHUNK = 2048000; //max message size
@@ -128,7 +128,7 @@ shared (deployer) actor class Nft_Canister() = this {
   // Do not forget to change #v0_1_0 when you are adding a new migration
   // If you use one previous state in place of #v0_1_0 it will run downgrade methods instead
 
-  migration_state := Migrations.migrate(migration_state, #v0_1_6(#id), { owner = deployer.caller; storage_space = 0 });
+  migration_state := Migrations.migrate(migration_state, #v0_1_6(#id), { owner = deployer.caller; storage_space = 0 }, deployer.caller);
 
   // Do not forget to change #v0_1_0 when you are adding a new migration
   let #v0_1_6(#data(state_current)) = migration_state;
@@ -141,7 +141,7 @@ shared (deployer) actor class Nft_Canister() = this {
     cache = ?state_current.kyc_cache;
   });
 
-  let memory_manager = MemoryManager.init(Memory.STABLE_MEMORY);
+  //let memory_manager = MemoryManager.init(Memory.STABLE_MEMORY);
 
   debug if (debug_channel.instantiation) D.print("have memory_manager");
 
@@ -217,6 +217,7 @@ shared (deployer) actor class Nft_Canister() = this {
       canistergeekLogger = canistergeekLogger;
       kyc_client = kyc_client;
       handle_notify = handle_notify;
+      icrc3 = icrc3;
       notify_timer = {
         get = get_notify_timer;
         set = set_notify_timer;
@@ -235,6 +236,59 @@ shared (deployer) actor class Nft_Canister() = this {
 
   };
 
+  private var _icrc3 : ?ICRC3.ICRC3 = null;
+
+  private func get_certificate_store() : CertTree.Store {
+    return state_current.cert_store;
+  };
+
+  let ct = CertTree.Ops(state_current.cert_store);
+
+  private func updated_certification(cert : Blob, lastIndex : Nat) : Bool {
+
+    ct.setCertifiedData();
+
+    return true;
+  };
+
+  private func get_icrc3_environment() : ICRC3.Environment {
+    ?{
+      updated_certification = ?updated_certification;
+      get_certificate_store = ?get_certificate_store;
+    };
+  };
+
+  func ensure_block_types(icrc3Class : ICRC3.ICRC3) : () {
+    D.print("in ensure_block_types: ");
+    let supportedBlocks = Buffer.fromIter<ICRC3.BlockType>(icrc3Class.supported_block_types().vals());
+
+    let blockequal = func(a : { block_type : Text }, b : { block_type : Text }) : Bool {
+      a.block_type == b.block_type;
+    };
+
+    for (thisItem in BlockTypes.supported_blocktypes().vals()) {
+      if (Buffer.indexOf<ICRC3.BlockType>({ block_type = thisItem.0; url = thisItem.1 }, supportedBlocks, blockequal) == null) {
+        supportedBlocks.add({ block_type = thisItem.0; url = thisItem.1 });
+      };
+    };
+
+    icrc3Class.update_supported_blocks(Buffer.toArray(supportedBlocks));
+  };
+
+  func icrc3() : ICRC3.ICRC3 {
+    switch (_icrc3) {
+      case (null) {
+        let initclass : ICRC3.ICRC3 = ICRC3.ICRC3(?state_current.icrc3_migration_state, Principal.fromActor(this), get_icrc3_environment());
+
+        _icrc3 := ?initclass;
+        ensure_block_types(initclass);
+
+        initclass;
+      };
+      case (?val) val;
+    };
+  };
+
   private func get_notify_timer() : ?Nat {
     notify_timer;
   };
@@ -244,8 +298,6 @@ shared (deployer) actor class Nft_Canister() = this {
   };
 
   func handle_notify() : async () {
-    let state = get_state();
-
     await Market.handle_notify(get_state());
   };
 
@@ -258,6 +310,15 @@ shared (deployer) actor class Nft_Canister() = this {
     data_harvester_page_size := _page_size;
   };
 
+  // set the `data_havester`
+  public shared (msg) func update_icrc3(settings : [ICRC3.UpdateSetting]) : async [Bool] {
+    if (NFTUtils.is_owner_network(get_state(), msg.caller) == false) {
+      throw Error.reject("Not the admin");
+    };
+
+    return icrc3().update_settings(settings);
+  };
+
   // set the `halt`
   public shared (msg) func set_halt(bHalt : Bool) : async () {
 
@@ -268,12 +329,12 @@ shared (deployer) actor class Nft_Canister() = this {
     halt := bHalt;
   };
 
-  public query (msg) func get_halt() : async Bool {
+  public query func get_halt() : async Bool {
     halt;
   };
 
   // maintenance function for updating ledgers
-  private func __implement_master_ledger() : Bool {
+  /* private func __implement_master_ledger() : Bool {
 
     let master_ledger = Buffer.Buffer<MigrationTypes.Current.TransactionRecord>(1);
 
@@ -308,6 +369,21 @@ shared (deployer) actor class Nft_Canister() = this {
     );
 
     state_current.master_ledger := SB.fromArray<MigrationTypes.Current.TransactionRecord>(Buffer.toArray(master_ledger));
+
+    return true;
+  }; */
+
+  private func __implement_icrc3<system>() : Bool {
+
+    if (icrc3().stats().lastIndex > 0) return false;
+
+    var last_phash : ?Blob = null;
+    for (thisItem in SB.vals(state_current.master_ledger)) {
+
+      let block = BlockTypes.upgrade_block_to_icrc3(thisItem, last_phash);
+      let newIndex = icrc3().add_record<system>(block.0, block.1);
+      last_phash := icrc3().get_state().latest_hash;
+    };
 
     return true;
   };
@@ -2421,7 +2497,7 @@ shared (deployer) actor class Nft_Canister() = this {
     * @param {Principal} operator - The principal of the operator to be checked.
     * @returns {DIP721.Result_1} A result indicating whether the operator is approved for all tokens.
     */
-  public query (msg) func dip721_is_approved_for_all(owner : Principal, operator : Principal) : async DIP721.DIP721BoolResult {
+  public query func dip721_is_approved_for_all(owner : Principal, operator : Principal) : async DIP721.DIP721BoolResult {
     return (#Ok(false));
   };
 
@@ -2659,7 +2735,7 @@ shared (deployer) actor class Nft_Canister() = this {
     * Secure access to storage metrics for this server
     * @returns The storage metrics for this server
     */
-  public shared (msg) func storage_info_secure_nft_origyn() : async Types.StorageMetricsResult {
+  public shared func storage_info_secure_nft_origyn() : async Types.StorageMetricsResult {
 
     if (halt == true) {
       throw Error.reject("canister is in maintenance mode");
@@ -2846,8 +2922,32 @@ shared (deployer) actor class Nft_Canister() = this {
     * Returns the list of supported interfaces for the DIP721 collection.
     * @returns {[DIP721.SupportedInterface]} The list of supported interfaces for the DIP721 collection.
     */
-  public query (msg) func dip721_supported_interfaces() : async [DIP721.DIP721SupportedInterface] {
+  public query func dip721_supported_interfaces() : async [DIP721.DIP721SupportedInterface] {
     return [#TransactionHistory];
+  };
+
+  /// *************************
+  /// ***** ICRC3 *****
+  /// *************************
+
+  public query func icrc3_get_blocks(args : [ICRC3.TransactionRange]) : async ICRC3.GetTransactionsResult {
+    return icrc3().get_blocks(args);
+  };
+
+  public query func icrc3_get_archives(args : ICRC3.GetArchivesArgs) : async ICRC3.GetArchivesResult {
+    return icrc3().get_archives(args);
+  };
+
+  public query func icrc3_supported_block_types() : async [ICRC3.BlockType] {
+    return icrc3().supported_block_types();
+  };
+
+  public query func icrc3_get_tip_certificate() : async ?ICRC3.DataCertificate {
+    return icrc3().get_tip_certificate();
+  };
+
+  public query func get_tip() : async ICRC3.Tip {
+    return icrc3().get_tip();
   };
 
   // *************************
@@ -2902,7 +3002,7 @@ shared (deployer) actor class Nft_Canister() = this {
     Option.get<Text>(state.state.collection_data.name, Principal.toText(state.canister()));
   };
 
-  public query (msg) func icrc7_symbol() : async Text {
+  public query func icrc7_symbol() : async Text {
 
     let state = get_state();
     Option.get<Text>(state.state.collection_data.symbol, Principal.toText(state.canister()));
@@ -2981,7 +3081,7 @@ shared (deployer) actor class Nft_Canister() = this {
     ?description;
   };
 
-  public query (msg) func icrc7_logo() : async ?Text {
+  public query func icrc7_logo() : async ?Text {
     let state = get_state();
     state.state.collection_data.logo;
   };
@@ -2999,10 +3099,10 @@ shared (deployer) actor class Nft_Canister() = this {
     Iter.size(keys);
   };
 
-  public query (msg) func icrc7_supply_cap() : async ?Nat {
+  public query func icrc7_supply_cap() : async ?Nat {
     null;
   };
-  public query (msg) func icrc7_max_approvals_per_token_or_collection() : async ?Nat {
+  public query func icrc7_max_approvals_per_token_or_collection() : async ?Nat {
     null;
   };
   public query (msg) func icrc7_max_query_batch_size() : async ?Nat {
@@ -3018,9 +3118,14 @@ shared (deployer) actor class Nft_Canister() = this {
     ?100;
   };
 
+  public query func icrc7_max_revoke_approvals() : async ?Nat {
+    null;
+  };
+
   public query (msg) func icrc7_max_memo_size() : async ?Nat {
     ?32;
   };
+
   public query (msg) func icrc7_atomic_batch_transfers() : async ?Bool {
     ?false;
   };
@@ -3106,7 +3211,7 @@ shared (deployer) actor class Nft_Canister() = this {
 
   };
 
-  public query (msg) func icrc7_balance_of(items : [ICRC7.Account]) : async [Nat] {
+  public query func icrc7_balance_of(items : [ICRC7.Account]) : async [Nat] {
 
     let state = get_state();
     let aBuf = Buffer.Buffer<Nat>(items.size());
@@ -3134,9 +3239,8 @@ shared (deployer) actor class Nft_Canister() = this {
     return Iter.toArray<Nat>(result);
   };
 
-  public query (msg) func icrc7_tokens_of(account : ICRC7.Account, prev : ?Nat, take : ?Nat) : async [Nat] {
+  public query func icrc7_tokens_of(account : ICRC7.Account, prev : ?Nat, take : ?Nat32) : async [Nat] {
     //prev and take are unimplemented
-    let state = get_state();
 
     let list = Metadata.get_NFTs_for_user(get_state(), #account({ owner = account.owner; sub_account = account.subaccount }));
 
@@ -3162,7 +3266,14 @@ shared (deployer) actor class Nft_Canister() = this {
     return [result];
   };
 
-  public query (msg) func icrc10_supported_standards() : async [ICRC7.SupportedStandard] {
+  public shared func icrc7_approve(request : ICRC7.ApprovalArgs) : async ICRC7.ApprovalResult {
+
+    D.trap("origyn_nft does not support approvals through ICRC7. Approval is provided by precense of an escrow deposit. Use sale_info_nft_origyn(#escrow) to retrieve deposit info");
+
+  };
+
+  public query func icrc7_supported_standards() : async [ICRC7.SupportedStandard] {
+
     [
       { name = "ICRC-7"; url = "https://github.com/dfinity/ICRC/ICRCs/ICRC-7" },
       { name = "origyn_nft"; url = "https://github.com/origyn_sa/origyn_nft" },
@@ -3414,10 +3525,10 @@ shared (deployer) actor class Nft_Canister() = this {
     * Lets the NFT accept cycles.
     * @returns {Nat} - The amount of cycles accepted.
     */
-  public func wallet_receive() : async Nat {
+  public func wallet_receive<system>() : async Nat {
     let amount = Cycles.available();
     let accepted = amount;
-    let deposit = Cycles.accept(accepted);
+    ignore Cycles.accept(accepted);
     accepted;
   };
 
@@ -3432,7 +3543,7 @@ shared (deployer) actor class Nft_Canister() = this {
     * @param {Canistergeek.GetMetricsParameters} parameters - Parameters for getting canister metrics.
     * @returns {?Canistergeek.CanisterMetrics} - Canister metrics or null if not found.
     */
-  public query (msg) func getCanisterMetrics(parameters : Types.Canistergeek.GetMetricsParameters) : async ?Types.Canistergeek.CanisterMetrics {
+  public query func getCanisterMetrics(parameters : Types.Canistergeek.GetMetricsParameters) : async ?Types.Canistergeek.CanisterMetrics {
 
     canistergeekMonitor.getMetrics(parameters);
   };
@@ -3441,7 +3552,7 @@ shared (deployer) actor class Nft_Canister() = this {
     * Collects canister metrics.
     * @returns {null}
     */
-  public query (msg) func collectCanisterMetrics() : async () {
+  public query func collectCanisterMetrics() : async () {
     canistergeekMonitor.collectMetrics();
   };
 
@@ -3557,8 +3668,8 @@ shared (deployer) actor class Nft_Canister() = this {
 
     // End Canistergeek
 
-    if (SB.size(state_current.master_ledger) == 0) {
-      ignore __implement_master_ledger();
+    if (icrc3().stats().lastIndex == 0) {
+      ignore __implement_icrc3();
     };
   };
 };

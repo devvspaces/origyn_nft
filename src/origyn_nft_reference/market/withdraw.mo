@@ -55,7 +55,7 @@ module {
     * @param {Principal} caller - The caller of the function.
     * @returns {async* Result.Result<Types.ManageSaleResponse,Types.OrigynError>} - The result of the operation which may contain an error.
     */
-  public func _withdraw_deposit(state : StateAccess, withdraw : Types.WithdrawRequest, details : Types.DepositWithdrawDescription, caller : Principal) : async* Star.Star<Types.ManageSaleResponse, Types.OrigynError> {
+  public func _withdraw_deposit<system>(state : StateAccess, withdraw : Types.WithdrawRequest, details : Types.DepositWithdrawDescription, caller : Principal) : async* Star.Star<Types.ManageSaleResponse, Types.OrigynError> {
     debug if (debug_channel.withdraw_deposit) D.print("in deposit withdraw");
     debug if (debug_channel.withdraw_deposit) D.print("an deposit withdraw");
     debug if (debug_channel.withdraw_deposit) D.print(debug_show (withdraw));
@@ -113,7 +113,7 @@ module {
       case (null) return #err(#awaited(Types.errors(?state.canistergeekLogger, #escrow_withdraw_payment_failed, "withdraw_nft_origyn - escrow -  payment failed txid null", ?caller)));
       case (?transaction_id) {
         switch (
-          Metadata.add_transaction_record(
+          Metadata.add_transaction_record<system>(
             state,
             {
               token_id = "";
@@ -247,7 +247,7 @@ module {
       case (null) return #err(#awaited(Types.errors(?state.canistergeekLogger, #escrow_withdraw_payment_failed, "withdraw_fee_deposit - escrow -  payment failed txid null", ?caller)));
       case (?transaction_id) {
         switch (
-          Metadata.add_transaction_record(
+          Metadata.add_transaction_record<system>(
             state,
             {
               token_id = "";
@@ -448,7 +448,7 @@ module {
       case (null) return #err(#awaited(Types.errors(?state.canistergeekLogger, #escrow_withdraw_payment_failed, "withdraw_nft_origyn - escrow -  payment failed txid null", ?caller)));
       case (?transaction_id) {
         switch (
-          Metadata.add_transaction_record(
+          Metadata.add_transaction_record<system>(
             state,
             {
               token_id = details.token_id;
@@ -580,7 +580,7 @@ module {
       case (null) return #err(#awaited(Types.errors(?state.canistergeekLogger, #sales_withdraw_payment_failed, "withdraw_nft_origyn - sales  payment failed txid null", ?caller)));
       case (?transaction_id) {
         switch (
-          Metadata.add_transaction_record(
+          Metadata.add_transaction_record<system>(
             state,
             {
               token_id = details.token_id;
@@ -613,7 +613,7 @@ module {
     * @param {Principal} caller - The caller principal.
     * @returns {async* Result.Result<Types.ManageSaleResponse,Types.OrigynError>} A Result type containing either a Types.ManageSaleResponse object or a Types.OrigynError object.
     */
-  public func _reject_offer(state : StateAccess, withdraw : Types.WithdrawRequest, details : Types.RejectDescription, caller : Principal) : async* Star.Star<Types.ManageSaleResponse, Types.OrigynError> {
+  public func _reject_offer<system>(state : StateAccess, withdraw : Types.WithdrawRequest, details : Types.RejectDescription, caller : Principal) : async* Star.Star<Types.ManageSaleResponse, Types.OrigynError> {
     // rejects and offer and sends the tokens back to the source
     debug if (debug_channel.withdraw_reject) D.print("an escrow reject");
     if (caller != state.canister() and Types.account_eq(#principal(caller), details.seller) == false and ?caller != state.state.collection_data.network) {
@@ -787,7 +787,7 @@ module {
       };
       case (?transaction_id) {
         switch (
-          Metadata.add_transaction_record(
+          Metadata.add_transaction_record<system>(
             state,
             {
               token_id = details.token_id;

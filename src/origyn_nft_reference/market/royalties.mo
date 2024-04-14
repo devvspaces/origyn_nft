@@ -183,8 +183,7 @@ module {
   };
 
   //handles royalty distribution
-  // process royalties can not fail, all data has to be checked before
-  public func _process_royalties(
+  public func _process_royalties<system>(
     state : StateAccess,
     request : ProcessRoyaltiesRequest,
     caller : Principal,
@@ -369,7 +368,7 @@ module {
                 };
               });
 
-              let id = Metadata.add_transaction_record(
+              let id = Metadata.add_transaction_record<system>(
                 state,
                 {
                   token_id = request.escrow.token_id;
