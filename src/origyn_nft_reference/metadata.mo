@@ -12,6 +12,7 @@ import Time "mo:base/Time";
 import Timer "mo:base/Timer";
 import TrieMap "mo:base/TrieMap";
 import Droute "mo:droute_client/Droute";
+import BlockTypes "ledger/block_types";
 
 import MigrationTypes "./migrations/types";
 import NFTUtils "utils";
@@ -1827,8 +1828,13 @@ module {
       timestamp = rec.timestamp;
     };
 
+    let values = BlockTypes.upgrade_block_to_icrc3(newTrx, state.icrc3.get_state().latest_hash);
+    ignore state.icrc3.add_record<system>(values.0,values.1);
+    //todo: index here?
+
     SB.add(ledger, newTrx);
     SB.add(state.state.master_ledger, newTrx);
+    
 
     //Announce Trx
     let announce = announceTransaction<system>(state, rec, caller, newTrx);
