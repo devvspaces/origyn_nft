@@ -9,7 +9,7 @@ import v0_0_0 "../v000_000_000/types";
 import v0_1_0 "types";
 
 module {
-  public func upgrade(prev_migration_state: MigrationTypes.State, args: MigrationTypes.Args): MigrationTypes.State {
+  public func upgrade(prev_migration_state: MigrationTypes.State, args: MigrationTypes.Args, caller: Principal): MigrationTypes.State {
     D.print("in upgrade v0.1.0");
     return #v0_1_0(#data({
         //holds info about the collection
@@ -72,7 +72,7 @@ module {
 
   ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-  public func downgrade(migration_state: MigrationTypes.State, args: MigrationTypes.Args): MigrationTypes.State {
+  public func downgrade(migration_state: MigrationTypes.State, args: MigrationTypes.Args, caller: Principal): MigrationTypes.State {
     return #v0_0_0(#data);
   };
 };

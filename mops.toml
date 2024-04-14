@@ -5,7 +5,7 @@ description = "The reference implementation for the ORIGYN NFT."
 repository = "https://github.com/ORIGYN_SA/origyn_nft"
 
 [dependencies]
-base = "0.8.7"
+base = "0.11.1"
 array = "https://github.com/aviate-labs/array.mo#v0.2.1@89bb25b7f24ab31082ee3d843d720404eb1d0304"
 crypto = "https://github.com/aviate-labs/crypto.mo#v0.3.1@daddf4e03e2f224f2b27b1119f95c4791364767f"
 hash = "https://github.com/aviate-labs/hash.mo#v0.1.0@3ee9fc46ba20c196e4913f3ed5aa12e26411e5c6"
@@ -35,3 +35,5 @@ stableBTree = "https://github.com/sardariuss/MotokoStableBTree#c91509efa915ba799
 star = "0.1.0"
 droute-client = "https://github.com/ORIGYN-SA/droute-client#v0.1.0@923184d7e68a9b8768d39ca81c81b1a716db382a"
 motoko-hash-map = "https://github.com/ZhenyaUsenko/motoko-hash-map#v7.0.0@f0e25632e5da80118274e78ceeb5bec95f3c2b81"
+icrc3-mo = "0.2.6"
+cert = "https://github.com/nomeata/ic-certification#v0.1.3@c403ffec0a60f658a1009976c785aa567ff0da77"

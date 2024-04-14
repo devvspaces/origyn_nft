@@ -11,6 +11,13 @@ import MigrationTypes "../types";
 import v0_1_5 "../v000_001_005/types";
 import v0_1_6 = "types";
 
+import BlockTypes "../../ledger/block_types";
+
+
+import CertTree "mo:cert/CertTree";
+
+import ICRC3 "mo:icrc3-mo";
+
 module {
 
   let { ihash; nhash; thash; phash; calcHash } = v0_1_6.Map;
@@ -132,7 +139,7 @@ module {
       };
    };
 
-  public func upgrade(prev_migration_state: MigrationTypes.State, args: MigrationTypes.Args): MigrationTypes.State {
+  public func upgrade(prev_migration_state: MigrationTypes.State, args: MigrationTypes.Args, caller: Principal): MigrationTypes.State {
 
    let state = switch (prev_migration_state) { case (#v0_1_5(#data(state))) state; case (_) D.trap("Unexpected migration state") };
    
@@ -291,6 +298,15 @@ module {
         return buffer;
       };
 
+    //icrc3
+    var icrc3_migration_state = ICRC3.init(
+    ICRC3.initialState() ,
+    #v0_1_0(#id), 
+    v0_1_6.defaultICRC3Config(caller)
+    ,caller);
+
+    let cert_store : CertTree.Store = CertTree.newStore();
+
 
     D.print("in upgrading ledgers");
     let new_ledgers = Map_lib.map<
@@ -300,10 +316,9 @@ module {
       state.nft_ledgers, stable_buffer_v1_5_to_v1_6);
 
     let new_master_ledger : SB_lib.StableBuffer<v0_1_6.TransactionRecord> = stable_buffer_v1_5_to_v1_6("", state.master_ledger);
-      
 
+    
 
-    //init certification here
 
     return #v0_1_6(#data({
       var collection_data = state.collection_data;
@@ -324,11 +339,13 @@ module {
       var droute = state.droute;
       var use_stableBTree = state.use_stableBTree;
       var pending_sale_notifications = state.pending_sale_notifications;
+      var icrc3_migration_state = icrc3_migration_state;
+      var cert_store = cert_store;
       //add certification ref here
     }));
 };
   
-public func downgrade(migration_state: MigrationTypes.State, args: MigrationTypes.Args): MigrationTypes.State {
+public func downgrade(migration_state: MigrationTypes.State, args: MigrationTypes.Args, caller: Principal): MigrationTypes.State {
   return #v0_0_0(#data);
 };
 

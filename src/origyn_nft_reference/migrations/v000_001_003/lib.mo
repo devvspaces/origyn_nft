@@ -16,7 +16,7 @@ module {
 
   let { ihash; nhash; thash; phash; calcHash } = Map_lib;
 
-  public func upgrade(prev_migration_state: MigrationTypes.State, args: MigrationTypes.Args): MigrationTypes.State {
+  public func upgrade(prev_migration_state: MigrationTypes.State, args: MigrationTypes.Args, caller: Principal): MigrationTypes.State {
 
     D.print("in upgrade v0.1.3");
 
@@ -132,7 +132,7 @@ module {
 
   ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-  public func downgrade(migration_state: MigrationTypes.State, args: MigrationTypes.Args): MigrationTypes.State {
+  public func downgrade(migration_state: MigrationTypes.State, args: MigrationTypes.Args, caller: Principal): MigrationTypes.State {
     return #v0_0_0(#data);
   };
 };

@@ -748,7 +748,7 @@ module {
           current_sale_state.status := #closed;
 
           switch (
-            Metadata.add_transaction_record(
+            Metadata.add_transaction_record<system>(
               state,
               {
                 token_id = token_id;
@@ -801,7 +801,7 @@ module {
           current_sale_state.status := #closed;
 
           switch (
-            Metadata.add_transaction_record(
+            Metadata.add_transaction_record<system>(
               state,
               {
                 token_id = token_id;
@@ -835,7 +835,7 @@ module {
         current_sale_state.status := #closed;
 
         switch (
-          Metadata.add_transaction_record(
+          Metadata.add_transaction_record<system>(
             state,
             {
               token_id = token_id;
@@ -1177,7 +1177,7 @@ module {
         };
 
         switch (
-          Metadata.add_transaction_record(
+          Metadata.add_transaction_record<system>(
             state,
             {
               token_id = token_id;
@@ -1625,7 +1625,7 @@ module {
                   Map.set(state.state.nft_metadata, Map.thash, escrow.token_id, new_metadata);
                   metadata := new_metadata;
                     //no need to mint
-                  switch(Metadata.add_transaction_record(state,{
+                  switch(Metadata.add_transaction_record<system>(state,{
                     token_id = request.token_id;
                     index    = 0;                 //mint should always be 0
                     txn_type = #sale_ended({
@@ -1667,7 +1667,7 @@ module {
           Map.set(state.state.nft_metadata, Map.thash, escrow.token_id, metadata);
           //no need to mint
           switch (
-            Metadata.add_transaction_record(
+            Metadata.add_transaction_record<system>(
               state,
               {
                 token_id = request.token_id;
@@ -2210,7 +2210,7 @@ module {
 
     Map.set(state.state.nft_metadata, Map.thash, request.token_id, metadata);
 
-    let txn = Metadata.add_transaction_record(
+    let txn = Metadata.add_transaction_record<system>(
       state,
       {
         token_id = request.token_id;
@@ -2983,7 +2983,7 @@ module {
 
     //add deposit transaction
     let new_trx = switch (
-      Metadata.add_transaction_record(
+      Metadata.add_transaction_record<system>(
         state,
         {
           token_id = request.token_id;
@@ -3061,7 +3061,7 @@ module {
 
     //add fee deposit transaction
     let new_trx = switch (
-      Metadata.add_transaction_record(
+      Metadata.add_transaction_record<system>(
         state,
         {
           token_id = "";
@@ -3243,7 +3243,7 @@ module {
       debug if (debug_channel.escrow) D.print("adding loaded from balance transaction" # debug_show (balance));
       //add deposit transaction
       switch (
-        Metadata.add_transaction_record(
+        Metadata.add_transaction_record<system>(
           state,
           {
             token_id = request.token_id;
@@ -3738,7 +3738,7 @@ module {
 
     debug if (debug_channel.bid) D.print("have buy now" # debug_show (buy_now, buy_now_price, current_sale_state.current_bid_amount));
 
-    let new_trx = Metadata.add_transaction_record(
+    let new_trx = Metadata.add_transaction_record<system>(
       state,
       {
         token_id = request.escrow_receipt.token_id;
