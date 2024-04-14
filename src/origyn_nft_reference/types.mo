@@ -30,6 +30,8 @@ import http "mo:http/Http";
 
 import Star "mo:star/star";
 
+import ICRC3 "mo:icrc3-mo";
+
 module {
 
   let CandyTypes = MigrationTypes.Current.CandyTypes;
@@ -461,6 +463,7 @@ module {
     kyc_client : KYC.kyc;
     canistergeekLogger : Canistergeek.Logger;
     handle_notify : () -> async ();
+    icrc3:  ICRC3.ICRC3;
     notify_timer : {
       get : () -> ?Nat;
       set : (?Nat) -> ();
