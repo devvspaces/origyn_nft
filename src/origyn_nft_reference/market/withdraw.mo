@@ -222,6 +222,7 @@ module {
               account = details.account;
               token = details.token;
               sale_id = val.sale_id;
+              update_balance = true;
             },
           )
         ) {

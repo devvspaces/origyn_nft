@@ -2735,7 +2735,44 @@ shared (deployer) actor class test_runner(dfx_ledger : Principal, dfx_ledger2 : 
 
     //balance should be 2 ICP + 400000
 
-    D.print("Sending real escrow now a wallet try escrow");
+    let try_withdraw_locked_fee_deposit = await canister.sale_nft_origyn(#withdraw(#fee_deposit({ account = #account({ owner = Principal.fromActor(this); sub_account = null }); token = #ic({ canister = Principal.fromActor(dfx); standard = #Ledger; decimals = 8; symbol = "LDG"; fee = ?200000; id = null }); amount = 10 * 10 ** 8; withdraw_to = #account({ owner = Principal.fromActor(a_wallet); sub_account = null }); status = #unlocked() })));
+    D.print("try_withdraw_locked_fee_deposit " # debug_show (try_withdraw_locked_fee_deposit));
+
+    let option_buffer3 = Buffer.fromArray<MigrationTypes.Current.AskFeature>([
+      #reserve(1 * 10 ** 8),
+      #token(#ic({ canister = Principal.fromActor(dfx); standard = #Ledger; decimals = 8; symbol = "LDG"; fee = ?200000; id = null })),
+      #buy_now(1 * 10 ** 8),
+      #start_price(1 * 10 ** 8),
+      #ending(#date(get_time() + DAY_LENGTH)),
+      #fee_accounts([
+        ("com.origyn.royalty.node", #account({ owner = Principal.fromActor(this); sub_account = null })),
+        ("com.origyn.royalty.broker", #account({ owner = Principal.fromActor(this); sub_account = null })),
+        ("com.origyn.royalty.originator", #account({ owner = Principal.fromActor(this); sub_account = null })),
+        ("com.origyn.royalty.custom", #account({ owner = Principal.fromActor(this); sub_account = null })),
+        ("com.origyn.royalty.network", #account({ owner = Principal.fromActor(this); sub_account = null })),
+      ]),
+      #fee_schema("com.origyn.royalties.fixed"),
+    ]);
+
+    let start_auction_attempt_owner3 = await canister.market_transfer_nft_origyn({
+      token_id = "2";
+      sales_config = {
+        escrow_receipt = null;
+        broker_id = null;
+        pricing = #ask(?Buffer.toArray<MigrationTypes.Current.AskFeature>(option_buffer3));
+      };
+    });
+
+    let try_withdraw_locked_fee_deposit_2 = await canister.sale_nft_origyn(#withdraw(#fee_deposit({ account = #account({ owner = Principal.fromActor(this); sub_account = null }); token = #ic({ canister = Principal.fromActor(dfx); standard = #Ledger; decimals = 8; symbol = "LDG"; fee = ?200000; id = null }); amount = 10 * 10 ** 8; withdraw_to = #account({ owner = Principal.fromActor(a_wallet); sub_account = null }); status = #unlocked() })));
+    D.print("try_withdraw_locked_fee_deposit_2 " # debug_show (try_withdraw_locked_fee_deposit_2));
+
+    let end_proper = await canister.sale_nft_origyn(#end_sale("2"));
+    D.print("end proper");
+    D.print(debug_show (end_proper));
+
+    let try_withdraw_locked_fee_deposit_3 = await canister.sale_nft_origyn(#withdraw(#fee_deposit({ account = #account({ owner = Principal.fromActor(this); sub_account = null }); token = #ic({ canister = Principal.fromActor(dfx); standard = #Ledger; decimals = 8; symbol = "LDG"; fee = ?200000; id = null }); amount = 10 * 10 ** 8; withdraw_to = #account({ owner = Principal.fromActor(a_wallet); sub_account = null }); status = #unlocked() })));
+    D.print("try_withdraw_locked_fee_deposit_3 " # debug_show (try_withdraw_locked_fee_deposit_3));
+
     //claiming first escrow
     let a_wallet_try_escrow_general_staged2 = await a_wallet.try_escrow_specific_staged(Principal.fromActor(this), Principal.fromActor(canister), Principal.fromActor(dfx), null, 1 * 10 ** 8, "3", ?current_sales_id, null, null);
 
@@ -2750,9 +2787,9 @@ shared (deployer) actor class test_runner(dfx_ledger : Principal, dfx_ledger2 : 
     D.print(debug_show (time_result));
 
     //end auction
-    let end_proper = await canister.sale_nft_origyn(#end_sale("3"));
-    D.print("end proper");
-    D.print(debug_show (end_proper));
+    let end_proper_2 = await canister.sale_nft_origyn(#end_sale("3"));
+    D.print("end_proper_2");
+    D.print(debug_show (end_proper_2));
 
     //create wallets to force rounds
     let fake_wallet66 = await TestWalletDef.test_wallet();

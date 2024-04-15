@@ -566,6 +566,81 @@ module {
     return #ok(#fee_deposit_info(NFTUtils.get_fee_deposit_account_info(account, state.canister())));
   };
 
+  private func end_sale_unlock_fee_account_callback(
+    state : StateAccess,
+    metadata : CandyTypes.CandyShared,
+    request : {
+      token : Types.TokenSpec;
+      sale_id : Text;
+      fee_accounts : ?MigrationTypes.Current.FeeAccountsParams;
+      fee_schema : ?Text;
+    },
+    ret : Star.Star<Types.ManageSaleResponse, Types.OrigynError>,
+  ) : Star.Star<Types.ManageSaleResponse, Types.OrigynError> {
+    // TODO gerer les erreurs directement dans end_sale
+    debug if (debug_channel.market) D.print("checking fee_accounts parameters");
+    switch (request.fee_accounts) {
+      case (?fee_accounts) {
+        debug if (debug_channel.market) D.print("fee_accounts is set, end_sale has to unlock token");
+        let fee_schema : Text = Option.get<Text>(request.fee_schema, "");
+
+        let royalties : [CandyTypes.CandyShared] = switch (Properties.getClassPropertyShared(metadata, Types.metadata.__system)) {
+          case (null) { [] };
+          case (?val) {
+            royalty_to_array(val.value, fee_schema);
+          };
+        };
+        debug if (debug_channel.market) D.print("royalties = " # debug_show (royalties));
+
+        for (royalty in royalties.vals()) {
+          let loaded_royalty = switch (Royalties._load_royalty(fee_schema, royalty)) {
+            case (#ok(val)) {
+              switch (val) {
+                case (#fixed(v)) { v };
+                // case (#dynamic(v)) {v;}; TODO not available now
+              };
+            };
+            case (#err(err)) { return #err(#trappable(err)) };
+          };
+
+          let token_spec = switch (loaded_royalty.token) {
+            case (?val) { if (val == request.token) { val } else { val } };
+            case (_) { request.token };
+          };
+
+          let royalties_names : [Text] = Royalties.royalties_names;
+
+          for ((royalties_name, account) in fee_accounts.vals()) {
+            if (royalties_name == loaded_royalty.tag) {
+              switch (
+                FeeAccount.unlock_token_fee_balance(
+                  state,
+                  {
+                    account = account;
+                    token = token_spec;
+                    sale_id = request.sale_id;
+                    update_balance = false;
+                  },
+                )
+              ) {
+                case (#ok(val)) {
+                  debug if (debug_channel.end_sale) D.print("Successfully unlocked token");
+                };
+                case (#err(val)) {
+                  // TODO Not critical so no error reported. In futur we will add a garbage collector for this case.
+                  debug if (debug_channel.end_sale) D.print("Failed to unlock token for sale_id : " # debug_show (request.sale_id));
+                };
+              };
+            };
+          };
+        };
+      };
+      case (null) {};
+    };
+
+    return ret;
+  };
+
   //ends a sale if it is past the date or a buy it now has occured
   public func end_sale_nft_origyn(state : StateAccess, token_id : Text, caller : Principal) : async* Star.Star<Types.ManageSaleResponse, Types.OrigynError> {
     debug if (debug_channel.end_sale) D.print("in end_sale_nft_origyn");
@@ -711,6 +786,26 @@ module {
       };
     };
 
+    debug if (debug_channel.market) D.print("checking fee_accounts parameters");
+    switch (fee_accounts) {
+      case (?fee_accounts) {
+        debug if (debug_channel.market) D.print("fee_accounts is set, end_sale has to unlock token");
+        switch (fee_schema) {
+          case (?val) {
+            if (val != Types.metadata.__system_fixed_royalty) {
+              debug if (debug_channel.market) D.print("but __system_fixed_royalty bad value, only com.origyn.royalties.fixed can be used -> error");
+              return #err(#trappable(Types.errors(?state.canistergeekLogger, #malformed_metadata, "end_sale_unlock_fee_account_callback fee_accounts need fixed fee_schema. Not compatible yet others royalties schema.", null)));
+            };
+          };
+          case (null) {
+            debug if (debug_channel.market) D.print("but __system_fixed_royalty is not set -> error");
+            return #err(#trappable(Types.errors(?state.canistergeekLogger, #malformed_metadata, "end_sale_unlock_fee_account_callback fee_accounts need fixed fee_schema. Not compatible yet others royalties schema.", null)));
+          };
+        };
+      };
+      case (null) {};
+    };
+
     debug if (debug_channel.end_sale) D.print("past buy now " # debug_show (buy_now));
 
     debug if (debug_channel.end_sale) D.print("have buy now" # debug_show (buy_now, buy_now_price, current_sale_state.current_bid_amount));
@@ -766,7 +861,17 @@ module {
               caller,
             )
           ) {
-            case (#ok(new_trx)) return #trappable(#end_sale(new_trx));
+            case (#ok(new_trx)) return end_sale_unlock_fee_account_callback(
+              state,
+              metadata,
+              {
+                token = current_sale_state.token;
+                sale_id = current_sale.sale_id;
+                fee_accounts = fee_accounts;
+                fee_schema = fee_schema;
+              },
+              #trappable(#end_sale(new_trx)),
+            );
             case (#err(err)) return #err(#trappable(err));
           };
         };
@@ -819,7 +924,17 @@ module {
               caller,
             )
           ) {
-            case (#ok(new_trx)) return #trappable(#end_sale(new_trx));
+            case (#ok(new_trx)) return return end_sale_unlock_fee_account_callback(
+              state,
+              metadata,
+              {
+                token = current_sale_state.token;
+                sale_id = current_sale.sale_id;
+                fee_accounts = fee_accounts;
+                fee_schema = fee_schema;
+              },
+              #trappable(#end_sale(new_trx)),
+            );
             case (#err(err)) return #err(#trappable(err));
           };
         };
@@ -853,7 +968,17 @@ module {
             caller,
           )
         ) {
-          case (#ok(new_trx)) return #trappable(#end_sale(new_trx));
+          case (#ok(new_trx)) return return end_sale_unlock_fee_account_callback(
+            state,
+            metadata,
+            {
+              token = current_sale_state.token;
+              sale_id = current_sale.sale_id;
+              fee_accounts = fee_accounts;
+              fee_schema = fee_schema;
+            },
+            #trappable(#end_sale(new_trx)),
+          );
           case (#err(err)) return #err(#trappable(err));
         };
 
@@ -2093,6 +2218,7 @@ module {
                             account = _account;
                             token = _token_spec;
                             sale_id = sale_id;
+                            update_balance = false;
                           },
                         );
                       };
