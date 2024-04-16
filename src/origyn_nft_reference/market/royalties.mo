@@ -183,11 +183,12 @@ module {
   };
 
   //handles royalty distribution
+  // process royalties can not fail, all data has to be checked before
   public func _process_royalties(
     state : StateAccess,
     request : ProcessRoyaltiesRequest,
     caller : Principal,
-  ) : Result.Result<(Nat, [(Types.EscrowRecord, Bool)]), Types.OrigynError> {
+  ) : (Nat, [(Types.EscrowRecord, Bool)]) {
     debug if (debug_channel.royalties) D.print("in process royalty" # debug_show (request));
 
     let results = Buffer.Buffer<(Types.EscrowRecord, Bool)>(1);
@@ -198,7 +199,10 @@ module {
       let loaded_royalty = switch (_load_royalty(request.fee_schema, this_item)) {
         case (#ok(val)) { val };
         case (#err(err)) {
-          return #err(Types.errors(?state.canistergeekLogger, #malformed_metadata, "_process_royalties - error _load_royalty ", ?caller));
+          // should never happen and been check before processing royalties.
+          debug if (debug_channel.royalties) D.print("_process_royalties - error _load_royalty - this path should never happened.");
+          return (request.remaining, []);
+          // return #err(Types.errors(?state.canistergeekLogger, #malformed_metadata, "_process_royalties - error _load_royalty ", ?caller));
         };
       };
 
@@ -405,7 +409,7 @@ module {
       };
     };
 
-    return #ok(request.remaining, Buffer.toArray(results));
+    return (request.remaining, Buffer.toArray(results));
   };
 
   private func _build_network_account(state : StateAccess, request : ProcessRoyaltiesRequest, tokenSpec : Types.ICTokenSpec) : [{

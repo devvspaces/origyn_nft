@@ -577,7 +577,6 @@ module {
     },
     ret : Star.Star<Types.ManageSaleResponse, Types.OrigynError>,
   ) : Star.Star<Types.ManageSaleResponse, Types.OrigynError> {
-    // TODO gerer les erreurs directement dans end_sale
     debug if (debug_channel.market) D.print("checking fee_accounts parameters");
     switch (request.fee_accounts) {
       case (?fee_accounts) {
@@ -942,6 +941,34 @@ module {
       case (null) {};
     };
 
+    let _fee_schema : Text = switch (fee_schema) {
+      case (?val) {
+        if (val != Types.metadata.__system_fixed_royalty) {
+          val;
+        } else {
+          Types.metadata.__system_fixed_royalty;
+        };
+      };
+      case (null) { Types.metadata.__system_secondary_royalty };
+    };
+
+    let royalty = switch (Properties.getClassPropertyShared(metadata, Types.metadata.__system)) {
+      case (null) { [] };
+      case (?val) {
+        royalty_to_array(val.value, _fee_schema);
+      };
+    };
+
+    // make sur royalties definition didnt changed and no error can occured after transfering nft and funds.
+    for (this_item in royalty.vals()) {
+      let loaded_royalty = switch (Royalties._load_royalty(_fee_schema, this_item)) {
+        case (#ok(val)) { val };
+        case (#err(err)) {
+          return #err(#awaited(Types.errors(?state.canistergeekLogger, #malformed_metadata, "end_sale_nft_origyn - error _load_royalty ", ?caller)));
+        };
+      };
+    };
+
     debug if (debug_channel.end_sale) D.print("checking escrow" # debug_show (current_sale_state.current_escrow));
 
     switch (current_sale_state.current_escrow) {
@@ -1160,26 +1187,7 @@ module {
         //log royalties
         //currently for auctions there are only secondary royalties
 
-        let _fee_schema : Text = switch (fee_schema) {
-          case (?val) {
-            if (val != Types.metadata.__system_fixed_royalty) {
-              val;
-            } else {
-              Types.metadata.__system_fixed_royalty;
-            };
-          };
-          case (null) { Types.metadata.__system_secondary_royalty };
-        };
-
         debug if (debug_channel.market) D.print("fee_schema is " # debug_show (_fee_schema));
-
-        let royalty = switch (Properties.getClassPropertyShared(metadata, Types.metadata.__system)) {
-          case (null) { [] };
-          case (?val) {
-            royalty_to_array(val.value, _fee_schema);
-          };
-        };
-
         debug if (debug_channel.market) D.print("royalty is " # debug_show (royalty));
 
         let fee_ : Nat = Option.get(fee, 0);
@@ -1192,9 +1200,9 @@ module {
             for (this_item in royalty.vals()) {
               let loaded_royalty = switch (Royalties._load_royalty(_fee_schema, this_item)) {
                 case (#ok(val)) { val };
-                case (#err(err)) {
-                  return #err(#awaited(Types.errors(?state.canistergeekLogger, #malformed_metadata, "end_sale_nft_origyn - error _load_royalty ", ?caller)));
-                };
+                // case (#err(err)) {
+                // Impossible
+                // };
               };
 
               let tag = switch (loaded_royalty) {
@@ -1236,34 +1244,27 @@ module {
           //if the fee is bigger than the amount we aren't going to pay anything
           //this should really be prevented elsewhere
 
-          let royalty_result = switch (
-            Royalties._process_royalties(
-              state,
-              {
-                name = _fee_schema;
-                var remaining = remaining;
-                total = total;
-                fee = fee_;
-                escrow = winning_escrow;
-                royalty = royalty;
-                broker_id = current_sale_state.current_broker_id;
-                original_broker_id = current_sale.original_broker_id;
-                sale_id = ?current_sale.sale_id;
-                account_hash = account_hash;
-                metadata = metadata;
-                token_id = ?token_id;
-                token = winning_escrow.token;
-                fee_accounts = fee_accounts;
-                fee_schema = _fee_schema;
-              },
-              caller,
-            )
-          ) {
-            case (#ok(val)) { val };
-            case (#err(err)) {
-              return #err(#awaited(Types.errors(?state.canistergeekLogger, #malformed_metadata, "end_sale_nft_origyn - error _process_royalties ", ?caller)));
-            };
-          };
+          let royalty_result = Royalties._process_royalties(
+            state,
+            {
+              name = _fee_schema;
+              var remaining = remaining;
+              total = total;
+              fee = fee_;
+              escrow = winning_escrow;
+              royalty = royalty;
+              broker_id = current_sale_state.current_broker_id;
+              original_broker_id = current_sale.original_broker_id;
+              sale_id = ?current_sale.sale_id;
+              account_hash = account_hash;
+              metadata = metadata;
+              token_id = ?token_id;
+              token = winning_escrow.token;
+              fee_accounts = fee_accounts;
+              fee_schema = _fee_schema;
+            },
+            caller,
+          );
 
           remaining := royalty_result.0;
 
@@ -1616,6 +1617,30 @@ module {
           };
         };
 
+        let _fee_schema : Text = if (this_is_minted == false) {
+          Types.metadata.__system_primary_royalty;
+        } else {
+          Types.metadata.__system_secondary_royalty;
+        };
+
+        let royalty = switch (Properties.getClassPropertyShared(metadata, Types.metadata.__system)) {
+          case (null) { [] };
+          case (?val) {
+            debug if (debug_channel.market) D.print("found metadata" # debug_show (val.value));
+            royalty_to_array(val.value, _fee_schema);
+          };
+        };
+
+        // make sur royalties definition didnt changed and no error can occured after transfering nft and funds.
+        for (this_item in royalty.vals()) {
+          let loaded_royalty = switch (Royalties._load_royalty(_fee_schema, this_item)) {
+            case (#ok(val)) { val };
+            case (#err(err)) {
+              return #err(Types.errors(?state.canistergeekLogger, #malformed_metadata, "end_sale_nft_origyn - error _load_royalty ", ?caller));
+            };
+          };
+        };
+
         //reentrancy risk so we remove the credit from the escrow
         debug if (debug_channel.market) D.print("updating the asset list");
         debug if (debug_channel.market) D.print(debug_show (Map.size(verified.found_asset_list)));
@@ -1826,21 +1851,6 @@ module {
         debug if (debug_channel.market) D.print(debug_show (verified.found_asset));
 
         debug if (debug_channel.market) D.print("calculating royalty" # debug_show (metadata));
-
-        let _fee_schema : Text = if (b_freshmint == false) {
-          Types.metadata.__system_secondary_royalty;
-        } else {
-          Types.metadata.__system_primary_royalty;
-        };
-
-        let royalty = switch (Properties.getClassPropertyShared(metadata, Types.metadata.__system)) {
-          case (null) { [] };
-          case (?val) {
-            debug if (debug_channel.market) D.print("found metadata" # debug_show (val.value));
-            royalty_to_array(val.value, _fee_schema);
-          };
-        };
-
         debug if (debug_channel.market) D.print("royalty is " # debug_show (royalty));
         //note: this code path is always taken since checker.transferSale requires it or errors
         //we have included it here so that we can use Nat.sub without fear of underflow
@@ -1851,34 +1861,27 @@ module {
 
           debug if (debug_channel.royalties) D.print("calling process royalty" # debug_show ((total, remaining)));
 
-          let royalty_result = switch (
-            Royalties._process_royalties(
-              state,
-              {
-                name = _fee_schema;
-                var remaining = remaining;
-                total = total;
-                fee = fee;
-                escrow = escrow;
-                royalty = royalty;
-                sale_id = null;
-                broker_id = request.sales_config.broker_id;
-                original_broker_id = null;
-                account_hash = account_hash;
-                metadata = metadata;
-                token_id = ?request.token_id;
-                token = escrow.token;
-                fee_accounts = null; // not sure here
-                fee_schema = _fee_schema;
-              },
-              caller,
-            )
-          ) {
-            case (#ok(val)) { val };
-            case (#err(err)) {
-              return #err(Types.errors(?state.canistergeekLogger, #malformed_metadata, "market_transfer_nft_origyn - error _process_royalties ", ?caller));
-            };
-          };
+          let royalty_result = Royalties._process_royalties(
+            state,
+            {
+              name = _fee_schema;
+              var remaining = remaining;
+              total = total;
+              fee = fee;
+              escrow = escrow;
+              royalty = royalty;
+              sale_id = null;
+              broker_id = request.sales_config.broker_id;
+              original_broker_id = null;
+              account_hash = account_hash;
+              metadata = metadata;
+              token_id = ?request.token_id;
+              token = escrow.token;
+              fee_accounts = null; // not sure here
+              fee_schema = _fee_schema;
+            },
+            caller,
+          );
 
           remaining := royalty_result.0;
 
