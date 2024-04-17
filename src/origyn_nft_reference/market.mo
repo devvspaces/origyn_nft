@@ -1058,101 +1058,105 @@ module {
         //move the payment to the sale revenue account
         //nyi: use transfer batch to split across royalties
 
-        let (trx_id : Types.TransactionID, account_hash : ?Blob, fee : ?Nat) = switch (winning_escrow.token) {
+        let (trx_id : ?Types.TransactionID, account_hash : ?Blob, fee : ?Nat) = switch (winning_escrow.token) {
           case (#ic(token)) {
             switch (token.standard) {
               case (#Ledger or #ICRC1) {
-                debug if (debug_channel.end_sale) D.print("found ledger");
-                let checker = Ledger_Interface.Ledger_Interface();
-                try {
-                  switch (Star.toResult(await* checker.transfer_sale(state.canister(), winning_escrow, token_id, caller))) {
-                    case (#ok(val)) {
-                      (val.0, ?val.1.account.sub_account, token.fee);
-                    };
-                    case (#err(err)) {
-                      //put the escrow back because the payment failed
-                      switch (Verify.verify_escrow_receipt(state, winning_escrow, ?owner, null)) {
-                        case (#ok(reverify)) {
-                          let target_escrow = {
-                            account_hash = reverify.found_asset.escrow.account_hash;
-                            amount = Nat.add(reverify.found_asset.escrow.amount, winning_escrow.amount);
-                            buyer = reverify.found_asset.escrow.buyer;
-                            seller = reverify.found_asset.escrow.seller;
-                            token_id = reverify.found_asset.escrow.token_id;
-                            token = reverify.found_asset.escrow.token;
-                            sale_id = reverify.found_asset.escrow.sale_id;
-                            lock_to_date = reverify.found_asset.escrow.lock_to_date;
+                if (winning_escrow.amount > Option.get<Nat>(token.fee, 0)) {
+                  debug if (debug_channel.end_sale) D.print("found ledger");
+                  let checker = Ledger_Interface.Ledger_Interface();
+                  try {
+                    switch (Star.toResult(await* checker.transfer_sale(state.canister(), winning_escrow, token_id, caller))) {
+                      case (#ok(val)) {
+                        (?val.0, ?val.1.account.sub_account, token.fee);
+                      };
+                      case (#err(err)) {
+                        //put the escrow back because the payment failed
+                        switch (Verify.verify_escrow_receipt(state, winning_escrow, ?owner, null)) {
+                          case (#ok(reverify)) {
+                            let target_escrow = {
+                              account_hash = reverify.found_asset.escrow.account_hash;
+                              amount = Nat.add(reverify.found_asset.escrow.amount, winning_escrow.amount);
+                              buyer = reverify.found_asset.escrow.buyer;
+                              seller = reverify.found_asset.escrow.seller;
+                              token_id = reverify.found_asset.escrow.token_id;
+                              token = reverify.found_asset.escrow.token;
+                              sale_id = reverify.found_asset.escrow.sale_id;
+                              lock_to_date = reverify.found_asset.escrow.lock_to_date;
+                            };
+
+                            Map.set(reverify.found_asset_list, token_handler, verified.found_asset.token_spec, target_escrow);
+
                           };
-
-                          Map.set(reverify.found_asset_list, token_handler, verified.found_asset.token_spec, target_escrow);
-
-                        };
-                        case (#err(err)) {
-                          let target_escrow = {
-                            account_hash = verified.found_asset.escrow.account_hash;
-                            amount = winning_escrow.amount;
-                            buyer = verified.found_asset.escrow.buyer;
-                            seller = verified.found_asset.escrow.seller;
-                            token_id = verified.found_asset.escrow.token_id;
-                            token = verified.found_asset.escrow.token;
-                            sale_id = verified.found_asset.escrow.sale_id;
-                            lock_to_date = verified.found_asset.escrow.lock_to_date;
+                          case (#err(err)) {
+                            let target_escrow = {
+                              account_hash = verified.found_asset.escrow.account_hash;
+                              amount = winning_escrow.amount;
+                              buyer = verified.found_asset.escrow.buyer;
+                              seller = verified.found_asset.escrow.seller;
+                              token_id = verified.found_asset.escrow.token_id;
+                              token = verified.found_asset.escrow.token;
+                              sale_id = verified.found_asset.escrow.sale_id;
+                              lock_to_date = verified.found_asset.escrow.lock_to_date;
+                            };
+                            Map.set(verified.found_asset_list, token_handler, verified.found_asset.token_spec, target_escrow);
                           };
-                          Map.set(verified.found_asset_list, token_handler, verified.found_asset.token_spec, target_escrow);
                         };
-                      };
 
-                      //put the owner back if the transaction fails
-                      metadata := switch (Metadata.set_nft_owner(state, token_id, owner, caller)) {
-                        case (#err(err)) return #err(#awaited(Types.errors(?state.canistergeekLogger, err.error, "market_transfer_nft_origyn can't set inflight owner " # err.flag_point, ?caller)));
-                        case (#ok(new_metadata)) new_metadata;
-                      };
+                        //put the owner back if the transaction fails
+                        metadata := switch (Metadata.set_nft_owner(state, token_id, owner, caller)) {
+                          case (#err(err)) return #err(#awaited(Types.errors(?state.canistergeekLogger, err.error, "market_transfer_nft_origyn can't set inflight owner " # err.flag_point, ?caller)));
+                          case (#ok(new_metadata)) new_metadata;
+                        };
 
-                      return #err(#awaited(Types.errors(?state.canistergeekLogger, err.error, "end_sale_nft_origyn " # err.flag_point, ?caller)));
+                        return #err(#awaited(Types.errors(?state.canistergeekLogger, err.error, "end_sale_nft_origyn " # err.flag_point, ?caller)));
+                      };
                     };
-                  };
-                } catch (e) {
-                  //put the escrow back because the payment failed
-                  switch (Verify.verify_escrow_receipt(state, winning_escrow, ?owner, null)) {
-                    case (#ok(reverify)) {
-                      let target_escrow = {
-                        account_hash = reverify.found_asset.escrow.account_hash;
-                        amount = Nat.add(reverify.found_asset.escrow.amount, winning_escrow.amount);
-                        buyer = reverify.found_asset.escrow.buyer;
-                        seller = reverify.found_asset.escrow.seller;
-                        token_id = reverify.found_asset.escrow.token_id;
-                        token = reverify.found_asset.escrow.token;
-                        sale_id = reverify.found_asset.escrow.sale_id;
-                        lock_to_date = reverify.found_asset.escrow.lock_to_date;
+                  } catch (e) {
+                    //put the escrow back because the payment failed
+                    switch (Verify.verify_escrow_receipt(state, winning_escrow, ?owner, null)) {
+                      case (#ok(reverify)) {
+                        let target_escrow = {
+                          account_hash = reverify.found_asset.escrow.account_hash;
+                          amount = Nat.add(reverify.found_asset.escrow.amount, winning_escrow.amount);
+                          buyer = reverify.found_asset.escrow.buyer;
+                          seller = reverify.found_asset.escrow.seller;
+                          token_id = reverify.found_asset.escrow.token_id;
+                          token = reverify.found_asset.escrow.token;
+                          sale_id = reverify.found_asset.escrow.sale_id;
+                          lock_to_date = reverify.found_asset.escrow.lock_to_date;
+                        };
+
+                        Map.set(reverify.found_asset_list, token_handler, verified.found_asset.token_spec, target_escrow);
+
                       };
-
-                      Map.set(reverify.found_asset_list, token_handler, verified.found_asset.token_spec, target_escrow);
-
-                    };
-                    case (#err(err)) {
-                      let target_escrow = {
-                        account_hash = verified.found_asset.escrow.account_hash;
-                        amount = winning_escrow.amount;
-                        buyer = verified.found_asset.escrow.buyer;
-                        seller = verified.found_asset.escrow.seller;
-                        token_id = verified.found_asset.escrow.token_id;
-                        token = verified.found_asset.escrow.token;
-                        sale_id = verified.found_asset.escrow.sale_id;
-                        lock_to_date = verified.found_asset.escrow.lock_to_date;
+                      case (#err(err)) {
+                        let target_escrow = {
+                          account_hash = verified.found_asset.escrow.account_hash;
+                          amount = winning_escrow.amount;
+                          buyer = verified.found_asset.escrow.buyer;
+                          seller = verified.found_asset.escrow.seller;
+                          token_id = verified.found_asset.escrow.token_id;
+                          token = verified.found_asset.escrow.token;
+                          sale_id = verified.found_asset.escrow.sale_id;
+                          lock_to_date = verified.found_asset.escrow.lock_to_date;
+                        };
+                        Map.set(verified.found_asset_list, token_handler, verified.found_asset.token_spec, target_escrow);
                       };
-                      Map.set(verified.found_asset_list, token_handler, verified.found_asset.token_spec, target_escrow);
                     };
+
+                    //put the owner back if the transaction fails
+                    metadata := switch (Metadata.set_nft_owner(state, token_id, owner, caller)) {
+                      case (#err(err)) return #err(#awaited(Types.errors(?state.canistergeekLogger, err.error, "market_transfer_nft_origyn can't set inflight owner " # err.flag_point, ?caller)));
+                      case (#ok(new_metadata)) new_metadata;
+                    };
+
+                    return #err(#awaited(Types.errors(?state.canistergeekLogger, #unauthorized_access, "end_sale_nft_origyn catch branch" # Error.message(e), ?caller)));
                   };
 
-                  //put the owner back if the transaction fails
-                  metadata := switch (Metadata.set_nft_owner(state, token_id, owner, caller)) {
-                    case (#err(err)) return #err(#awaited(Types.errors(?state.canistergeekLogger, err.error, "market_transfer_nft_origyn can't set inflight owner " # err.flag_point, ?caller)));
-                    case (#ok(new_metadata)) new_metadata;
-                  };
-
-                  return #err(#awaited(Types.errors(?state.canistergeekLogger, #unauthorized_access, "end_sale_nft_origyn catch branch" # Error.message(e), ?caller)));
+                } else {
+                  (null, null, null);
                 };
-
               };
               case (_) return #err(#awaited(Types.errors(?state.canistergeekLogger, #nyi, "end_sale_nft_origyn - non ic type nyi - " # debug_show (token), ?caller)));
             };
@@ -1239,7 +1243,7 @@ module {
         debug if (debug_channel.market) D.print("remaning_fee is " # debug_show (remaning_fee));
 
         //let royaltyList = Buffer.Buffer<(Types.Account, Nat)>(royalty.size() + 1);
-        if (winning_escrow.amount > remaning_fee) {
+        if (winning_escrow.amount >= remaning_fee) {
           var remaining = Nat.sub(winning_escrow.amount, fee_);
           //if the fee is bigger than the amount we aren't going to pay anything
           //this should really be prevented elsewhere

@@ -26,6 +26,7 @@ import NFTUtils "../origyn_nft_reference/utils";
 import Royalties "../origyn_nft_reference/market/royalties";
 import TestWalletDef "test_wallet";
 import Types "../origyn_nft_reference/types";
+import ICRC7Types "../origyn_nft_reference/ICRC7";
 import Market "../origyn_nft_reference/market";
 import utils "test_utils";
 //import Instant "test_runner_instant_transfer";
@@ -2480,6 +2481,8 @@ shared (deployer) actor class test_runner(dfx_ledger : Principal, dfx_ledger2 : 
     D.print("have canister");
 
     let canister : Types.Service = actor (Principal.toText(newPrincipal));
+    let icrc7_canister : ICRC7Types.Service = actor (Principal.toText(newPrincipal));
+
     let standardStage_collection = await utils.buildCollection(
       canister,
       Principal.fromActor(canister),
@@ -2498,6 +2501,7 @@ shared (deployer) actor class test_runner(dfx_ledger : Principal, dfx_ledger2 : 
     let standardStage2 = await utils.buildStandardNFT("2", canister, Principal.fromActor(canister), 1024, false, Principal.fromActor(o_wallet));
     let standardStage3 = await utils.buildStandardNFT("3", canister, Principal.fromActor(canister), 1024, false, Principal.fromActor(o_wallet));
 
+    let mint_attempt2 = await canister.mint_nft_origyn("1", #principal(Principal.fromActor(this)));
     let mint_attempt3 = await canister.mint_nft_origyn("2", #principal(Principal.fromActor(this)));
     let mint_attempt4 = await canister.mint_nft_origyn("3", #principal(Principal.fromActor(this)));
 
@@ -2772,6 +2776,78 @@ shared (deployer) actor class test_runner(dfx_ledger : Principal, dfx_ledger2 : 
 
     let try_withdraw_locked_fee_deposit_3 = await canister.sale_nft_origyn(#withdraw(#fee_deposit({ account = #account({ owner = Principal.fromActor(this); sub_account = null }); token = #ic({ canister = Principal.fromActor(dfx); standard = #Ledger; decimals = 8; symbol = "LDG"; fee = ?200000; id = null }); amount = 10 * 10 ** 8; withdraw_to = #account({ owner = Principal.fromActor(a_wallet); sub_account = null }); status = #unlocked() })));
     D.print("try_withdraw_locked_fee_deposit_3 " # debug_show (try_withdraw_locked_fee_deposit_3));
+
+    D.print("TRY TRANSFER = " # debug_show (icrc7_balance));
+
+    let icrc7_balance = await icrc7_canister.icrc7_balance_of([{
+      owner = Principal.fromActor(b_wallet);
+      subaccount = null;
+    }]);
+    D.print("icrc7_balance = " # debug_show (icrc7_balance));
+
+    let option_buffer4 = Buffer.fromArray<MigrationTypes.Current.AskFeature>([
+      #reserve(0),
+      #token(#ic({ canister = Principal.fromActor(dfx); standard = #Ledger; decimals = 8; symbol = "LDG"; fee = ?200000; id = null })),
+      #buy_now(0),
+      #start_price(0),
+      #allow_list([Principal.fromActor(a_wallet)]),
+      #ending(#date(get_time() + DAY_LENGTH)),
+      #fee_accounts([
+        ("com.origyn.royalty.node", #account({ owner = Principal.fromActor(this); sub_account = null })),
+        ("com.origyn.royalty.broker", #account({ owner = Principal.fromActor(this); sub_account = null })),
+        ("com.origyn.royalty.originator", #account({ owner = Principal.fromActor(this); sub_account = null })),
+        ("com.origyn.royalty.custom", #account({ owner = Principal.fromActor(this); sub_account = null })),
+        ("com.origyn.royalty.network", #account({ owner = Principal.fromActor(this); sub_account = null })),
+      ]),
+      #fee_schema("com.origyn.royalties.fixed"),
+    ]);
+
+    let start_auction_attempt_owner4 = await canister.market_transfer_nft_origyn({
+      token_id = "1";
+      sales_config = {
+        escrow_receipt = null;
+        broker_id = null;
+        pricing = #ask(?Buffer.toArray<MigrationTypes.Current.AskFeature>(option_buffer4));
+      };
+    });
+    D.print("start_auction_attempt_owner4 " # debug_show (start_auction_attempt_owner4));
+
+    // verify that auction fail with startprice < all fees that user has to pay
+    let current_sales_id_2 = switch (start_auction_attempt_owner4) {
+      case (#ok(val)) {
+        switch (val.txn_type) {
+          case (#sale_opened(sale_data)) {
+            sale_data.sale_id;
+          };
+          case (_) {
+            D.print("Didn't find expected sale_opened");
+            return #fail("Didn't find expected sale_opened");
+          };
+        };
+
+      };
+      case (#err(item)) {
+        D.print("error with auction start");
+        D.print(item.flag_point);
+        return #fail("error with auction start");
+      };
+    };
+
+    let b_wallet_try_bid_valid_2 = await b_wallet.try_bid(Principal.fromActor(canister), Principal.fromActor(this), Principal.fromActor(dfx), 0, "1", current_sales_id_2, ?Principal.fromActor(b_wallet));
+    D.print("b_wallet_try_bid_valid_2 " # debug_show (b_wallet_try_bid_valid_2));
+
+    let a_wallet_try_bid_valid_2 = await a_wallet.try_bid(Principal.fromActor(canister), Principal.fromActor(this), Principal.fromActor(dfx), 0, "1", current_sales_id_2, ?Principal.fromActor(a_wallet));
+    D.print("a_wallet_try_bid_valid_2 " # debug_show (a_wallet_try_bid_valid_2));
+
+    let end_proper_3 = await canister.sale_nft_origyn(#end_sale("1"));
+    D.print("end proper");
+    D.print(debug_show (end_proper_3));
+
+    let icrc7_balance_1 = await icrc7_canister.icrc7_balance_of([{
+      owner = Principal.fromActor(b_wallet);
+      subaccount = null;
+    }]);
+    D.print("icrc7_balance_1 = " # debug_show (icrc7_balance_1));
 
     //claiming first escrow
     let a_wallet_try_escrow_general_staged2 = await a_wallet.try_escrow_specific_staged(Principal.fromActor(this), Principal.fromActor(canister), Principal.fromActor(dfx), null, 1 * 10 ** 8, "3", ?current_sales_id, null, null);
