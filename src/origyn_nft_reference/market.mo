@@ -941,16 +941,7 @@ module {
       case (null) {};
     };
 
-    let _fee_schema : Text = switch (fee_schema) {
-      case (?val) {
-        if (val != Types.metadata.__system_fixed_royalty) {
-          val;
-        } else {
-          Types.metadata.__system_fixed_royalty;
-        };
-      };
-      case (null) { Types.metadata.__system_secondary_royalty };
-    };
+    let _fee_schema : Text = Option.get<Text>(fee_schema, Types.metadata.__system_secondary_royalty);
 
     let royalty = switch (Properties.getClassPropertyShared(metadata, Types.metadata.__system)) {
       case (null) { [] };
@@ -1154,8 +1145,10 @@ module {
                     return #err(#awaited(Types.errors(?state.canistergeekLogger, #unauthorized_access, "end_sale_nft_origyn catch branch" # Error.message(e), ?caller)));
                   };
 
-                } else {
+                } else if (_fee_schema == Types.metadata.__system_fixed_royalty) {
                   (null, null, null);
+                } else {
+                  return #err(#awaited(Types.errors(?state.canistergeekLogger, #nyi, "end_sale_nft_origyn - price bellow token fee. only possible with fixed fees schema", ?caller)));
                 };
               };
               case (_) return #err(#awaited(Types.errors(?state.canistergeekLogger, #nyi, "end_sale_nft_origyn - non ic type nyi - " # debug_show (token), ?caller)));
