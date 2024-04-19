@@ -43,23 +43,23 @@ import Royalties "market/royalties";
 module {
 
   let debug_channel = {
-    verify_escrow = true;
+    verify_escrow = false;
     verify_sale = false;
     ensure = false;
     invoice = false;
     end_sale = false;
-    market = true;
+    market = false;
     royalties = true;
     offers = false;
-    escrow = true;
-    withdraw_escrow = true;
-    withdraw_sale = true;
+    escrow = false;
+    withdraw_escrow = false;
+    withdraw_sale = false;
     withdraw_reject = false;
     withdraw_deposit = false;
     withdraw_fee_deposit = true;
-    notifications = true;
+    notifications = false;
     dutch = false;
-    bid = true;
+    bid = false;
     kyc = false;
   };
 
@@ -574,6 +574,7 @@ module {
       sale_id : Text;
       fee_accounts : ?MigrationTypes.Current.FeeAccountsParams;
       fee_schema : ?Text;
+      owner : MigrationTypes.Current.Account;
     },
     ret : Star.Star<Types.ManageSaleResponse, Types.OrigynError>,
   ) : Star.Star<Types.ManageSaleResponse, Types.OrigynError> {
@@ -608,8 +609,9 @@ module {
           };
 
           let royalties_names : [Text] = Royalties.royalties_names;
+          let account : MigrationTypes.Current.Account = request.owner;
 
-          for ((royalties_name, account) in fee_accounts.vals()) {
+          for (royalties_name in fee_accounts.vals()) {
             if (royalties_name == loaded_royalty.tag) {
               switch (
                 FeeAccount.unlock_token_fee_balance(
@@ -876,6 +878,7 @@ module {
                 sale_id = current_sale.sale_id;
                 fee_accounts = fee_accounts;
                 fee_schema = fee_schema;
+                owner = owner;
               },
               #trappable(#end_sale(new_trx)),
             );
@@ -939,6 +942,7 @@ module {
                 sale_id = current_sale.sale_id;
                 fee_accounts = fee_accounts;
                 fee_schema = fee_schema;
+                owner = owner;
               },
               #trappable(#end_sale(new_trx)),
             );
@@ -1002,6 +1006,7 @@ module {
               sale_id = current_sale.sale_id;
               fee_accounts = fee_accounts;
               fee_schema = fee_schema;
+              owner = owner;
             },
             #trappable(#end_sale(new_trx)),
           );
@@ -1216,7 +1221,7 @@ module {
               };
 
               debug if (debug_channel.market) D.print("remaning_fee _fee_accounts is " # debug_show (_fee_accounts));
-              switch (Array.find<(Text, MigrationTypes.Current.Account)>(_fee_accounts, func(val) { return val.0 == tag })) {
+              switch (Array.find<Text>(_fee_accounts, func(val) { return val == tag })) {
                 case (?val) {
                   //this fees will be paid by a specific account
                   debug if (debug_channel.market) D.print("royalty matched in provided _fee_accounts. will use this account to pay royalties instead of winning escrow");
@@ -1267,6 +1272,7 @@ module {
               token = winning_escrow.token;
               fee_accounts = fee_accounts;
               fee_schema = _fee_schema;
+              owner = owner;
             },
             caller,
           );
@@ -1884,6 +1890,7 @@ module {
               token = escrow.token;
               fee_accounts = null; // not sure here
               fee_schema = _fee_schema;
+              owner = owner;
             },
             caller,
           );
@@ -2186,12 +2193,16 @@ module {
                 case (_) { (ret.token, false) };
               };
 
-              let tmp_locked_fees = Buffer.Buffer<(MigrationTypes.Current.Account, MigrationTypes.Current.TokenSpec, Nat)>(5);
+              let tmp_locked_fees = Buffer.Buffer<(MigrationTypes.Current.TokenSpec, Nat)>(5);
               var found = false;
               let royalties_names : [Text] = Royalties.royalties_names;
+              let account : MigrationTypes.Current.Account = #account({
+                owner = caller;
+                sub_account = null;
+              });
 
               // check if fund are provisioned by #fee_deposit
-              for ((royalties_name, account) in fee_accounts.vals()) {
+              for (royalties_name in fee_accounts.vals()) {
                 switch (Array.find<Text>(royalties_names, func(val) { return val == royalties_name })) {
                   case (?val) {};
                   case (null) {
@@ -2216,14 +2227,14 @@ module {
                     )
                   ) {
                     case (#ok(val)) {
-                      tmp_locked_fees.add(account, token_spec, fees);
+                      tmp_locked_fees.add((token_spec, fees));
                     };
                     case (#err(err)) {
-                      for ((_account, _token_spec, fees) in tmp_locked_fees.vals()) {
+                      for ((_token_spec, fees) in tmp_locked_fees.vals()) {
                         let _ = FeeAccount.unlock_token_fee_balance(
                           state,
                           {
-                            account = _account;
+                            account = account;
                             token = _token_spec;
                             sale_id = sale_id;
                             update_balance = false;
@@ -2449,7 +2460,7 @@ module {
           switch (fee_accounts) {
             case (?_fee_accounts) {
               debug if (debug_channel.market) D.print("remaning_fee _fee_accounts is " # debug_show (_fee_accounts));
-              switch (Array.find<(Text, MigrationTypes.Current.Account)>(_fee_accounts, func(val) { return val.0 == tag })) {
+              switch (Array.find<Text>(_fee_accounts, func(val) { return val == tag })) {
                 case (?val) {
                   //this fees will be paid by specific fee_account directly
                   debug if (debug_channel.market) D.print("royalty matched in provided _fee_accounts. will use this account to pay royalties instead of winning escrow");
@@ -2512,7 +2523,7 @@ module {
               switch (fee_accounts) {
                 case (?_fee_accounts) {
                   debug if (debug_channel.market) D.print("remaning_fee _fee_accounts is " # debug_show (_fee_accounts));
-                  switch (Array.find<(Text, MigrationTypes.Current.Account)>(_fee_accounts, func(val) { return val.0 == tag })) {
+                  switch (Array.find<Text>(_fee_accounts, func(val) { return val == tag })) {
                     case (?val) {
                       //this fees will be paid by specific fee_account directly
                       debug if (debug_channel.market) D.print("royalty matched in provided _fee_accounts. will use this account to pay royalties instead of winning escrow");

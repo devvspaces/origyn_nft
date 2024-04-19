@@ -229,7 +229,7 @@ module {
   };
   public type DutchParams = v0_1_5.DutchParams;
 
-  public type FeeAccountsParams = [(Text, Account)];
+  public type FeeAccountsParams = [Text];
 
   public type AskFeature = {
     #atomic;
