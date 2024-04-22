@@ -1,0 +1,326 @@
+type definite_canister_settings = 
+ record {
+   compute_allocation: nat;
+   controllers: opt vec principal;
+   freezing_threshold: nat;
+   memory_allocation: nat;
+ };
+type canister_status = 
+ record {
+   cycles: nat;
+   memory_size: nat;
+   module_hash: opt vec nat8;
+   settings: definite_canister_settings;
+   status: variant {
+             running;
+             stopped;
+             stopping;
+           };
+ };
+type canister_id = principal;
+type StreamingStrategy = variant {
+                           Callback:
+                            record {
+                              callback: func () -> ();
+                              token: StreamingCallbackToken;
+                            };};
+type StreamingCallbackToken = 
+ record {
+   content_encoding: text;
+   index: nat;
+   key: text;
+ };
+type StreamingCallbackResponse = 
+ record {
+   body: blob;
+   token: opt StreamingCallbackToken;
+ };
+type Storage_Canister = 
+ service {
+   /// * Sets the test time value for testing purposes.
+   ///     * @param {object} msg - The message object.
+   ///     * @param {Int} new_time - The new test time value.
+   ///     * @returns {Promise<Int>} A promise that resolves to the new test time value.
+   __advance_time: (int) -> (int);
+   /// * Sets the test time mode for testing purposes.
+   ///     * @param {object} msg - The message object.
+   ///     * @param {{#test; #standard}} newMode - The new test time mode.
+   ///     * @returns {Promise<Bool>} A promise that resolves to true if the test time mode was successfully set, or throws an error if the caller is not the owner.
+   __set_time_mode: (variant {
+                       standard;
+                       test;
+                     }) -> (bool);
+   __version: () -> (text) query;
+   /// * Returns the status of the canister specified in the request object
+   ///     * @param {{canister_id : Types.canister_id}} request - The request object containing the canister ID
+   ///     * @returns {async Types.canister_status} - The status of the canister
+   canister_status: (record {canister_id: canister_id;}) -> (canister_status);
+   /// * Retrieves a chunk for a library based on the ChunkRequest object in a query call
+   ///     * @param {Types.ChunkRequest} request - The ChunkRequest object with the necessary information to retrieve the chunk
+   ///     * @param {Principal} msg.caller - The principal of the caller
+   ///     * @returns {async Types.ChunkResult} - The chunk content or an error if something goes wrong
+   chunk_nft_origyn: (ChunkRequest) -> (ChunkResult) query;
+   /// * Retrieves a chunk for a library based on the ChunkRequest object in a shared call
+   ///     * @param {Types.ChunkRequest} request - The ChunkRequest object with the necessary information to retrieve the chunk
+   ///     * @param {Principal} msg.caller - The principal of the caller
+   ///     * @returns {async Types.ChunkResult} - The chunk content or an error if something goes wrong
+   chunk_secure_nft_origyn: (ChunkRequest) -> (ChunkResult);
+   cycles: () -> (nat) query;
+   get_collection_managers_nft_origyn: () -> (vec Principal) query;
+   get_collection_network_nft_origyn: () -> (opt Principal) query;
+   get_collection_owner_nft_origyn: () -> (Principal) query;
+   /// * Makes an HTTP request
+   ///     * @param {Types.HttpRequest} rawReq - The HTTP request object containing the necessary information to make the request
+   ///     * @returns {async (http.HTTPResponse)} - The HTTP response object
+   http_request: (HttpRequest) -> (HTTPResponse) query;
+   /// * Makes an HTTP request using a streaming callback
+   ///     * @param {http.StreamingCallbackToken} tk - The streaming callback token
+   ///     * @returns {async http.StreamingCallbackResponse} - The HTTP streaming response
+   http_request_streaming_callback: (StreamingCallbackToken) ->
+    (StreamingCallbackResponse) query;
+   /// * A streaming callback based on NFTs. Returns {[], null} if the token can not be found. Expects a key of the following pattern: "nft/{key}".
+   ///     * @param {http.StreamingCallbackToken} tk - The streaming callback token
+   ///     * @returns {async http.StreamingCallbackResponse} - The HTTP streaming response
+   nftStreamingCallback: (StreamingCallbackToken) ->
+    (StreamingCallbackResponse) query;
+   /// * Refreshes the metadata of an NFT token.
+   ///     * @param {Text} token_id - The ID of the token whose metadata is to be refreshed.
+   ///     * @param {CandyTypes.CandyShared} metadata - The new metadata to store with the token.
+   ///     * @returns {Promise<Types.OrigynBoolResult>} A promise that resolves to a result containing a boolean indicating success or an error.
+   refresh_metadata_nft_origyn: (text, CandyShared) -> (OrigynBoolResult);
+   /// * Calculates the hash ID for a specific btree entry based on its token ID, library ID, index, and chunk.
+   ///     * @param {Text} tokenId - The ID of the token.
+   ///     * @param {Text} libraryId - The ID of the library.
+   ///     * @param {Nat} i - The index of the entry.
+   ///     * @param {Nat} chunk - The chunk number of the entry.
+   ///     * @returns {Hash.Hash} - The hash ID for the entry.
+   /// * Inserts a value into the btree storage.
+   ///     * @param {Text} tokenId - The ID of the token.
+   ///     * @param {Text} libraryId - The ID of the library.
+   ///     * @param {Nat} i - The index of the entry.
+   ///     * @param {Nat} chunk - The chunk number of the entry.
+   ///     * @param {Blob} value - The value to insert.
+   ///     * @returns {void}
+   /// * Retrieves a btree entry by key.
+   ///     * @param {Nat32} key - The key of the entry.
+   ///     * @returns {void}
+   /// * Retrieves all entries in the btree storage as an array of tuples containing the key and value.
+   ///     * @returns {Array.<{0: Nat32, 1: Array.<Nat8>}>} - An array of tuples containing the key and value of each entry in the btree storage.
+   /// * Retrieves all keys in the btree storage as an array.
+   ///     * @returns {Array.<Nat32>} - An array of all the keys in the btree storage.
+   /// * Retrieves all entries in the nft library storage as an array of tuples containing the token ID and the addressed chunk array for each library.
+   ///     * @returns {Array.<{0: Text, 1: Array.<{0: Text, 1: CandyTypes.AddressedChunkArray}>}>} - An array of tuples containing the token ID and the addressed chunk array for each library in the nft library storage.
+   show_nft_library_array: () ->
+    (vec record {
+           text;
+           vec record {
+                 text;
+                 AddressedChunkArray;
+               };
+         }) query;
+   /// * Stages a library for an NFT origyn.
+   ///     * @param chunk The chunk to stage.
+   ///     * @param allocation The allocation to record the staged library for.
+   ///     * @param metadata The metadata associated with the staged library.
+   ///     * @returns A `Result.Result` object containing a `Types.StageLibraryResponse` object if successful, otherwise a `Types.OrigynError` object.
+   stage_library_nft_origyn: (StageChunkArg, AllocationRecordStable,
+    CandyShared) -> (Result);
+   /// * Retrieves storage metrics for the container.
+   ///     * @returns {Promise<Types.StorageMetricsResult>} A promise that resolves to a result containing the storage metrics or an error.
+   storage_info_nft_origyn: () -> (StorageMetricsResult) query;
+   /// * Retrieves secure storage metrics for the container.
+   ///     * @returns {Promise<Types.StorageMetricsResult>} A promise that resolves to a result containing the storage metrics or an error.
+   storage_info_secure_nft_origyn: () -> (StorageMetricsResult);
+   whoami: () -> (principal) query;
+ };
+type StorageMetricsResult = 
+ variant {
+   err: OrigynError;
+   ok: StorageMetrics;
+ };
+type StorageMetrics = 
+ record {
+   allocated_storage: nat;
+   allocations: vec AllocationRecordStable;
+   available_space: nat;
+   gateway: principal;
+ };
+type StorageInitArgs = 
+ record {
+   gateway_canister: principal;
+   network: opt principal;
+   storage_space: opt nat;
+ };
+type StageLibraryResponse = record {canister: principal;};
+type StageChunkArg = 
+ record {
+   chunk: nat;
+   content: blob;
+   filedata: CandyShared;
+   library_id: text;
+   token_id: text;
+ };
+type Result = 
+ variant {
+   err: OrigynError;
+   ok: StageLibraryResponse;
+ };
+type PropertyShared = 
+ record {
+   immutable: bool;
+   name: text;
+   value: CandyShared;
+ };
+type Principal = principal;
+type OrigynError = 
+ record {
+   error: Errors;
+   flag_point: text;
+   number: nat32;
+   "text": text;
+ };
+type OrigynBoolResult = 
+ variant {
+   err: OrigynError;
+   ok: bool;
+ };
+type HttpRequest = 
+ record {
+   body: blob;
+   headers: vec HeaderField;
+   method: text;
+   url: text;
+ };
+type HeaderField = 
+ record {
+   text;
+   text;
+ };
+type HTTPResponse = 
+ record {
+   body: blob;
+   headers: vec HeaderField;
+   status_code: nat16;
+   streaming_strategy: opt StreamingStrategy;
+ };
+type Errors = 
+ variant {
+   app_id_not_found;
+   asset_mismatch;
+   attempt_to_stage_system_data;
+   auction_ended;
+   auction_not_started;
+   bid_too_low;
+   cannot_find_status_in_metadata;
+   cannot_restage_minted_token;
+   content_not_deserializable;
+   content_not_found;
+   deposit_burned;
+   escrow_cannot_be_removed;
+   escrow_owner_not_the_owner;
+   escrow_withdraw_payment_failed;
+   existing_sale_found;
+   id_not_found_in_metadata;
+   improper_interface;
+   item_already_minted;
+   item_not_owned;
+   kyc_error;
+   kyc_fail;
+   library_not_found;
+   malformed_metadata;
+   no_escrow_found;
+   not_enough_storage;
+   nyi;
+   out_of_range;
+   owner_not_found;
+   property_not_found;
+   receipt_data_mismatch;
+   sale_id_does_not_match;
+   sale_not_found;
+   sale_not_over;
+   sales_withdraw_payment_failed;
+   storage_configuration_error;
+   token_id_mismatch;
+   token_non_transferable;
+   token_not_found;
+   unauthorized_access;
+   unreachable;
+   update_class_error;
+   validate_deposit_failed;
+   validate_deposit_wrong_amount;
+   validate_deposit_wrong_buyer;
+   validate_trx_wrong_host;
+   withdraw_too_large;
+ };
+type ChunkResult = 
+ variant {
+   err: OrigynError;
+   ok: ChunkContent;
+ };
+type ChunkRequest = 
+ record {
+   chunk: opt nat;
+   library_id: text;
+   token_id: text;
+ };
+type ChunkContent = 
+ variant {
+   chunk:
+    record {
+      content: blob;
+      current_chunk: opt nat;
+      storage_allocation: AllocationRecordStable;
+      total_chunks: nat;
+    };
+   remote: record {
+             args: ChunkRequest;
+             canister: principal;
+           };
+ };
+type CandyShared = 
+ variant {
+   Array: vec CandyShared;
+   Blob: blob;
+   Bool: bool;
+   Bytes: vec nat8;
+   Class: vec PropertyShared;
+   Float: float64;
+   Floats: vec float64;
+   Int: int;
+   Int16: int16;
+   Int32: int32;
+   Int64: int64;
+   Int8: int8;
+   Ints: vec int;
+   Map: vec record {
+              CandyShared;
+              CandyShared;
+            };
+   Nat: nat;
+   Nat16: nat16;
+   Nat32: nat32;
+   Nat64: nat64;
+   Nat8: nat8;
+   Nats: vec nat;
+   Option: opt CandyShared;
+   Principal: principal;
+   Set: vec CandyShared;
+   Text: text;
+ };
+type AllocationRecordStable = 
+ record {
+   allocated_space: nat;
+   available_space: nat;
+   canister: principal;
+   chunks: vec nat;
+   library_id: text;
+   token_id: text;
+ };
+type AddressedChunkArray = vec AddressedChunk;
+type AddressedChunk = 
+ record {
+   nat;
+   nat;
+   CandyShared;
+ };
+service : (StorageInitArgs) -> Storage_Canister

@@ -1,0 +1,207 @@
+type AddressedChunk = record { nat; nat; CandyShared };
+type AddressedChunkArray = vec AddressedChunk;
+type AllocationRecordStable = record {
+  allocated_space : nat;
+  token_id : text;
+  available_space : nat;
+  canister : principal;
+  chunks : vec nat;
+  library_id : text;
+};
+type CandyShared = variant {
+  Int : int;
+  Map : vec record { CandyShared; CandyShared };
+  Nat : nat;
+  Set : vec CandyShared;
+  Nat16 : nat16;
+  Nat32 : nat32;
+  Nat64 : nat64;
+  Blob : vec nat8;
+  Bool : bool;
+  Int8 : int8;
+  Ints : vec int;
+  Nat8 : nat8;
+  Nats : vec nat;
+  Text : text;
+  Bytes : vec nat8;
+  Int16 : int16;
+  Int32 : int32;
+  Int64 : int64;
+  Option : opt CandyShared;
+  Floats : vec float64;
+  Float : float64;
+  Principal : principal;
+  Array : vec CandyShared;
+  Class : vec PropertyShared;
+};
+type ChunkContent = variant {
+  remote : record { args : ChunkRequest; canister : principal };
+  chunk : record {
+    total_chunks : nat;
+    content : vec nat8;
+    storage_allocation : AllocationRecordStable;
+    current_chunk : opt nat;
+  };
+};
+type ChunkRequest = record {
+  token_id : text;
+  chunk : opt nat;
+  library_id : text;
+};
+type ChunkResult = variant { ok : ChunkContent; err : OrigynError };
+type Errors = variant {
+  nyi;
+  storage_configuration_error;
+  escrow_withdraw_payment_failed;
+  token_not_found;
+  owner_not_found;
+  content_not_found;
+  auction_ended;
+  out_of_range;
+  sale_id_does_not_match;
+  sale_not_found;
+  kyc_fail;
+  item_not_owned;
+  property_not_found;
+  validate_trx_wrong_host;
+  withdraw_too_large;
+  content_not_deserializable;
+  bid_too_low;
+  validate_deposit_wrong_amount;
+  existing_sale_found;
+  asset_mismatch;
+  escrow_cannot_be_removed;
+  deposit_burned;
+  cannot_restage_minted_token;
+  cannot_find_status_in_metadata;
+  receipt_data_mismatch;
+  validate_deposit_failed;
+  unreachable;
+  unauthorized_access;
+  item_already_minted;
+  no_escrow_found;
+  escrow_owner_not_the_owner;
+  improper_interface;
+  app_id_not_found;
+  token_non_transferable;
+  kyc_error;
+  sale_not_over;
+  update_class_error;
+  malformed_metadata;
+  token_id_mismatch;
+  id_not_found_in_metadata;
+  auction_not_started;
+  library_not_found;
+  attempt_to_stage_system_data;
+  validate_deposit_wrong_buyer;
+  not_enough_storage;
+  sales_withdraw_payment_failed;
+};
+type HTTPResponse = record {
+  body : vec nat8;
+  headers : vec HeaderField;
+  streaming_strategy : opt StreamingStrategy;
+  status_code : nat16;
+};
+type HeaderField = record { text; text };
+type HttpRequest = record {
+  url : text;
+  method : text;
+  body : vec nat8;
+  headers : vec HeaderField;
+};
+type OrigynBoolResult = variant { ok : bool; err : OrigynError };
+type OrigynError = record {
+  "text" : text;
+  error : Errors;
+  number : nat32;
+  flag_point : text;
+};
+type Principal = principal;
+type PropertyShared = record {
+  value : CandyShared;
+  name : text;
+  immutable : bool;
+};
+type Result = variant { ok : StageLibraryResponse; err : OrigynError };
+type StageChunkArg = record {
+  content : vec nat8;
+  token_id : text;
+  chunk : nat;
+  filedata : CandyShared;
+  library_id : text;
+};
+type StageLibraryResponse = record { canister : principal };
+type StorageInitArgs = record {
+  network : opt principal;
+  storage_space : opt nat;
+  gateway_canister : principal;
+};
+type StorageMetrics = record {
+  gateway : principal;
+  available_space : nat;
+  allocations : vec AllocationRecordStable;
+  allocated_storage : nat;
+};
+type StorageMetricsResult = variant { ok : StorageMetrics; err : OrigynError };
+type Storage_Canister = service {
+  __advance_time : (int) -> (int);
+  __set_time_mode : (variant { test; standard }) -> (bool);
+  __version : () -> (text) query;
+  canister_status : (record { canister_id : canister_id }) -> (canister_status);
+  chunk_nft_origyn : (ChunkRequest) -> (ChunkResult) query;
+  chunk_secure_nft_origyn : (ChunkRequest) -> (ChunkResult);
+  cycles : () -> (nat) query;
+  get_collection_managers_nft_origyn : () -> (vec Principal) query;
+  get_collection_network_nft_origyn : () -> (opt Principal) query;
+  get_collection_owner_nft_origyn : () -> (Principal) query;
+  http_request : (HttpRequest) -> (HTTPResponse) query;
+  http_request_streaming_callback : (StreamingCallbackToken) -> (
+      StreamingCallbackResponse,
+    ) query;
+  nftStreamingCallback : (StreamingCallbackToken) -> (
+      StreamingCallbackResponse,
+    ) query;
+  refresh_metadata_nft_origyn : (text, CandyShared) -> (OrigynBoolResult);
+  show_nft_library_array : () -> (
+      vec record { text; vec record { text; AddressedChunkArray } },
+    ) query;
+  stage_library_nft_origyn : (
+      StageChunkArg,
+      AllocationRecordStable,
+      CandyShared,
+    ) -> (Result);
+  storage_info_nft_origyn : () -> (StorageMetricsResult) query;
+  storage_info_secure_nft_origyn : () -> (StorageMetricsResult);
+  whoami : () -> (principal) query;
+};
+type StreamingCallbackResponse = record {
+  token : opt StreamingCallbackToken;
+  body : vec nat8;
+};
+type StreamingCallbackToken = record {
+  key : text;
+  index : nat;
+  content_encoding : text;
+};
+type StreamingStrategy = variant {
+  Callback : record {
+    token : StreamingCallbackToken;
+    callback : func () -> ();
+  };
+};
+type canister_id = principal;
+type canister_status = record {
+  status : variant { stopped; stopping; running };
+  memory_size : nat;
+  cycles : nat;
+  settings : definite_canister_settings;
+  module_hash : opt vec nat8;
+};
+type definite_canister_settings = record {
+  freezing_threshold : nat;
+  controllers : opt vec principal;
+  memory_allocation : nat;
+  compute_allocation : nat;
+};
+service : (StorageInitArgs) -> Storage_Canister

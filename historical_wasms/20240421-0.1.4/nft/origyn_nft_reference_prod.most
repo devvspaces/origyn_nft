@@ -1,0 +1,978 @@
+// Version: 1.0.0
+type Account =
+  {
+    #account : {owner : Principal; sub_account : ?Blob};
+    #account_id : Text;
+    #extensible : CandyValue;
+    #principal : Principal
+  };
+type Account__1 = Account;
+type Account__2 =
+  {
+    #account : {owner : Principal; sub_account : ?Blob};
+    #account_id : Text;
+    #extensible : CandyShared;
+    #principal : Principal
+  };
+type AddressedChunkArray__1 = [AddressedChunk__1];
+type AddressedChunkArray__2 = [AddressedChunk__2];
+type AddressedChunk__1 = (Nat, Nat, CandyValue__1);
+type AddressedChunk__2 = (Nat, Nat, CandyShared);
+type AllocationRecord =
+  {
+    allocated_space : Nat;
+    var available_space : Nat;
+    canister : Principal;
+    var chunks : StableBuffer<Nat>;
+    library_id : Text;
+    token_id : Text
+  };
+type AllocationRecord__1 = AllocationRecord;
+type AllocationRecord__2 = AllocationRecord__1;
+type AuctionConfig =
+  {
+    allow_list : ?[Principal];
+    buy_now : ?Nat;
+    ending :
+      {
+        #date : Int;
+        #waitForQuiet :
+          {date : Int; extention : Nat64; fade : Float; max : Nat}
+      };
+    min_increase : {#amount : Nat; #percentage : Float};
+    reserve : ?Nat;
+    start_date : Int;
+    start_price : Nat;
+    token : TokenSpec
+  };
+type AuctionConfig__2 =
+  {
+    allow_list : ?[Principal];
+    buy_now : ?Nat;
+    ending :
+      {
+        #date : Int;
+        #waitForQuiet :
+          {date : Int; extention : Nat64; fade : Float; max : Nat}
+      };
+    min_increase : {#amount : Nat; #percentage : Float};
+    reserve : ?Nat;
+    start_date : Int;
+    start_price : Nat;
+    token : TokenSpec__3
+  };
+type AuctionState =
+  {
+    var allow_list : ?Map<Principal, Bool>;
+    config : PricingConfig;
+    var current_bid_amount : Nat;
+    var current_broker_id : ?Principal;
+    var current_escrow : ?EscrowReceipt;
+    var end_date : Int;
+    var min_next_bid : Nat;
+    var participants : Map<Principal, Int>;
+    var status : {#closed; #not_started; #open};
+    var wait_for_quiet_count : ?Nat;
+    var winner : ?Account
+  };
+type AuctionState__2 =
+  {
+    var allow_list : ?Map__1<Principal, Bool>;
+    config : PricingConfig__2;
+    var current_bid_amount : Nat;
+    var current_broker_id : ?Principal;
+    var current_escrow : ?EscrowReceipt__2;
+    var end_date : Int;
+    var min_next_bid : Nat;
+    var participants : Map__1<Principal, Int>;
+    var status : {#closed; #not_started; #open};
+    var wait_for_quiet_count : ?Nat;
+    var winner : ?Account__2
+  };
+type Broadcast =
+  actor {
+    confirmEventReceipt :
+      shared ConfirmEventParams -> async ConfirmEventResponse;
+    publish : shared PublishParams -> async PublishResponse
+  };
+type BroadcastIdsParams = ();
+type BroadcastIdsResponse =
+  {
+    activeBroadcastIds : [Principal];
+    broadcastIds : [Principal];
+    broadcastVersion : Nat64
+  };
+type BucketData =
+  {
+    var allocated_space : Nat;
+    var allocations : Map<(Text, Text), Int>;
+    var available_space : Nat;
+    b_gateway : Bool;
+    date_added : Int;
+    principal : Principal;
+    var version : (Nat, Nat, Nat)
+  };
+type BucketData__1 =
+  {
+    var allocated_space : Nat;
+    var allocations : Map__1<(Text, Text), Int>;
+    var available_space : Nat;
+    b_gateway : Bool;
+    date_added : Int;
+    principal : Principal;
+    var version : (Nat, Nat, Nat)
+  };
+type BucketData__2 = BucketData__1;
+type Caller = ?Principal;
+type Caller__1 = ?Principal;
+type CandyShared =
+  {
+    #Array : [CandyShared];
+    #Blob : Blob;
+    #Bool : Bool;
+    #Bytes : [Nat8];
+    #Class : [PropertyShared];
+    #Float : Float;
+    #Floats : [Float];
+    #Int : Int;
+    #Int16 : Int16;
+    #Int32 : Int32;
+    #Int64 : Int64;
+    #Int8 : Int8;
+    #Ints : [Int];
+    #Map : [(CandyShared, CandyShared)];
+    #Nat : Nat;
+    #Nat16 : Nat16;
+    #Nat32 : Nat32;
+    #Nat64 : Nat64;
+    #Nat8 : Nat8;
+    #Nats : [Nat];
+    #Option : ?CandyShared;
+    #Principal : Principal;
+    #Set : [CandyShared];
+    #Text : Text
+  };
+type CandyValue =
+  {
+    #Array : {#frozen : [CandyValue]; #thawed : [CandyValue]};
+    #Blob : Blob;
+    #Bool : Bool;
+    #Bytes : {#frozen : [Nat8]; #thawed : [Nat8]};
+    #Class : [Property];
+    #Empty;
+    #Float : Float;
+    #Floats : {#frozen : [Float]; #thawed : [Float]};
+    #Int : Int;
+    #Int16 : Int16;
+    #Int32 : Int32;
+    #Int64 : Int64;
+    #Int8 : Int8;
+    #Nat : Nat;
+    #Nat16 : Nat16;
+    #Nat32 : Nat32;
+    #Nat64 : Nat64;
+    #Nat8 : Nat8;
+    #Nats : {#frozen : [Nat]; #thawed : [Nat]};
+    #Option : ?CandyValue;
+    #Principal : Principal;
+    #Text : Text
+  };
+type CandyValue__1 =
+  {
+    #Array : {#frozen : [CandyValue__1]; #thawed : [CandyValue__1]};
+    #Blob : Blob;
+    #Bool : Bool;
+    #Bytes : {#frozen : [Nat8]; #thawed : [Nat8]};
+    #Class : [Property__1];
+    #Empty;
+    #Float : Float;
+    #Floats : {#frozen : [Float]; #thawed : [Float]};
+    #Int : Int;
+    #Int16 : Int16;
+    #Int32 : Int32;
+    #Int64 : Int64;
+    #Int8 : Int8;
+    #Nat : Nat;
+    #Nat16 : Nat16;
+    #Nat32 : Nat32;
+    #Nat64 : Nat64;
+    #Nat8 : Nat8;
+    #Nats : {#frozen : [Nat]; #thawed : [Nat]};
+    #Option : ?CandyValue__1;
+    #Principal : Principal;
+    #Text : Text
+  };
+type CandyValue__4 =
+  {
+    #Array : {#frozen : [CandyValue__4]; #thawed : [CandyValue__4]};
+    #Blob : Blob;
+    #Bool : Bool;
+    #Bytes : {#frozen : [Nat8]; #thawed : [Nat8]};
+    #Class : [Property__8];
+    #Empty;
+    #Float : Float;
+    #Floats : {#frozen : [Float]; #thawed : [Float]};
+    #Int : Int;
+    #Int16 : Int16;
+    #Int32 : Int32;
+    #Int64 : Int64;
+    #Int8 : Int8;
+    #Nat : Nat;
+    #Nat16 : Nat16;
+    #Nat32 : Nat32;
+    #Nat64 : Nat64;
+    #Nat8 : Nat8;
+    #Nats : {#frozen : [Nat]; #thawed : [Nat]};
+    #Option : ?CandyValue__4;
+    #Principal : Principal;
+    #Text : Text
+  };
+type CollectionData =
+  {
+    var active_bucket : ?Principal;
+    var allocated_storage : Nat;
+    var available_space : Nat;
+    var logo : ?Text;
+    var managers : [Principal];
+    var metadata : ?CandyValue;
+    var name : ?Text;
+    var network : ?Principal;
+    var owner : Principal;
+    var symbol : ?Text
+  };
+type CollectionData__1 = CollectionData;
+type CollectionData__2 =
+  {
+    var active_bucket : ?Principal;
+    var allocated_storage : Nat;
+    var announce_canister : ?Principal;
+    var available_space : Nat;
+    var logo : ?Text;
+    var managers : [Principal];
+    var metadata : ?CandyShared;
+    var name : ?Text;
+    var network : ?Principal;
+    var owner : Principal;
+    var symbol : ?Text
+  };
+type ConfirmEventParams = Nat;
+type ConfirmEventResponse = {confirmed : Bool};
+type Data = CandyShared;
+type Data__1 = CandyValue__4;
+type DayCanisterCyclesData = [var Nat64];
+type DayCanisterCyclesData__1 = [var Nat64];
+type DayCanisterHeapMemorySizeData = [var Nat64];
+type DayCanisterHeapMemorySizeData__1 = [var Nat64];
+type DayCanisterMemorySizeData = [var Nat64];
+type DayCanisterMemorySizeData__1 = [var Nat64];
+type DayData =
+  {
+    canisterCyclesData : DayCanisterCyclesData;
+    canisterHeapMemorySizeData : DayCanisterHeapMemorySizeData;
+    canisterMemorySizeData : DayCanisterMemorySizeData;
+    updateCallsData : DayUpdateCallsCountData
+  };
+type DayDataId = Nat32;
+type DayDataId__1 = Nat32;
+type DayData__1 =
+  {
+    canisterCyclesData : DayCanisterCyclesData__1;
+    canisterHeapMemorySizeData : DayCanisterHeapMemorySizeData__1;
+    canisterMemorySizeData : DayCanisterMemorySizeData__1;
+    updateCallsData : DayUpdateCallsCountData__1
+  };
+type DayUpdateCallsCountData = [var Nat64];
+type DayUpdateCallsCountData__1 = [var Nat64];
+type Droute =
+  {
+    var blacklistedCallers : Set__1<Principal>;
+    var broadcastActors : [Broadcast];
+    var broadcastIds : Set__1<Principal>;
+    var broadcastVersion : Nat64;
+    var initialized : Bool;
+    mainActor : Main;
+    publishersIndexActor : PublishersIndex;
+    var randomSeed : Nat32;
+    subscribersIndexActor : SubscribersIndex
+  };
+type DutchConfig =
+  {
+    allow_list : ?[Principal];
+    decay_per_hour : {#flat : Nat; #percent : Float};
+    reserve : ?Nat;
+    start_date : Int;
+    start_price : Nat;
+    token : TokenSpec__3
+  };
+type DutchState =
+  {
+    var allow_list : ?Map__1<Principal, Bool>;
+    config : PricingConfig__2;
+    var current_broker_id : ?Principal;
+    var end_date : ?Int;
+    var status : {#closed; #not_started; #open};
+    var winner : ?Account__2
+  };
+type Entry<K, V> = (?K, ?V, Nat, Nat);
+type Entry__1<K, V> = (?K, ?V, Nat, Nat);
+type Entry__5<K> = (?K, Nat, Nat);
+type EscrowBuyerTrie =
+  Map<Account, Map<Account, Map<Text, Map<TokenSpec, EscrowRecord>>>>;
+type EscrowBuyerTrie__1 =
+  Map__1<Account__1,
+          Map__1<Account__1,
+                  Map__1<Text, Map__1<TokenSpec__1, EscrowRecord__1>>>>;
+type EscrowBuyerTrie__2 =
+  Map__1<Account__2,
+          Map__1<Account__2,
+                  Map__1<Text, Map__1<TokenSpec__3, EscrowRecord__2>>>>;
+type EscrowReceipt =
+  {
+    amount : Nat;
+    buyer : Account;
+    seller : Account;
+    token : TokenSpec;
+    token_id : Text
+  };
+type EscrowReceipt__2 =
+  {
+    amount : Nat;
+    buyer : Account__2;
+    seller : Account__2;
+    token : TokenSpec__3;
+    token_id : Text
+  };
+type EscrowRecord =
+  {
+    account_hash : ?Blob;
+    amount : Nat;
+    buyer : Account;
+    lock_to_date : ?Int;
+    sale_id : ?Text;
+    seller : Account;
+    token : TokenSpec;
+    token_id : Text
+  };
+type EscrowRecord__1 = EscrowRecord;
+type EscrowRecord__2 =
+  {
+    account_hash : ?Blob;
+    amount : Nat;
+    buyer : Account__2;
+    lock_to_date : ?Int;
+    sale_id : ?Text;
+    seller : Account__2;
+    token : TokenSpec__3;
+    token_id : Text
+  };
+type HttpAccess = {expires : Int; identity : Principal};
+type HttpAccess__1 = HttpAccess;
+type ICTokenSpec =
+  {
+    canister : Principal;
+    decimals : Nat;
+    fee : Nat;
+    standard : {#DIP20; #EXTFungible; #ICRC1; #Ledger};
+    symbol : Text
+  };
+type ICTokenSpec__2 =
+  {
+    canister : Principal;
+    decimals : Nat;
+    fee : ?Nat;
+    id : ?Nat;
+    standard : {#DIP20; #EXTFungible; #ICRC1; #Ledger; #Other : CandyShared};
+    symbol : Text
+  };
+type ICTokenSpec__3 =
+  {
+    canister : Principal;
+    decimals : Nat;
+    fee : ?Nat;
+    id : ?Nat;
+    standard : {#DIP20; #EXTFungible; #ICRC1; #Ledger; #Other : CandyShared};
+    symbol : Text
+  };
+type KYCAccount =
+  {
+    #Account : [Nat8];
+    #Extensible : CandyShared;
+    #ICRC1 : {owner : Principal; subaccount : ?[Nat8]}
+  };
+type KYCRequest =
+  {
+    amount : ?Nat;
+    canister : Principal;
+    counterparty : KYCAccount;
+    extensible : ?CandyShared;
+    token : ?TokenSpec__2
+  };
+type KYCResult =
+  {
+    aml : {#Fail; #NA; #Pass};
+    amount : ?Nat;
+    kyc : {#Fail; #NA; #Pass};
+    message : ?Text;
+    token : ?TokenSpec__2
+  };
+type KYCResultFuture = {result : KYCResult; timeout : Int};
+type LogEntry =
+  {caller : ?Principal; data : CandyValue; event : Text; timestamp : Int};
+type LogMessageArray = [LogMessagesData];
+type LogMessageArray__1 = [LogMessagesData__1];
+type LogMessagesData =
+  {caller : Caller; data : Data; message : Text; timeNanos : Nanos};
+type LogMessagesData__1 =
+  {caller : Caller__1; data : Data__1; message : Text; timeNanos : Nanos__1};
+type LoggerUpgradeData = UpgradeData__1;
+type LoggerUpgradeData__1 = UpgradeData__4;
+type Main =
+  actor {
+    getBroadcastIds :
+      shared query BroadcastIdsParams -> async BroadcastIdsResponse
+  };
+type Map<K, V> = {var body : ([var Nat], [var Entry<K, V>], Nat, Nat, Nat)};
+type Map__1<K, V> =
+  {var body : ([var Nat], [var Entry__1<K, V>], Nat, Nat, Nat)};
+type Nanos = Nat64;
+type Nanos__1 = Nat64;
+type NiftyConfig =
+  {
+    amount : Nat;
+    duration : ?Int;
+    expiration : ?Int;
+    fixed : Bool;
+    interestRatePerSecond : Float;
+    lenderOffer : Bool;
+    token : TokenSpec__3
+  };
+type NiftyState =
+  {
+    var allow_list : ?Map__1<Principal, Bool>;
+    config : PricingConfig__2;
+    var current_broker_id : ?Principal;
+    var end_date : Int;
+    var min_bid : Nat;
+    var status : {#closed; #not_started; #open};
+    var winner : ?Account__2
+  };
+type PricingConfig =
+  {
+    #auction : AuctionConfig;
+    #dutch : {decay_per_hour : Float; reserve : ?Nat; start_price : Nat};
+    #extensible : {#candyClass};
+    #flat : {amount : Nat; token : TokenSpec};
+    #instant
+  };
+type PricingConfig__2 =
+  {
+    #auction : AuctionConfig__2;
+    #dutch : DutchConfig;
+    #extensible : CandyShared;
+    #flat : {amount : Nat; token : TokenSpec__3};
+    #instant;
+    #nifty : NiftyConfig
+  };
+type Property = {immutable : Bool; name : Text; value : CandyValue};
+type PropertyShared = {immutable : Bool; name : Text; value : CandyShared};
+type Property__1 = {immutable : Bool; name : Text; value : CandyValue__1};
+type Property__8 = {immutable : Bool; name : Text; value : CandyValue__4};
+type PublicationInfoOptions = {includeWhitelist : ?Bool};
+type PublicationInfoParams = (Text, ?PublicationInfoOptions);
+type PublicationInfoResponse = ?SharedPublication;
+type PublicationOptions =
+  {
+    includeWhitelist : ?Bool;
+    whitelist : ?[Principal];
+    whitelistAdd : ?[Principal];
+    whitelistRemove : ?[Principal]
+  };
+type PublicationParams = (Text, ?PublicationOptions);
+type PublicationResponse =
+  {
+    prevPublicationInfo : ?SharedPublication;
+    publicationInfo : SharedPublication
+  };
+type PublicationStatsOptions = {active : ?Bool; eventNames : ?[Text]};
+type PublicationStatsParams = ?PublicationStatsOptions;
+type PublicationStatsResponse = SharedStats;
+type PublishParams = (Text, CandyValue__4);
+type PublishResponse = {broadcastVersion : Nat64; eventInfo : SharedEvent};
+type PublisherInfoOptions = {includePublications : ?Bool};
+type PublisherInfoParams = ?PublisherInfoOptions;
+type PublisherInfoResponse = ?SharedPublisher;
+type PublisherOptions = {includePublications : ?Bool};
+type PublisherParams = ?PublisherOptions;
+type PublisherResponse =
+  {prevPublisherInfo : ?SharedPublisher; publisherInfo : SharedPublisher};
+type PublishersIndex =
+  actor {
+    getPublicationInfo :
+      shared PublicationInfoParams -> async PublicationInfoResponse;
+    getPublicationStats :
+      shared PublicationStatsParams -> async PublicationStatsResponse;
+    getPublisherInfo :
+      shared PublisherInfoParams -> async PublisherInfoResponse;
+    registerPublication :
+      shared PublicationParams -> async PublicationResponse;
+    registerPublisher : shared PublisherParams -> async PublisherResponse;
+    removePublication :
+      shared RemovePublicationParams -> async RemovePublicationResponse
+  };
+type RemovePublicationOptions = {includeWhitelist : ?Bool; purge : ?Bool};
+type RemovePublicationParams = (Text, ?RemovePublicationOptions);
+type RemovePublicationResponse =
+  {
+    prevPublicationInfo : ?SharedPublication;
+    publicationInfo : ?SharedPublication
+  };
+type SaleStatus =
+  {
+    broker_id : ?Principal;
+    original_broker_id : ?Principal;
+    sale_id : Text;
+    sale_type : {#auction : AuctionState};
+    token_id : Text
+  };
+type SaleStatus__1 = SaleStatus;
+type SaleStatus__2 =
+  {
+    broker_id : ?Principal;
+    original_broker_id : ?Principal;
+    sale_id : Text;
+    sale_type :
+      {#auction : AuctionState__2; #dutch : DutchState; #nifty : NiftyState};
+    token_id : Text
+  };
+type SalesSellerTrie =
+  Map<Account, Map<Account, Map<Text, Map<TokenSpec, EscrowRecord>>>>;
+type SalesSellerTrie__1 =
+  Map__1<Account__1,
+          Map__1<Account__1,
+                  Map__1<Text, Map__1<TokenSpec__1, EscrowRecord__1>>>>;
+type SalesSellerTrie__2 =
+  Map__1<Account__2,
+          Map__1<Account__2,
+                  Map__1<Text, Map__1<TokenSpec__3, EscrowRecord__2>>>>;
+type Set__1<K> = {var body : ([var Nat], [var Entry__5<K>], Nat, Nat, Nat)};
+type SharedEvent =
+  {
+    createdAt : Nat64;
+    eventName : Text;
+    id : Nat;
+    nextBroadcastTime : Nat64;
+    numberOfAttempts : Nat8;
+    payload : CandyValue__4;
+    publisherId : Principal
+  };
+type SharedPublication =
+  {
+    active : Bool;
+    createdAt : Nat64;
+    eventName : Text;
+    publisherId : Principal;
+    stats : SharedStats;
+    whitelist : [Principal]
+  };
+type SharedPublisher =
+  {
+    activePublications : Nat8;
+    createdAt : Nat64;
+    id : Principal;
+    publications : [Text]
+  };
+type SharedStats =
+  {
+    numberOfConfirmations : Nat64;
+    numberOfEvents : Nat64;
+    numberOfNotifications : Nat64;
+    numberOfRequestedNotifications : Nat64;
+    numberOfResendNotifications : Nat64
+  };
+type SharedSubscriber =
+  {
+    activeSubscriptions : Nat8;
+    confirmedListeners : [Principal];
+    createdAt : Nat64;
+    id : Principal;
+    listeners : [Principal];
+    subscriptions : [Text]
+  };
+type SharedSubscription =
+  {
+    active : Bool;
+    createdAt : Nat64;
+    eventName : Text;
+    filter : ?Text;
+    rate : Nat32;
+    stats : SharedStats;
+    stopped : Bool;
+    subscriberId : Principal
+  };
+type StableBuffer<X> =
+  {var count : Nat; var elems : [var X]; initCapacity : Nat};
+type State =
+  {
+    var allocations : Map<(Text, Text), AllocationRecord>;
+    var buckets : Map<Principal, BucketData>;
+    var canister_allocated_storage : Nat;
+    var canister_availible_space : Nat;
+    var collection_data : CollectionData;
+    var escrow_balances : EscrowBuyerTrie;
+    var log : StableBuffer<LogEntry>;
+    var log_harvester : Principal;
+    var log_history : StableBuffer<[LogEntry]>;
+    var nft_ledgers : Map<Text, StableBuffer<TransactionRecord>>;
+    var nft_metadata : Map<Text, CandyValue>;
+    var nft_sales : Map<Text, SaleStatus>;
+    var offers : Map<Account, Map<Account, Int>>;
+    var sales_balances : SalesSellerTrie
+  };
+type State__1 =
+  {
+    var access_tokens : Map__1<Text, HttpAccess>;
+    var allocations : Map__1<(Text, Text), AllocationRecord__1>;
+    var buckets : Map__1<Principal, BucketData__1>;
+    var canister_allocated_storage : Nat;
+    var canister_availible_space : Nat;
+    var collection_data : CollectionData__1;
+    var escrow_balances : EscrowBuyerTrie__1;
+    var nft_ledgers : Map__1<Text, StableBuffer<TransactionRecord__1>>;
+    var nft_metadata : Map__1<Text, CandyValue__1>;
+    var nft_sales : Map__1<Text, SaleStatus__1>;
+    var offers : Map__1<Account__1, Map__1<Account__1, Int>>;
+    var sales_balances : SalesSellerTrie__1
+  };
+type State__4 =
+  {
+    var access_tokens : Map__1<Text, HttpAccess__1>;
+    var allocations : Map__1<(Text, Text), AllocationRecord__2>;
+    var buckets : Map__1<Principal, BucketData__2>;
+    var canister_allocated_storage : Nat;
+    var canister_availible_space : Nat;
+    var collection_data : CollectionData__2;
+    var droute : Droute;
+    var escrow_balances : EscrowBuyerTrie__2;
+    var kyc_cache : Map__1<KYCRequest, KYCResultFuture>;
+    var nft_ledgers : Map__1<Text, StableBuffer<TransactionRecord__2>>;
+    var nft_metadata : Map__1<Text, CandyShared>;
+    var nft_sales : Map__1<Text, SaleStatus__2>;
+    var offers : Map__1<Account__2, Map__1<Account__2, Int>>;
+    var sales_balances : SalesSellerTrie__2;
+    var use_stableBTree : Bool
+  };
+type SubscriberInfoOptions =
+  {includeListeners : ?Bool; includeSubscriptions : ?Bool};
+type SubscriberInfoParams = ?SubscriberInfoOptions;
+type SubscriberInfoResponse = ?SharedSubscriber;
+type SubscriberOptions =
+  {
+    includeListeners : ?Bool;
+    includeSubscriptions : ?Bool;
+    listeners : ?[Principal];
+    listenersAdd : ?[Principal];
+    listenersRemove : ?[Principal]
+  };
+type SubscriberParams = ?SubscriberOptions;
+type SubscriberResponse =
+  {prevSubscriberInfo : ?SharedSubscriber; subscriberInfo : SharedSubscriber};
+type SubscribersIndex =
+  actor {
+    getSubscriberInfo :
+      shared SubscriberInfoParams -> async SubscriberInfoResponse;
+    getSubscriptionInfo :
+      shared SubscriptionInfoParams -> async SubscriptionInfoResponse;
+    getSubscriptionStats :
+      shared SubscriptionStatsParams -> async SubscriptionStatsResponse;
+    registerSubscriber : shared SubscriberParams -> async SubscriberResponse;
+    subscribe : shared SubscriptionParams -> async SubscriptionResponse;
+    unsubscribe : shared UnsubscribeParams -> async UnsubscribeResponse
+  };
+type SubscriptionInfoParams = Text;
+type SubscriptionInfoResponse = ?SharedSubscription;
+type SubscriptionOptions = {filter : ??Text; rate : ?Nat32; stopped : ?Bool};
+type SubscriptionParams = (Text, ?SubscriptionOptions);
+type SubscriptionResponse =
+  {
+    prevSubscriptionInfo : ?SharedSubscription;
+    subscriptionInfo : SharedSubscription
+  };
+type SubscriptionStatsOptions = {active : ?Bool; eventNames : ?[Text]};
+type SubscriptionStatsParams = ?SubscriptionStatsOptions;
+type SubscriptionStatsResponse = SharedStats;
+type TokenSpec = {#extensible : CandyValue; #ic : ICTokenSpec};
+type TokenSpec__1 = TokenSpec;
+type TokenSpec__2 = {#Extensible : CandyShared; #IC : ICTokenSpec__2};
+type TokenSpec__3 = {#extensible : CandyShared; #ic : ICTokenSpec__3};
+type TransactionID = {#extensible : CandyValue; #nat : Nat; #text : Text};
+type TransactionID__2 = {#extensible : CandyShared; #nat : Nat; #text : Text};
+type TransactionRecord =
+  {
+    index : Nat;
+    timestamp : Int;
+    token_id : Text;
+    txn_type :
+      {
+        #auction_bid :
+          {
+            amount : Nat;
+            buyer : Account;
+            extensible : CandyValue;
+            sale_id : Text;
+            token : TokenSpec
+          };
+        #burn;
+        #canister_managers_updated :
+          {extensible : CandyValue; managers : [Principal]};
+        #canister_network_updated :
+          {extensible : CandyValue; network : Principal};
+        #canister_owner_updated :
+          {extensible : CandyValue; owner : Principal};
+        #data;
+        #deposit_withdraw :
+          {
+            amount : Nat;
+            buyer : Account;
+            extensible : CandyValue;
+            fee : Nat;
+            token : TokenSpec;
+            trx_id : TransactionID
+          };
+        #escrow_deposit :
+          {
+            amount : Nat;
+            buyer : Account;
+            extensible : CandyValue;
+            seller : Account;
+            token : TokenSpec;
+            token_id : Text;
+            trx_id : TransactionID
+          };
+        #escrow_withdraw :
+          {
+            amount : Nat;
+            buyer : Account;
+            extensible : CandyValue;
+            fee : Nat;
+            seller : Account;
+            token : TokenSpec;
+            token_id : Text;
+            trx_id : TransactionID
+          };
+        #extensible : CandyValue;
+        #mint :
+          {
+            extensible : CandyValue;
+            from : Account;
+            sale : ?{amount : Nat; token : TokenSpec};
+            to : Account
+          };
+        #owner_transfer :
+          {extensible : CandyValue; from : Account; to : Account};
+        #royalty_paid :
+          {
+            amount : Nat;
+            buyer : Account;
+            extensible : CandyValue;
+            reciever : Account;
+            sale_id : ?Text;
+            seller : Account;
+            tag : Text;
+            token : TokenSpec
+          };
+        #sale_ended :
+          {
+            amount : Nat;
+            buyer : Account;
+            extensible : CandyValue;
+            sale_id : ?Text;
+            seller : Account;
+            token : TokenSpec
+          };
+        #sale_opened :
+          {extensible : CandyValue; pricing : PricingConfig; sale_id : Text};
+        #sale_withdraw :
+          {
+            amount : Nat;
+            buyer : Account;
+            extensible : CandyValue;
+            fee : Nat;
+            seller : Account;
+            token : TokenSpec;
+            token_id : Text;
+            trx_id : TransactionID
+          }
+      }
+  };
+type TransactionRecord__1 = TransactionRecord;
+type TransactionRecord__2 =
+  {
+    index : Nat;
+    timestamp : Int;
+    token_id : Text;
+    txn_type :
+      {
+        #auction_bid :
+          {
+            amount : Nat;
+            buyer : Account__2;
+            extensible : CandyShared;
+            sale_id : Text;
+            token : TokenSpec__3
+          };
+        #burn : {extensible : CandyShared; from : ?Account__2};
+        #canister_managers_updated :
+          {extensible : CandyShared; managers : [Principal]};
+        #canister_network_updated :
+          {extensible : CandyShared; network : Principal};
+        #canister_owner_updated :
+          {extensible : CandyShared; owner : Principal};
+        #data :
+          {
+            data_dapp : ?Text;
+            data_path : ?Text;
+            extensible : CandyShared;
+            hash : ?[Nat8]
+          };
+        #deposit_withdraw :
+          {
+            amount : Nat;
+            buyer : Account__2;
+            extensible : CandyShared;
+            fee : Nat;
+            token : TokenSpec__3;
+            trx_id : TransactionID__2
+          };
+        #escrow_deposit :
+          {
+            amount : Nat;
+            buyer : Account__2;
+            extensible : CandyShared;
+            seller : Account__2;
+            token : TokenSpec__3;
+            token_id : Text;
+            trx_id : TransactionID__2
+          };
+        #escrow_withdraw :
+          {
+            amount : Nat;
+            buyer : Account__2;
+            extensible : CandyShared;
+            fee : Nat;
+            seller : Account__2;
+            token : TokenSpec__3;
+            token_id : Text;
+            trx_id : TransactionID__2
+          };
+        #extensible : CandyShared;
+        #mint :
+          {
+            extensible : CandyShared;
+            from : Account__2;
+            sale : ?{amount : Nat; token : TokenSpec__3};
+            to : Account__2
+          };
+        #owner_transfer :
+          {extensible : CandyShared; from : Account__2; to : Account__2};
+        #royalty_paid :
+          {
+            amount : Nat;
+            buyer : Account__2;
+            extensible : CandyShared;
+            receiver : Account__2;
+            sale_id : ?Text;
+            seller : Account__2;
+            tag : Text;
+            token : TokenSpec__3
+          };
+        #sale_ended :
+          {
+            amount : Nat;
+            buyer : Account__2;
+            extensible : CandyShared;
+            sale_id : ?Text;
+            seller : Account__2;
+            token : TokenSpec__3
+          };
+        #sale_opened :
+          {
+            extensible : CandyShared;
+            pricing : PricingConfig__2;
+            sale_id : Text
+          };
+        #sale_withdraw :
+          {
+            amount : Nat;
+            buyer : Account__2;
+            extensible : CandyShared;
+            fee : Nat;
+            seller : Account__2;
+            token : TokenSpec__3;
+            token_id : Text;
+            trx_id : TransactionID__2
+          }
+      }
+  };
+type UnsubscribeOptions = {purge : ?Bool};
+type UnsubscribeParams = (Text, ?UnsubscribeOptions);
+type UnsubscribeResponse =
+  {
+    prevSubscriptionInfo : ?SharedSubscription;
+    subscriptionInfo : ?SharedSubscription
+  };
+type UpgradeData = {#v1 : {dayData : [UpgradeDataDayTuple]}};
+type UpgradeDataDayTuple = (DayDataId, DayData);
+type UpgradeDataDayTuple__1 = (DayDataId__1, DayData__1);
+type UpgradeData__1 =
+  {#v1 : {full : Bool; maxCount : Nat; next : Nat; queue : LogMessageArray}};
+type UpgradeData__2 = UpgradeData;
+type UpgradeData__3 = {#v1 : {dayData : [UpgradeDataDayTuple__1]}};
+type UpgradeData__4 =
+  {
+    #v1 :
+      {full : Bool; maxCount : Nat; next : Nat; queue : LogMessageArray__1}
+  };
+type UpgradeData__5 = UpgradeData__3;
+type canister_id = Principal;
+type canister_status =
+  {
+    cycles : Nat;
+    memory_size : Nat;
+    module_hash : ?[Nat8];
+    settings : definite_canister_settings;
+    status : {#running; #stopped; #stopping}
+  };
+type definite_canister_settings =
+  {
+    compute_allocation : Nat;
+    controllers : ?[Principal];
+    freezing_threshold : Nat;
+    memory_allocation : Nat
+  };
+actor {
+  stable var SIZE_CHUNK : Nat;
+  stable var __time_mode : {#standard; #test};
+  stable var _canistergeekLoggerUD : ?LoggerUpgradeData__1;
+  stable var _canistergeekLoggerUD_0_1_4 : ?LoggerUpgradeData;
+  stable var _canistergeekMonitorUD : ?UpgradeData__5;
+  stable var _canistergeekMonitorUD_0_1_4 : ?UpgradeData__2;
+  stable created_at : Nat64;
+  stable var data_harvester_page_size : Nat;
+  stable var halt : Bool;
+  stable var ic :
+    actor {
+      canister_status :
+        shared {canister_id : canister_id} -> async canister_status
+    };
+  stable var migration_state :
+    {
+      #v0_0_0 : {#data; #id};
+      #v0_1_0 : {#data : State; #id};
+      #v0_1_3 : {#data : State__1; #id};
+      #v0_1_4 : {#data : State__4; #id}
+    };
+  stable var nft_library_stable : [(Text, [(Text, AddressedChunkArray__1)])];
+  stable var nft_library_stable_2 :
+    [(Text, [(Text, AddressedChunkArray__2)])];
+  stable var upgraded_at : Nat64
+};

@@ -6,6 +6,12 @@
             "type": "motoko"
             
         },
+        "origyn_nft_reference_prod": {
+          "main": "src/origyn_nft_reference/main.mo",
+          "type": "motoko",
+          "args" : "--incremental-gc",
+          "gzip" : true
+      },
         "opie_test": {
           "main": "src/origyn_nft_reference/main.mo",
           "type": "motoko"

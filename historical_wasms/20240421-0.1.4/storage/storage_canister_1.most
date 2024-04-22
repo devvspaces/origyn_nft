@@ -1,0 +1,182 @@
+// Version: 1.0.0
+type AddressedChunkArray__1 = [AddressedChunk__1];
+type AddressedChunkArray__2 = [AddressedChunk__2];
+type AddressedChunk__1 = (Nat, Nat, CandyValue__1);
+type AddressedChunk__2 = (Nat, Nat, CandyShared);
+type AllocationRecord__3 =
+  {
+    allocated_space : Nat;
+    var available_space : Nat;
+    canister : Principal;
+    var chunks : StableBuffer<Nat>;
+    library_id : Text;
+    token_id : Text
+  };
+type AllocationRecord__4 = AllocationRecord__3;
+type AllocationRecord__5 = AllocationRecord__4;
+type CandyShared =
+  {
+    #Array : [CandyShared];
+    #Blob : Blob;
+    #Bool : Bool;
+    #Bytes : [Nat8];
+    #Class : [PropertyShared];
+    #Float : Float;
+    #Floats : [Float];
+    #Int : Int;
+    #Int16 : Int16;
+    #Int32 : Int32;
+    #Int64 : Int64;
+    #Int8 : Int8;
+    #Ints : [Int];
+    #Map : [(CandyShared, CandyShared)];
+    #Nat : Nat;
+    #Nat16 : Nat16;
+    #Nat32 : Nat32;
+    #Nat64 : Nat64;
+    #Nat8 : Nat8;
+    #Nats : [Nat];
+    #Option : ?CandyShared;
+    #Principal : Principal;
+    #Set : [CandyShared];
+    #Text : Text
+  };
+type CandyValue__1 =
+  {
+    #Array : {#frozen : [CandyValue__1]; #thawed : [CandyValue__1]};
+    #Blob : Blob;
+    #Bool : Bool;
+    #Bytes : {#frozen : [Nat8]; #thawed : [Nat8]};
+    #Class : [Property__1];
+    #Empty;
+    #Float : Float;
+    #Floats : {#frozen : [Float]; #thawed : [Float]};
+    #Int : Int;
+    #Int16 : Int16;
+    #Int32 : Int32;
+    #Int64 : Int64;
+    #Int8 : Int8;
+    #Nat : Nat;
+    #Nat16 : Nat16;
+    #Nat32 : Nat32;
+    #Nat64 : Nat64;
+    #Nat8 : Nat8;
+    #Nats : {#frozen : [Nat]; #thawed : [Nat]};
+    #Option : ?CandyValue__1;
+    #Principal : Principal;
+    #Text : Text
+  };
+type CandyValue__4 =
+  {
+    #Array : {#frozen : [CandyValue__4]; #thawed : [CandyValue__4]};
+    #Blob : Blob;
+    #Bool : Bool;
+    #Bytes : {#frozen : [Nat8]; #thawed : [Nat8]};
+    #Class : [Property__8];
+    #Empty;
+    #Float : Float;
+    #Floats : {#frozen : [Float]; #thawed : [Float]};
+    #Int : Int;
+    #Int16 : Int16;
+    #Int32 : Int32;
+    #Int64 : Int64;
+    #Int8 : Int8;
+    #Nat : Nat;
+    #Nat16 : Nat16;
+    #Nat32 : Nat32;
+    #Nat64 : Nat64;
+    #Nat8 : Nat8;
+    #Nats : {#frozen : [Nat]; #thawed : [Nat]};
+    #Option : ?CandyValue__4;
+    #Principal : Principal;
+    #Text : Text
+  };
+type CollectionData__3 =
+  {
+    var managers : [Principal];
+    var network : ?Principal;
+    var owner : Principal
+  };
+type CollectionData__4 = CollectionData__3;
+type CollectionData__5 = CollectionData__4;
+type Entry__1<K, V> = (?K, ?V, Nat, Nat);
+type Entry__4<K, V> = (?K, ?V, Nat, Nat);
+type HttpAccess__2 = {expires : Int; identity : Principal};
+type HttpAccess__3 = {expires : Int; identity : Principal};
+type LogEntry__2 =
+  {caller : ?Principal; data : CandyValue__4; event : Text; timestamp : Int};
+type Map__1<K, V> =
+  {var body : ([var Nat], [var Entry__1<K, V>], Nat, Nat, Nat)};
+type Map__3<K, V> =
+  {var body : ([var Nat], [var Entry__4<K, V>], Nat, Nat, Nat)};
+type PropertyShared = {immutable : Bool; name : Text; value : CandyShared};
+type Property__1 = {immutable : Bool; name : Text; value : CandyValue__1};
+type Property__8 = {immutable : Bool; name : Text; value : CandyValue__4};
+type StableBuffer<X> =
+  {var count : Nat; var elems : [var X]; initCapacity : Nat};
+type State__6 =
+  {
+    var allocations : Map__3<(Text, Text), AllocationRecord__3>;
+    var canister_allocated_storage : Nat;
+    var canister_availible_space : Nat;
+    var collection_data : CollectionData__3;
+    var log : StableBuffer<LogEntry__2>;
+    var log_harvester : Principal;
+    var log_history : StableBuffer<[LogEntry__2]>;
+    var nft_metadata : Map__3<Text, CandyValue__4>
+  };
+type State__7 =
+  {
+    var access_tokens : Map__1<Text, HttpAccess__2>;
+    var allocations : Map__1<(Text, Text), AllocationRecord__4>;
+    var canister_allocated_storage : Nat;
+    var canister_availible_space : Nat;
+    var collection_data : CollectionData__4;
+    var nft_metadata : Map__1<Text, CandyValue__4>
+  };
+type State__8 =
+  {
+    var access_tokens : Map__1<Text, HttpAccess__3>;
+    var allocations : Map__1<(Text, Text), AllocationRecord__5>;
+    var canister_allocated_storage : Nat;
+    var canister_availible_space : Nat;
+    var collection_data : CollectionData__5;
+    var nft_metadata : Map__1<Text, CandyShared>
+  };
+type canister_id = Principal;
+type canister_status =
+  {
+    cycles : Nat;
+    memory_size : Nat;
+    module_hash : ?[Nat8];
+    settings : definite_canister_settings;
+    status : {#running; #stopped; #stopping}
+  };
+type definite_canister_settings =
+  {
+    compute_allocation : Nat;
+    controllers : ?[Principal];
+    freezing_threshold : Nat;
+    memory_allocation : Nat
+  };
+actor {
+  stable var SIZE_CHUNK : Nat;
+  stable var __time_mode : {#standard; #test};
+  stable var ic :
+    actor {
+      canister_status :
+        shared {canister_id : canister_id} -> async canister_status
+    };
+  stable var migrationState :
+    {
+      #v0_0_0 : {#data; #id};
+      #v0_1_0 : {#data : State__6; #id};
+      #v0_1_3 : {#data : State__7; #id};
+      #v0_1_4 : {#data : State__8; #id}
+    };
+  stable var nft_library_stable : [(Text, [(Text, AddressedChunkArray__1)])];
+  stable var nft_library_stable_2 :
+    [(Text, [(Text, AddressedChunkArray__2)])];
+  stable var tokens_stable : [(Text, HttpAccess__3)];
+  stable var use_stableBTree_storage : Bool
+};
