@@ -58,17 +58,6 @@ module {
   public let DAY_LENGTH = 86_400_000_000_000;
   public let YEAR_LENGTH = 31_536_000_000_000_000; //365 days...no leap year
 
-  public func OGY() : MigrationTypes.Current.TokenSpec {
-    #ic({
-      canister = Principal.fromText("jwcfb-hyaaa-aaaaj-aac4q-cai");
-      fee = ?200_000;
-      symbol = "OGY";
-      decimals = 8;
-      id = null;
-      standard = #ICRC1; //use #Ledger instead
-    });
-  };
-
   /**
     * Converts a Nat value to a token ID Text value.
     * @param {Nat} tokenNat - The Nat value to convert.

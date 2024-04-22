@@ -722,61 +722,11 @@ module {
         };
       };
       case (#ask(config)) {
-        let buy_now = switch (config) {
-          case (null) null;
-          case (?config) {
-            switch (Map.get(config, MigrationTypes.Current.ask_feature_set_tool, #buy_now)) {
-              case (? #buy_now(val)) {
-                ?val;
-              };
-              case (_) { null };
-            };
-          };
-        };
-        let dutch = switch (config) {
-          case (null) null;
-          case (?config) {
-            switch (Map.get(config, MigrationTypes.Current.ask_feature_set_tool, #dutch)) {
-              case (? #dutch(val)) {
-                ?val;
-              };
-              case (_) { null };
-            };
-          };
-        };
-        let fee_accounts = switch (config) {
-          case (null) null;
-          case (?config) {
-            switch (Map.get(config, MigrationTypes.Current.ask_feature_set_tool, #fee_accounts)) {
-              case (? #fee_accounts(val)) {
-                ?val;
-              };
-              case (_) { null };
-            };
-          };
-        };
-        let fee_schema = switch (config) {
-          case (null) null;
-          case (?config) {
-            switch (Map.get(config, MigrationTypes.Current.ask_feature_set_tool, #fee_schema)) {
-              case (? #fee_schema(val)) {
-                ?val;
-              };
-              case (_) { null };
-            };
-          };
-        };
-        let start_date = switch (config) {
-          case (null) null;
-          case (?config) {
-            switch (Map.get(config, MigrationTypes.Current.ask_feature_set_tool, #start_date)) {
-              case (? #buy_now(val)) {
-                ?val;
-              };
-              case (_) { null };
-            };
-          };
-        };
+        let buy_now : ?Nat = MigrationTypes.Current.load_buy_now_ask_feature(config);
+        let dutch : ?MigrationTypes.Current.DutchParams = MigrationTypes.Current.load_dutch_ask_feature(config);
+        let fee_accounts : ?MigrationTypes.Current.FeeAccountsParams = MigrationTypes.Current.load_fee_accounts_ask_feature(config);
+        let fee_schema : ?Text = MigrationTypes.Current.load_fee_schema_ask_feature(config);
+        let start_date : ?Int = MigrationTypes.Current.load_start_date_ask_feature(config);
         {
           buy_now_price = switch (buy_now, dutch) {
             case (?buy_now, null) {
@@ -892,18 +842,11 @@ module {
 
     //check reserve MKT0038
     let reserve = switch (current_sale_state.config) {
-      case (#auction(config)) {
-        config.reserve;
+      case (#auction(config)) { config.reserve };
+      case (#ask(config)) {
+        MigrationTypes.Current.load_reserve_ask_feature(config);
       };
-      case (#ask(?config)) {
-        switch (Map.get(config, MigrationTypes.Current.ask_feature_set_tool, #reserve)) {
-          case (?(#reserve(val))) ?val;
-          case (_) null;
-        };
-      };
-      case (_) {
-        null;
-      };
+      case (_) { null };
     };
 
     debug if (debug_channel.end_sale) D.print("checking reserve" # debug_show (reserve));
@@ -2127,7 +2070,7 @@ module {
         {
           reserve = null;
           buy_now = null;
-          token : MigrationTypes.Current.TokenSpec = NFTUtils.OGY();
+          token : MigrationTypes.Current.TokenSpec = MigrationTypes.Current.OGY();
           start_date : Int = state.get_time();
           start_price : Nat = 1;
           end_date : Int = state.get_time() + NFTUtils.MINUTE_LENGTH;
@@ -2401,26 +2344,9 @@ module {
       case (_) state.get_time();
     };
 
-    let dutch = switch (Map.get(ask_details, MigrationTypes.Current.ask_feature_set_tool, #dutch)) {
-      case (? #dutch(val)) {
-        ?val;
-      };
-      case (_) { null };
-    };
-
-    let fee_accounts : ?MigrationTypes.Current.FeeAccountsParams = switch (Map.get(ask_details, MigrationTypes.Current.ask_feature_set_tool, #fee_accounts)) {
-      case (? #fee_accounts(val)) {
-        ?val;
-      };
-      case (_) { null };
-    };
-
-    let fee_schema : ?Text = switch (Map.get(ask_details, MigrationTypes.Current.ask_feature_set_tool, #fee_schema)) {
-      case (? #fee_schema(val)) {
-        ?val;
-      };
-      case (_) { null };
-    };
+    let dutch : ?DutchParams = MigrationTypes.Current.load_dutch_ask_feature(ask_details);
+    let fee_accounts : ?FeeAccountsParams = MigrationTypes.Current.load_fee_accounts_ask_feature(ask_details);
+    let fee_schema : ?Text = MigrationTypes.Current.load_fee_schema_ask_feature(ask_details);
 
     let _fee_schema : Text = switch (fee_schema) {
       case (?val) {
@@ -2595,30 +2521,9 @@ module {
       case (_) { null };
     };
 
-    let reserve = switch (Map.get(ask_details, MigrationTypes.Current.ask_feature_set_tool, #reserve)) {
-      case (? #reserve(val)) {
-        ?val;
-      };
-      case (_) { null };
-    };
-
-    let token : MigrationTypes.Current.TokenSpec = switch (Map.get(ask_details, MigrationTypes.Current.ask_feature_set_tool, #token)) {
-      case (? #token(val)) {
-        val;
-      };
-      case (_) {
-        NFTUtils.OGY();
-      };
-    };
-
-    let notify : [Principal] = switch (Map.get(ask_details, MigrationTypes.Current.ask_feature_set_tool, #notify)) {
-      case (? #notify(val)) {
-        val;
-      };
-      case (_) {
-        [];
-      };
-    };
+    let reserve : ?Nat = MigrationTypes.Current.load_reserve_ask_feature(ask_details);
+    let token : MigrationTypes.Current.TokenSpec = MigrationTypes.Current.load_token_ask_feature(ask_details);
+    let notify : [Principal] = MigrationTypes.Current.load_notify_ask_feature(ask_details);
 
     switch (buy_now, reserve) {
       case (?buy_now, ?reserve) {
@@ -3562,7 +3467,12 @@ module {
       case (#ok(val)) val;
     };
 
-    let { buy_now_price; start_date; min_increase; dutch } = switch (current_sale_state.config) {
+    let {
+      buy_now_price;
+      start_date;
+      min_increase : MigrationTypes.Current.MinIncreaseType;
+      dutch : Bool;
+    } = switch (current_sale_state.config) {
       case (#auction(config)) {
         {
           buy_now_price = config.buy_now;
@@ -3572,69 +3482,46 @@ module {
         };
       };
       case (#ask(config)) {
-        let buy_now = switch (config) {
-          case (null) null;
+        switch (config) {
           case (?config) {
-            switch (Map.get(config, MigrationTypes.Current.ask_feature_set_tool, #buy_now)) {
-              case (? #buy_now(val)) {
-                ?val;
-              };
-              case (_) { null };
-            };
-          };
-        };
-        let dutch = switch (config) {
-          case (null) null;
-          case (?config) {
-            switch (Map.get(config, MigrationTypes.Current.ask_feature_set_tool, #dutch)) {
-              case (? #dutch(val)) {
-                ?val;
-              };
-              case (_) { null };
-            };
-          };
-        };
-        let start_date = switch (config) {
-          case (null) null;
-          case (?config) {
-            switch (Map.get(config, MigrationTypes.Current.ask_feature_set_tool, #start_date)) {
-              case (? #start_date(val)) {
-                ?val;
-              };
-              case (_) { null };
-            };
-          };
-        };
-        let min_increase = switch (config) {
-          case (null) #percentage(0.05);
-          case (?config) {
-            switch (Map.get(config, MigrationTypes.Current.ask_feature_set_tool, #min_increase)) {
-              case (? #min_increase(val)) {
-                val;
-              };
+            let buy_now : ?Nat = MigrationTypes.Current.load_buy_now_ask_feature(?config);
+            let dutch : ?MigrationTypes.Current.DutchParams = MigrationTypes.Current.load_dutch_ask_feature(?config);
+            let start_date : ?Int = MigrationTypes.Current.load_start_date_ask_feature(?config);
+            let min_increase : MigrationTypes.Current.MinIncreaseType = switch (Map.get<MigrationTypes.Current.AskFeatureKey, MigrationTypes.Current.AskFeature>(config, MigrationTypes.Current.ask_feature_set_tool, #min_increase)) {
+              case (? #min_increase(val)) { val };
               case (_) { #percentage(0.05) };
             };
-          };
-        };
-        {
-          buy_now_price = switch (buy_now, dutch) {
-            case (?buy_now, null) {
-              ?buy_now;
-            };
-            case (null, ?dutch) {
-              let current_state = calc_dutch_price(state, current_sale_state, metadata);
-              ?current_state.min_next_bid;
-            };
-            case (_, _) {
-              null;
-            };
-          };
 
-          start_date = start_date;
-          min_increase = min_increase;
-          dutch = switch (dutch) {
-            case (null) false;
-            case (?val) true;
+            let buy_now_price = switch (buy_now, dutch) {
+              case (?buy_now, null) {
+                ?buy_now;
+              };
+              case (null, ?dutch) {
+                let current_state = calc_dutch_price(state, current_sale_state, metadata);
+                ?current_state.min_next_bid;
+              };
+              case (_, _) {
+                null;
+              };
+            };
+
+            {
+              buy_now_price = buy_now_price;
+              start_date = start_date;
+              min_increase = min_increase;
+              dutch = switch (dutch) {
+                case (null) false;
+                case (?val) true;
+              };
+            };
+          };
+          case (null) {
+            {
+              buy_now_price = null;
+              start_date = null;
+              min_increase = #percentage(0.05);
+              dutch = false;
+            };
           };
         };
       };
@@ -4023,4 +3910,5 @@ module {
       };
     };
   };
+
 };

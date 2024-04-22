@@ -291,10 +291,14 @@ module {
     transaction : ?TransactionRecord;
   };
 
+  public type BidOption = MigrationTypes.Current.BidOption;
+  public type BidOptions = ?[BidOption];
+
   public type BidRequest = {
     escrow_receipt : EscrowReceipt;
     sale_id : Text;
     broker_id : ?Principal;
+    options : BidOptions;
   };
 
   public type DistributeSaleRequest = {

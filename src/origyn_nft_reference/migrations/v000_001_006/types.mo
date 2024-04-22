@@ -202,10 +202,7 @@ module {
         max : Nat;
       };
     };
-    min_increase : {
-      #percentage : Float;
-      #amount : Nat;
-    };
+    min_increase : MinIncreaseType;
     allow_list : ?[Principal];
   };
 
@@ -231,37 +228,45 @@ module {
 
   public type FeeAccountsParams = [Text];
 
+  private type WaitForQuietType = {
+    extension : Nat64;
+    fade : Float;
+    max : Nat;
+  };
+
+  public type MinIncreaseType = {
+    #percentage : Float;
+    #amount : Nat;
+  };
+
+  private type EndingType = {
+    #date : Int;
+    #timeout : Nat;
+  };
+
+  private type NiftySettlementType = {
+    duration : ?Int;
+    expiration : ?Int;
+    fixed : Bool;
+    lenderOffer : Bool;
+    interestRatePerSecond : Float;
+  };
+
   public type AskFeature = {
     #atomic;
     #buy_now : Nat;
-    #wait_for_quiet : {
-      extension : Nat64;
-      fade : Float;
-      max : Nat;
-    };
+    #wait_for_quiet : WaitForQuietType;
     #allow_list : [Principal];
     #notify : [Principal];
     #reserve : Nat;
     #start_date : Int;
     #start_price : Nat;
-    #min_increase : {
-      #percentage : Float;
-      #amount : Nat;
-    };
-    #ending : {
-      #date : Int;
-      #timeout : Nat;
-    };
+    #min_increase : MinIncreaseType;
+    #ending : EndingType;
     #token : TokenSpec;
     #dutch : DutchParams;
     #kyc : Principal;
-    #nifty_settlement : {
-      duration : ?Int;
-      expiration : ?Int;
-      fixed : Bool;
-      lenderOffer : Bool;
-      interestRatePerSecond : Float;
-    };
+    #nifty_settlement : NiftySettlementType;
     #fee_accounts : FeeAccountsParams;
     #fee_schema : Text;
   };
@@ -271,6 +276,10 @@ module {
   public type AskConfig = ?AskFeatureMap;
 
   public type AskConfigShared = ?[AskFeature];
+
+  public type BidOption = {
+    #fee_accounts : FeeAccountsParams;
+  };
 
   public type Royalty = {
     #fixed : {
@@ -339,6 +348,198 @@ module {
         return false;
       };
     };
+  };
+
+  public func load_atomic_ask_feature(_config : AskConfig) : ?() {
+    let config = switch (_config) {
+      case (?config) (config);
+      case (_) (return null);
+    };
+
+    let ?(#atomic()) = Map.get<AskFeatureKey, AskFeature>(config, ask_feature_set_tool, #atomic) else {
+      return null;
+    };
+    return ?();
+  };
+
+  public func load_buy_now_ask_feature(_config : AskConfig) : ?Nat {
+    let config = switch (_config) {
+      case (?config) (config);
+      case (_) (return null);
+    };
+
+    let ?(#buy_now(buy_now)) = Map.get<AskFeatureKey, AskFeature>(config, ask_feature_set_tool, #buy_now) else {
+      return null;
+    };
+    return ?buy_now;
+  };
+
+  public func load_wait_for_quiet_ask_feature(_config : AskConfig) : ?WaitForQuietType {
+    let config = switch (_config) {
+      case (?config) (config);
+      case (_) (return null);
+    };
+
+    let ?(#wait_for_quiet(wait_for_quiet)) = Map.get<AskFeatureKey, AskFeature>(config, ask_feature_set_tool, #wait_for_quiet) else {
+      return null;
+    };
+    return ?wait_for_quiet;
+  };
+
+  public func load_allow_list_ask_feature(_config : AskConfig) : ?[Principal] {
+    let config = switch (_config) {
+      case (?config) (config);
+      case (_) (return null);
+    };
+
+    let ?(#allow_list(allow_list)) = Map.get<AskFeatureKey, AskFeature>(config, ask_feature_set_tool, #allow_list) else {
+      return null;
+    };
+    return ?allow_list;
+  };
+
+  public func load_notify_ask_feature(_config : AskConfig) : [Principal] {
+    let config = switch (_config) {
+      case (?config) (config);
+      case (_) (return []);
+    };
+
+    let ?(#notify(notify)) = Map.get<AskFeatureKey, AskFeature>(config, ask_feature_set_tool, #notify) else {
+      return [];
+    };
+    return notify;
+  };
+
+  public func load_reserve_ask_feature(_config : AskConfig) : ?Nat {
+    let config = switch (_config) {
+      case (?config) (config);
+      case (_) (return null);
+    };
+
+    let ?(#reserve(reserve)) = Map.get<AskFeatureKey, AskFeature>(config, ask_feature_set_tool, #reserve) else {
+      return null;
+    };
+    return ?reserve;
+  };
+
+  public func load_start_date_ask_feature(_config : AskConfig) : ?Int {
+    let config = switch (_config) {
+      case (?config) (config);
+      case (_) (return null);
+    };
+
+    let ?(#start_date(start_date)) = Map.get<AskFeatureKey, AskFeature>(config, ask_feature_set_tool, #start_date) else {
+      return null;
+    };
+    return ?start_date;
+  };
+
+  public func load_start_price_ask_feature(_config : AskConfig) : ?Nat {
+    let config = switch (_config) {
+      case (?config) (config);
+      case (_) (return null);
+    };
+
+    let ?(#start_price(start_price)) = Map.get<AskFeatureKey, AskFeature>(config, ask_feature_set_tool, #start_price) else {
+      return null;
+    };
+    return ?start_price;
+  };
+
+  public func load_min_increase_ask_feature(_config : AskConfig) : ?MinIncreaseType {
+    let config = switch (_config) {
+      case (?config) (config);
+      case (_) (return null);
+    };
+
+    let ?(#min_increase(min_increase)) = Map.get<AskFeatureKey, AskFeature>(config, ask_feature_set_tool, #min_increase) else {
+      return null;
+    };
+    return ?min_increase;
+  };
+
+  public func load_ending_ask_feature(_config : AskConfig) : ?EndingType {
+    let config = switch (_config) {
+      case (?config) (config);
+      case (_) (return null);
+    };
+
+    let ?(#ending(ending)) = Map.get<AskFeatureKey, AskFeature>(config, ask_feature_set_tool, #ending) else {
+      return null;
+    };
+    return ?ending;
+  };
+
+  public func load_token_ask_feature(_config : AskConfig) : TokenSpec {
+    let config = switch (_config) {
+      case (?config) (config);
+      case (_) (return OGY());
+    };
+
+    let ?(#token(token)) = Map.get<AskFeatureKey, AskFeature>(config, ask_feature_set_tool, #token) else {
+      return OGY();
+    };
+    return token;
+  };
+
+  public func load_dutch_ask_feature(_config : AskConfig) : ?DutchParams {
+    let config = switch (_config) {
+      case (?config) (config);
+      case (_) (return null);
+    };
+
+    let ?(#dutch(dutch)) = Map.get<AskFeatureKey, AskFeature>(config, ask_feature_set_tool, #dutch) else {
+      return null;
+    };
+    return ?dutch;
+  };
+
+  public func load_kyc_ask_feature(_config : AskConfig) : ?Principal {
+    let config = switch (_config) {
+      case (?config) (config);
+      case (_) (return null);
+    };
+
+    let ?(#kyc(kyc)) = Map.get<AskFeatureKey, AskFeature>(config, ask_feature_set_tool, #kyc) else {
+      return null;
+    };
+    return ?kyc;
+  };
+
+  public func load_nifty_ask_settlement_feature(_config : AskConfig) : ?NiftySettlementType {
+    let config = switch (_config) {
+      case (?config) (config);
+      case (_) (return null);
+    };
+
+    let ?(#nifty_settlement(nifty_settlement)) = Map.get<AskFeatureKey, AskFeature>(config, ask_feature_set_tool, #nifty_settlement) else {
+      return null;
+    };
+    return ?nifty_settlement;
+  };
+
+  public func load_fee_accounts_ask_feature(_config : AskConfig) : ?FeeAccountsParams {
+    let config = switch (_config) {
+      case (?config) (config);
+      case (_) (return null);
+    };
+
+    let ?(#fee_accounts(fee_accounts)) = Map.get<AskFeatureKey, AskFeature>(config, ask_feature_set_tool, #fee_accounts) else {
+      return null;
+    };
+    return ?fee_accounts;
+  };
+
+  public func load_fee_schema_ask_feature(_config : AskConfig) : ?Text {
+    let config = switch (_config) {
+      case (?config) (config);
+      case (_) (return null);
+    };
+
+    let ?(#fee_schema(fee_schema)) = Map.get<AskFeatureKey, AskFeature>(config, ask_feature_set_tool, #fee_schema) else {
+      return null;
+    };
+    return ?fee_schema;
   };
 
   public func ask_feature_set_hash(a : AskFeatureKey) : Nat {
@@ -635,4 +836,16 @@ module {
     //add certification type here
 
   };
+
+  public func OGY() : TokenSpec {
+    #ic({
+      canister = Principal.fromText("jwcfb-hyaaa-aaaaj-aac4q-cai");
+      fee = ?200_000;
+      symbol = "OGY";
+      decimals = 8;
+      id = null;
+      standard = #ICRC1; //use #Ledger instead
+    });
+  };
+
 };

@@ -927,6 +927,7 @@ shared (deployer) actor class test_wallet() = this {
             });
             amount = amount;
           };
+          options = null;
         })
       );
     } catch (e) {
