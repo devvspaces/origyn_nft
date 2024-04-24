@@ -2344,9 +2344,9 @@ module {
       case (_) state.get_time();
     };
 
-    let dutch : ?DutchParams = MigrationTypes.Current.load_dutch_ask_feature(ask_details);
-    let fee_accounts : ?FeeAccountsParams = MigrationTypes.Current.load_fee_accounts_ask_feature(ask_details);
-    let fee_schema : ?Text = MigrationTypes.Current.load_fee_schema_ask_feature(ask_details);
+    let dutch : ?MigrationTypes.Current.DutchParams = MigrationTypes.Current.load_dutch_ask_feature(?ask_details);
+    let fee_accounts : ?MigrationTypes.Current.FeeAccountsParams = MigrationTypes.Current.load_fee_accounts_ask_feature(?ask_details);
+    let fee_schema : ?Text = MigrationTypes.Current.load_fee_schema_ask_feature(?ask_details);
 
     let _fee_schema : Text = switch (fee_schema) {
       case (?val) {
@@ -2521,9 +2521,9 @@ module {
       case (_) { null };
     };
 
-    let reserve : ?Nat = MigrationTypes.Current.load_reserve_ask_feature(ask_details);
-    let token : MigrationTypes.Current.TokenSpec = MigrationTypes.Current.load_token_ask_feature(ask_details);
-    let notify : [Principal] = MigrationTypes.Current.load_notify_ask_feature(ask_details);
+    let reserve : ?Nat = MigrationTypes.Current.load_reserve_ask_feature(?ask_details);
+    let token : MigrationTypes.Current.TokenSpec = MigrationTypes.Current.load_token_ask_feature(?ask_details);
+    let notify : [Principal] = MigrationTypes.Current.load_notify_ask_feature(?ask_details);
 
     switch (buy_now, reserve) {
       case (?buy_now, ?reserve) {

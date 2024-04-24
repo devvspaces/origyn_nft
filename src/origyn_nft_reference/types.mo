@@ -291,14 +291,19 @@ module {
     transaction : ?TransactionRecord;
   };
 
-  public type BidOption = MigrationTypes.Current.BidOption;
-  public type BidOptions = ?[BidOption];
+  public type BidRequest = MigrationTypes.Current.BidRequest;
 
-  public type BidRequest = {
-    escrow_receipt : EscrowReceipt;
-    sale_id : Text;
-    broker_id : ?Principal;
-    options : BidOptions;
+  public type ManageSaleRequest = {
+    #end_sale : Text; //token_id
+    #open_sale : Text; //token_id;
+    #escrow_deposit : EscrowRequest;
+    #fee_deposit : FeeDepositRequest;
+    #recognize_escrow : EscrowRequest;
+    #refresh_offers : ?Account;
+    #bid : BidRequest;
+    #withdraw : WithdrawRequest;
+    #distribute_sale : DistributeSaleRequest;
+    #ask_subscribe : AskSubscribeRequest;
   };
 
   public type DistributeSaleRequest = {
@@ -315,7 +320,6 @@ module {
 
   public type PricingConfigShared = MigrationTypes.Current.PricingConfigShared;
 
-  public type AskConfig = ?[AskFeature];
   public type AskConfigShared = MigrationTypes.Current.AskConfigShared;
   public type DutchParams = MigrationTypes.Current.DutchParams;
 
@@ -637,19 +641,6 @@ module {
     sale_id : ?Text; //locks the escrow to a specific sale
     lock_to_date : ?Int; //locks the escrow to a timestamp
     account_hash : ?Blob; //sub account the host holds the funds in
-  };
-
-  public type ManageSaleRequest = {
-    #end_sale : Text; //token_id
-    #open_sale : Text; //token_id;
-    #escrow_deposit : EscrowRequest;
-    #fee_deposit : FeeDepositRequest;
-    #recognize_escrow : EscrowRequest;
-    #refresh_offers : ?Account;
-    #bid : BidRequest;
-    #withdraw : WithdrawRequest;
-    #distribute_sale : DistributeSaleRequest;
-    #ask_subscribe : AskSubscribeRequest;
   };
 
   public type AskSubscribeRequest = {

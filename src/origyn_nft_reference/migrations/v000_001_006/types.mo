@@ -226,7 +226,7 @@ module {
   };
   public type DutchParams = v0_1_5.DutchParams;
 
-  public type FeeAccountsParams = [Text];
+  public type FeeAccountsParams = [FeeName];
 
   private type WaitForQuietType = {
     extension : Nat64;
@@ -272,13 +272,55 @@ module {
   };
 
   public type AskFeatureMap = Map.Map<AskFeatureKey, AskFeature>;
+  public type AskFeatureArray = [AskFeature];
 
   public type AskConfig = ?AskFeatureMap;
 
-  public type AskConfigShared = ?[AskFeature];
+  public type AskConfigShared = ?AskFeatureArray;
 
-  public type BidOption = {
+  public type FeeName = Text;
+
+  public type BidFeatureKey = {
+    #broker;
+    #escrow;
+    #fee_schema;
+    #fee_accounts;
+    // #amm;
+  };
+
+  public type BidFeatureMap = Map.Map<BidFeatureKey, BidFeature>;
+  public type BidConfig = ?BidFeatureMap;
+
+  public type BidConfigShared = ?[BidFeature];
+
+  public type BidFeature = {
+    #broker : Account;
+    #escrow : EscrowRecord;
+    #fee_schema : Text;
     #fee_accounts : FeeAccountsParams;
+    // #amm : AMMParams; //see ICRC-62: AMMs for Ledger Native Markets
+  };
+
+  public func bidfeatures_to_map(items : [BidFeature]) : Map.Map<BidFeatureKey, BidFeature> {
+    let feature_set = Map.new<BidFeatureKey, BidFeature>();
+
+    for (thisItem in items.vals()) {
+      ignore Map.put<BidFeatureKey, BidFeature>(
+        feature_set,
+        bid_feature_set_tool,
+        bidfeature_to_key(thisItem),
+        thisItem,
+      );
+    };
+
+    return feature_set;
+  };
+
+  public type BidRequest = {
+    escrow_receipt : EscrowReceipt;
+    sale_id : Text;
+    broker_id : ?Principal;
+    config : BidConfigShared;
   };
 
   public type Royalty = {
@@ -291,6 +333,54 @@ module {
       tag : Text;
       rate : Float;
     };
+  };
+
+  public func load_broker_bid_feature(_config : BidConfig) : ?Account {
+    let config = switch (_config) {
+      case (?config) (config);
+      case (_) (return null);
+    };
+
+    let ?(#broker(broker)) = Map.get<BidFeatureKey, BidFeature>(config, bid_feature_set_tool, #broker) else {
+      return null;
+    };
+    return ?broker;
+  };
+
+  public func load_escrow_bid_feature(_config : BidConfig) : ?EscrowRecord {
+    let config = switch (_config) {
+      case (?config) (config);
+      case (_) (return null);
+    };
+
+    let ?(#escrow(escrow)) = Map.get<BidFeatureKey, BidFeature>(config, bid_feature_set_tool, #escrow) else {
+      return null;
+    };
+    return ?escrow;
+  };
+
+  public func load_fee_schema_bid_feature(_config : BidConfig) : ?Text {
+    let config = switch (_config) {
+      case (?config) (config);
+      case (_) (return null);
+    };
+
+    let ?(#fee_schema(fee_schema)) = Map.get<BidFeatureKey, BidFeature>(config, bid_feature_set_tool, #fee_schema) else {
+      return null;
+    };
+    return ?fee_schema;
+  };
+
+  public func load_fee_accounts_bid_feature(_config : BidConfig) : ?FeeAccountsParams {
+    let config = switch (_config) {
+      case (?config) (config);
+      case (_) (return null);
+    };
+
+    let ?(#fee_accounts(fee_accounts)) = Map.get<BidFeatureKey, BidFeature>(config, bid_feature_set_tool, #fee_accounts) else {
+      return null;
+    };
+    return ?fee_accounts;
   };
 
   public func ask_feature_set_eq(a : AskFeatureKey, b : AskFeatureKey) : Bool {
@@ -596,7 +686,44 @@ module {
     };
   };
 
-  public func features_to_map(items : [AskFeature]) : Map.Map<AskFeatureKey, AskFeature> {
+  public func bid_feature_set_hash(a : BidFeatureKey) : Nat {
+    switch (a) {
+      case (#broker) {
+        return 11311112;
+      };
+      case (#escrow) {
+        return 11311113;
+      };
+      case (#fee_schema) {
+        return 11311114;
+      };
+      case (#fee_accounts) {
+        return 11311115;
+      };
+    };
+  };
+
+  public func bid_feature_set_eq(a : BidFeatureKey, b : BidFeatureKey) : Bool {
+    switch (a, b) {
+      case (#broker, #broker) {
+        return true;
+      };
+      case (#escrow, #escrow) {
+        return true;
+      };
+      case (#fee_schema, #fee_schema) {
+        return true;
+      };
+      case (#fee_accounts, #fee_accounts) {
+        return true;
+      };
+      case (_, _) {
+        return false;
+      };
+    };
+  };
+
+  public func features_to_map(items : AskFeatureArray) : AskFeatureMap {
     let feature_set = Map.new<AskFeatureKey, AskFeature>();
 
     for (thisItem in items.vals()) {
@@ -609,6 +736,23 @@ module {
     };
 
     return feature_set;
+  };
+
+  public func bidfeature_to_key(request : BidFeature) : BidFeatureKey {
+    switch (request) {
+      case (#broker(e)) {
+        return #broker;
+      };
+      case (#escrow(e)) {
+        return #escrow;
+      };
+      case (#fee_schema(e)) {
+        return #fee_schema;
+      };
+      case (#fee_accounts(e)) {
+        return #fee_accounts;
+      };
+    };
   };
 
   public func feature_to_key(request : AskFeature) : AskFeatureKey {
@@ -667,6 +811,8 @@ module {
 
   //public let ask_feature_set_tool = (ask_feature_set_hash, ask_feature_set_eq, func() = #atomic) : MapUtils.HashUtils<AskFeatureKey>;
   public let ask_feature_set_tool = (ask_feature_set_hash, ask_feature_set_eq) : MapUtils.HashUtils<AskFeatureKey>;
+
+  public let bid_feature_set_tool = (bid_feature_set_hash, bid_feature_set_eq) : MapUtils.HashUtils<BidFeatureKey>;
 
   public type PricingConfig = {
     #instant; //executes an escrow recipt transfer -only available for non-marketable NFTs
