@@ -63,7 +63,7 @@ module {
     token : Types.TokenSpec;
     fee_accounts : ?MigrationTypes.Current.FeeAccountsParams;
     fee_schema : Text;
-    owner : MigrationTypes.Current.Account;
+    fee_accounts_owner : ?MigrationTypes.Current.Account;
   };
 
   let account_handler = MigrationTypes.Current.account_handler;
@@ -258,15 +258,15 @@ module {
       debug if (debug_channel.royalties) D.print("fee_accounts =  " # debug_show (fee_accounts));
       switch (Array.find<Text>(fee_accounts, func(val) { return val == tag })) {
         case (?val) {
-          let fee_accounts_set : { owner : Principal; sub_account : ?Blob } = switch (request.owner) {
-            case (#account(fee_accounts_set)) {
+          let fee_accounts_set : { owner : Principal; sub_account : ?Blob } = switch (request.fee_accounts_owner) {
+            case (? #account(fee_accounts_set)) {
               fee_accounts_set;
             };
-            case (#principal(p_account)) {
+            case (? #principal(p_account)) {
               { owner = p_account; sub_account = null };
             };
             case (_) {
-              debug if (debug_channel.royalties) D.print("Process royalties - shouldnt go there : " # debug_show (request.owner));
+              debug if (debug_channel.royalties) D.print("Process royalties - shouldnt go there : " # debug_show (request.fee_accounts_owner));
               continue royaltyLoop;
             };
           };

@@ -228,6 +228,8 @@ module {
 
   public type FeeAccountsParams = [FeeName];
 
+  public type BidPaysFeesParams = [FeeName];
+
   private type WaitForQuietType = {
     extension : Nat64;
     fade : Float;
@@ -301,7 +303,7 @@ module {
     // #amm : AMMParams; //see ICRC-62: AMMs for Ledger Native Markets
   };
 
-  public func bidfeatures_to_map(items : [BidFeature]) : Map.Map<BidFeatureKey, BidFeature> {
+  public func bidfeatures_to_map(items : [BidFeature]) : BidFeatureMap {
     let feature_set = Map.new<BidFeatureKey, BidFeature>();
 
     for (thisItem in items.vals()) {
@@ -863,12 +865,13 @@ module {
   public type AuctionState = {
     config : PricingConfig;
     var current_bid_amount : Nat;
+    var current_config : BidConfig;
+    var current_escrow : ?EscrowReceipt;
     var current_broker_id : ?Principal;
     var end_date : Int;
     var start_date : Int;
     token : TokenSpec;
     var min_next_bid : Nat;
-    var current_escrow : ?EscrowReceipt;
     var wait_for_quiet_count : ?Nat;
     allow_list : ?Map.Map<Principal, Bool>; //empty set means everyone
     var participants : Map.Map<Principal, Int>;
