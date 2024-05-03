@@ -617,28 +617,6 @@ module {
     return ret;
   };
 
-  private func _check_fee_account(state : StateAccess, fee_accounts : ?MigrationTypes.Current.FeeAccountsParams, fee_schema : ?Text, caller : Principal) : Result.Result<(), Types.OrigynError> {
-    switch (fee_accounts) {
-      case (?fee_accounts) {
-        debug if (debug_channel.market) D.print("fee_accounts is set, end_sale has to unlock token");
-        switch (fee_schema) {
-          case (?val) {
-            if (val != Types.metadata.__system_fixed_royalty) {
-              debug if (debug_channel.market) D.print("but __system_fixed_royalty bad value, only com.origyn.royalties.fixed can be used -> error");
-              return #err(Types.errors(?state.canistergeekLogger, #malformed_metadata, "end_sale_unlock_fee_account_callback fee_accounts need fixed fee_schema. Not compatible yet others royalties schema.", null));
-            };
-          };
-          case (null) {
-            debug if (debug_channel.market) D.print("but __system_fixed_royalty is not set -> error");
-            return #err(Types.errors(?state.canistergeekLogger, #malformed_metadata, "end_sale_unlock_fee_account_callback fee_accounts need fixed fee_schema. Not compatible yet others royalties schema.", null));
-          };
-        };
-      };
-      case (null) { return #ok(()) };
-    };
-    return #ok(());
-  };
-
   //ends a sale if it is past the date or a buy it now has occured
   public func end_sale_nft_origyn(state : StateAccess, token_id : Text, caller : Principal) : async* Star.Star<Types.ManageSaleResponse, Types.OrigynError> {
     debug if (debug_channel.end_sale) D.print("in end_sale_nft_origyn");
@@ -734,12 +712,6 @@ module {
           false;
         };
       };
-    };
-
-    debug if (debug_channel.market) D.print("re-checking seller_fee_accounts parameters. Should never fail.");
-    switch (_check_fee_account(state, seller_fee_accounts, fee_schema, caller)) {
-      case (#ok()) {};
-      case (#err(e)) { return #err(#awaited(e)) };
     };
 
     debug if (debug_channel.end_sale) D.print("past buy now " # debug_show (buy_now));
@@ -2150,12 +2122,6 @@ module {
       case (_) return #err(Types.errors(?state.canistergeekLogger, #nyi, "market_transfer_nft_origyn nyi pricing type", ?caller));
     };
 
-    debug if (debug_channel.market) D.print("checking seller_fee_accounts parameters");
-    switch (_check_fee_account(state, fee_accounts, fee_schema, caller)) {
-      case (#ok()) {};
-      case (#err(e)) { return #err(e) };
-    };
-
     let kyc_result = try {
       await* KYC.pass_kyc_seller(
         state,
@@ -3529,12 +3495,6 @@ module {
     };
 
     let fee_schema : Text = Option.get<Text>(_fee_schema, Option.get<Text>(seller_fee_schema, Types.metadata.__system_secondary_royalty));
-
-    debug if (debug_channel.market) D.print("checking fee_accounts parameters");
-    switch (_check_fee_account(state, fee_accounts, _fee_schema, caller)) {
-      case (#ok()) {};
-      case (#err(e)) { return #err(#trappable(e)) };
-    };
 
     switch (bid_pays_fees) {
       case (?bid_pays) {

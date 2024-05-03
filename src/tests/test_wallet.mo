@@ -901,7 +901,7 @@ shared (deployer) actor class test_wallet() = this {
 
   };
 
-  public shared (msg) func try_bid(canister : Principal, owner : Principal, ledger : Principal, amount : Nat, token_id : Text, sale_id : Text, broker : ?Principal) : async Result.Result<Types.BidResponse, Types.OrigynError> {
+  public shared (msg) func try_bid(canister : Principal, owner : Principal, ledger : Principal, amount : Nat, token_id : Text, sale_id : Text, broker : ?Principal, config : MigrationTypes.Current.BidConfigShared) : async Result.Result<Types.BidResponse, Types.OrigynError> {
 
     let acanister : Types.Service = actor (Principal.toText(canister));
 
@@ -927,7 +927,7 @@ shared (deployer) actor class test_wallet() = this {
             });
             amount = amount;
           };
-          config = null;
+          config = config;
         })
       );
     } catch (e) {
