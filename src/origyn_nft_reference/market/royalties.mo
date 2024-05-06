@@ -61,9 +61,8 @@ module {
     metadata : CandyTypes.CandyShared;
     token_id : ?Text;
     token : Types.TokenSpec;
-    fee_accounts : ?MigrationTypes.Current.FeeAccountsParams;
     fee_schema : Text;
-    fee_accounts_owner : ?MigrationTypes.Current.Account;
+    fee_accounts_with_owner : [(MigrationTypes.Current.FeeName, MigrationTypes.Current.Account)];
   };
 
   let account_handler = MigrationTypes.Current.account_handler;
@@ -252,21 +251,18 @@ module {
         };
       };
 
-      // Check if fee_accounts is set for this royalty
-      let fee_accounts : MigrationTypes.Current.FeeAccountsParams = Option.get(request.fee_accounts, []);
-
-      debug if (debug_channel.royalties) D.print("fee_accounts =  " # debug_show (fee_accounts));
-      switch (Array.find<Text>(fee_accounts, func(val) { return val == tag })) {
-        case (?val) {
-          let fee_accounts_set : { owner : Principal; sub_account : ?Blob } = switch (request.fee_accounts_owner) {
-            case (? #account(fee_accounts_set)) {
+      debug if (debug_channel.royalties) D.print("fee_accounts_with_owner =  " # debug_show (request.fee_accounts_with_owner));
+      switch (Array.find<(MigrationTypes.Current.FeeName, MigrationTypes.Current.Account)>(request.fee_accounts_with_owner, func((fee_name, acc)) { return fee_name == tag })) {
+        case (?(fee_name, fee_accounts_owner)) {
+          let fee_accounts_set : { owner : Principal; sub_account : ?Blob } = switch (fee_accounts_owner) {
+            case (#account(fee_accounts_set)) {
               fee_accounts_set;
             };
-            case (? #principal(p_account)) {
+            case (#principal(p_account)) {
               { owner = p_account; sub_account = null };
             };
             case (_) {
-              debug if (debug_channel.royalties) D.print("Process royalties - shouldnt go there : " # debug_show (request.fee_accounts_owner));
+              debug if (debug_channel.royalties) D.print("Process royalties - shouldnt go there : " # debug_show (fee_accounts_owner));
               continue royaltyLoop;
             };
           };

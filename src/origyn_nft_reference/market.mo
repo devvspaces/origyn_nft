@@ -48,7 +48,7 @@ module {
     ensure = false;
     invoice = false;
     end_sale = false;
-    market = false;
+    market = true;
     royalties = true;
     offers = false;
     escrow = false;
@@ -1094,43 +1094,52 @@ module {
 
         debug if (debug_channel.market) D.print("fee_schema is " # debug_show (_fee_schema));
         debug if (debug_channel.market) D.print("royalty is " # debug_show (royalty));
+        debug if (debug_channel.market) D.print("bidder_fee_accounts is " # debug_show (bidder_fee_accounts));
+        debug if (debug_channel.market) D.print("seller_fee_accounts is " # debug_show (seller_fee_accounts));
 
-        let (fee_accounts : ?MigrationTypes.Current.FeeAccountsParams, fee_accounts_owner : ?MigrationTypes.Current.Account) = switch (bidder_fee_accounts : ?MigrationTypes.Current.FeeAccountsParams) {
-          case (?bidder_fee_accounts) {
-            switch (seller_fee_accounts) {
-              case (?seller_fee_account) {
-                switch (
-                  end_sale_unlock_fee_account_callback(
-                    state,
-                    metadata,
-                    {
-                      token = current_sale_state.token;
-                      sale_id = current_sale.sale_id;
-                      seller_fee_accounts = seller_fee_accounts;
-                      bidder_fee_accounts = ?bidder_fee_accounts;
-                      fee_schema = fee_schema;
-                      owner = owner;
-                    },
-                    #err(#trappable(Types.errors(?state.canistergeekLogger, #nyi, "end_sale cant end_sale_unlock_fee_account_callback ", ?caller))),
-                  )
-                ) {
-                  case (_) {}; // err can not be handle here. if token can not be unlock, garbage collector will have to do it
+        var fee_accounts_with_owner = Buffer.Buffer<(MigrationTypes.Current.FeeName, MigrationTypes.Current.Account)>(5);
+        let _bidder_fee_accounts = Option.get(bidder_fee_accounts, []);
+        let _seller_fee_accounts = Option.get(seller_fee_accounts, []);
+
+        for (royalties_name in Royalties.royalties_names.vals()) {
+          switch (Array.find<MigrationTypes.Current.FeeName>(_bidder_fee_accounts, func x = x == royalties_name)) {
+            case (?val) {
+              debug if (debug_channel.market) D.print("check if seller also provided a fee_schema for this royalty.");
+              switch (Array.find<MigrationTypes.Current.FeeName>(_seller_fee_accounts, func x = x == royalties_name)) {
+                case (?val) {
+                  debug if (debug_channel.market) D.print("Free seller_fee_account fee_account : " #debug_show (val));
+                  switch (
+                    _unlock_fee_accounts_according_to_fee_schema(
+                      state,
+                      metadata,
+                      {
+                        token = current_sale_state.token;
+                        sale_id = current_sale.sale_id;
+                        fee_accounts = ?[val];
+                        fee_schema = ?_fee_schema;
+                        owner = owner;
+                      },
+                    )
+                  ) {
+                    case (#ok()) {};
+                    case (#err(e)) {
+                      /* Error here but we can not return error. Create garbage collector to get back this unlocked tokens.*/
+                    };
+                  };
                 };
-
-                (?bidder_fee_accounts, ?winning_escrow.buyer) : (?MigrationTypes.Current.FeeAccountsParams, ?MigrationTypes.Current.Account);
-              }; //Bid fee account and seller fee_accounts setted. use in priority bidder fee_accounts.
-              case (null) {
-                (?bidder_fee_accounts, ?winning_escrow.buyer) : (?MigrationTypes.Current.FeeAccountsParams, ?MigrationTypes.Current.Account);
+                case (_) {};
               };
+
+              debug if (debug_channel.market) D.print("(_bidder_fee_account, winning_escrow.buyer) " # debug_show ((val, winning_escrow.buyer)));
+              let _ = fee_accounts_with_owner.add((val, winning_escrow.buyer));
             };
-          };
-          case (null) {
-            switch (seller_fee_accounts) {
-              case (?seller_fee_accounts) {
-                (?seller_fee_accounts, ?owner) : (?MigrationTypes.Current.FeeAccountsParams, ?MigrationTypes.Current.Account);
-              }; //Bid fee account and seller fee_accounts setted. use in priority bidder fee_accounts.
-              case (null) {
-                (null, null) : (?MigrationTypes.Current.FeeAccountsParams, ?MigrationTypes.Current.Account);
+            case (null) {
+              switch (Array.find<MigrationTypes.Current.FeeName>(_seller_fee_accounts, func x = x == royalties_name)) {
+                case (?val) {
+                  debug if (debug_channel.market) D.print("(_seller_fee_account, owner) " # debug_show ((val, owner)));
+                  let _ = fee_accounts_with_owner.add((val, owner));
+                };
+                case (null) {};
               };
             };
           };
@@ -1138,47 +1147,43 @@ module {
 
         let fee_ : Nat = Option.get(fee, 0);
         let total = Nat.sub(winning_escrow.amount, fee_);
+        var fee_accounts_with_owner_array = Buffer.toArray(fee_accounts_with_owner);
 
-        debug if (debug_channel.market) D.print("fee_accounts is " # debug_show (fee_accounts));
-        let remaning_fee : Nat = switch (fee_accounts) {
-          case (?_fee_accounts) {
-            var _r_fees : Nat = 0;
-            for (this_item in royalty.vals()) {
-              let loaded_royalty = switch (Royalties._load_royalty(_fee_schema, this_item)) {
-                case (#ok(val)) { val };
-                // case (#err(err)) {
-                // Impossible
-                // };
-              };
+        debug if (debug_channel.market) D.print("fee_accounts is " # debug_show (fee_accounts_with_owner_array));
 
-              let tag = switch (loaded_royalty) {
-                case (#fixed(val)) { val.tag };
-                case (#dynamic(val)) { val.tag };
-              };
-
-              debug if (debug_channel.market) D.print("remaning_fee _fee_accounts is " # debug_show (_fee_accounts));
-              switch (Array.find<Text>(_fee_accounts, func(val) { return val == tag })) {
-                case (?val) {
-                  //this fees will be paid by a specific account
-                  debug if (debug_channel.market) D.print("royalty matched in provided _fee_accounts. will use this account to pay royalties instead of winning escrow");
-                };
-                case (null) {
-                  //this fees will be paid by winning_escrow directly
-                  let total_royalty = switch (loaded_royalty) {
-                    case (#fixed(val)) {
-                      Int.abs(Float.toInt(Float.ceil(val.fixedXDR)));
-                    };
-                    case (#dynamic(val)) {
-                      (total * Int.abs(Float.toInt(val.rate * 1_000_000))) / 1_000_000;
-                    };
-                  };
-                  _r_fees += total_royalty;
-                };
-              };
-            };
-            _r_fees;
+        var remaning_fee : Nat = 0;
+        for (this_item in royalty.vals()) {
+          let loaded_royalty = switch (Royalties._load_royalty(_fee_schema, this_item)) {
+            case (#ok(val)) { val };
+            // case (#err(err)) {
+            // Impossible
+            // };
           };
-          case (null) { fee_ };
+
+          let tag = switch (loaded_royalty) {
+            case (#fixed(val)) { val.tag };
+            case (#dynamic(val)) { val.tag };
+          };
+
+          debug if (debug_channel.market) D.print("remaning_fee " #debug_show (remaning_fee) # " _fee_accounts is " # debug_show (fee_accounts_with_owner_array));
+          switch (Array.find<(MigrationTypes.Current.FeeName, MigrationTypes.Current.Account)>(fee_accounts_with_owner_array, func((fee_name, acc)) { return fee_name == tag })) {
+            case (?val) {
+              //this fees will be paid by a specific account
+              debug if (debug_channel.market) D.print("royalty matched in provided _fee_accounts. will use this account to pay royalties instead of winning escrow");
+            };
+            case (null) {
+              //this fees will be paid by winning_escrow directly
+              let total_royalty = switch (loaded_royalty) {
+                case (#fixed(val)) {
+                  Int.abs(Float.toInt(Float.ceil(val.fixedXDR)));
+                };
+                case (#dynamic(val)) {
+                  (total * Int.abs(Float.toInt(val.rate * 1_000_000))) / 1_000_000;
+                };
+              };
+              remaning_fee += total_royalty;
+            };
+          };
         };
 
         debug if (debug_channel.market) D.print("winning_escrow.amount is " # debug_show (winning_escrow.amount));
@@ -1206,8 +1211,7 @@ module {
               metadata = metadata;
               token_id = ?token_id;
               token = winning_escrow.token;
-              fee_accounts = fee_accounts;
-              fee_accounts_owner = fee_accounts_owner;
+              fee_accounts_with_owner = fee_accounts_with_owner_array;
               fee_schema = _fee_schema;
             },
             caller,
@@ -1824,8 +1828,7 @@ module {
               metadata = metadata;
               token_id = ?request.token_id;
               token = escrow.token;
-              fee_accounts = null; // not sure here
-              fee_accounts_owner = null;
+              fee_accounts_with_owner = [];
               fee_schema = _fee_schema;
               owner = owner;
             },

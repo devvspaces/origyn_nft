@@ -4002,6 +4002,9 @@ shared (deployer) actor class test_runner(dfx_ledger : Principal, dfx_ledger2 : 
       subaccount = ?Blob.toArray(sellerFeeDepositAccount_2.account.sub_account);
     });
 
+    let try_withdraw_locked_fee_deposit = await canister.sale_nft_origyn(#withdraw(#fee_deposit({ account = #account({ owner = Principal.fromActor(this); sub_account = null }); token = #ic({ canister = Principal.fromActor(dfx); standard = #Ledger; decimals = 8; symbol = "LDG"; fee = ?200000; id = null }); amount = 10 * 10 ** 8; withdraw_to = #account({ owner = Principal.fromActor(a_wallet); sub_account = null }); status = #unlocked() })));
+    D.print("try_withdraw_locked_fee_deposit " # debug_show (try_withdraw_locked_fee_deposit));
+
     D.print("fee_wallet_balance5 = " # debug_show (fee_wallet_balance5));
     D.print("fee_wallet_balance5___2 = " # debug_show (fee_wallet_balance5___2));
     D.print("a wallet " # debug_show ((Principal.fromActor(a_wallet), a_balance, a_balance5)));
