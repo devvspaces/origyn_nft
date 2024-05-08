@@ -2077,7 +2077,7 @@ shared (deployer) actor class test_runner(dfx_ledger : Principal, dfx_ledger2 : 
           amount = 100_000_000;
         };
         pricing = #instant;
-        broker_id = ?Principal.fromActor(b_wallet);
+        broker_id = ? #principal(Principal.fromActor(b_wallet));
       };
 
     });
@@ -2151,7 +2151,7 @@ shared (deployer) actor class test_runner(dfx_ledger : Principal, dfx_ledger2 : 
           amount = 100_000_000;
         };
         pricing = #instant;
-        broker_id = ?Principal.fromActor(b_wallet);
+        broker_id = ? #principal(Principal.fromActor(b_wallet));
       };
 
     });
@@ -3946,7 +3946,7 @@ shared (deployer) actor class test_runner(dfx_ledger : Principal, dfx_ledger2 : 
           "com.origyn.royalty.originator",
           "com.origyn.royalty.custom",
           "com.origyn.royalty.network",
-        ])
+        ]),
       ],
     );
     D.print("a_wallet_try_bid_valid_2 " # debug_show (a_wallet_try_bid_valid_2));

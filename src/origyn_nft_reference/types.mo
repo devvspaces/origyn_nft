@@ -355,7 +355,7 @@ module {
   public type AuctionStateShared = {
     config : PricingConfigShared;
     current_bid_amount : Nat;
-    current_broker_id : ?Principal;
+    current_config : MigrationTypes.Current.BidConfigShared;
     end_date : Int;
     start_date : Int;
     min_next_bid : Nat;
@@ -388,7 +388,12 @@ module {
         case (#extensible(e)) #extensible(e);
       };
       current_bid_amount = val.current_bid_amount;
-      current_broker_id = val.current_broker_id;
+      current_config = switch (val.current_config) {
+        case (?curr_conf) {
+          ?MigrationTypes.Current.bidfeaturesmap_to_bidfeaturearray(curr_conf);
+        };
+        case (null) { null };
+      };
       end_date = val.end_date;
       start_date = val.start_date;
       token = val.token;

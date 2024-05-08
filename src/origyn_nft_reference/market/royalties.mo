@@ -55,7 +55,7 @@ module {
     account_hash : ?Blob;
     royalty : [CandyTypes.CandyShared];
     escrow : Types.EscrowReceipt;
-    broker_id : ?Principal;
+    broker_id : ?MigrationTypes.Current.Account;
     original_broker_id : ?Principal;
     sale_id : ?Text;
     metadata : CandyTypes.CandyShared;
@@ -486,10 +486,14 @@ module {
           [dev_fund()];
         };
       }; //dev fund
-      case (?val, null) [NFTUtils.create_principal_with_no_subaccount(val)];
+      case (?val, null) {
+        [MigrationTypes.Current.account_to_owner_subaccount(val)];
+      };
       case (null, ?val2) [NFTUtils.create_principal_with_no_subaccount(val2)];
       case (?val, ?val2) {
-        if (val == val2)[NFTUtils.create_principal_with_no_subaccount(val)] else [NFTUtils.create_principal_with_no_subaccount(val), NFTUtils.create_principal_with_no_subaccount(val2)];
+        if (MigrationTypes.Current.account_to_principal(val) == val2) {
+          [MigrationTypes.Current.account_to_owner_subaccount(val)];
+        } else [MigrationTypes.Current.account_to_owner_subaccount(val), NFTUtils.create_principal_with_no_subaccount(val2)];
       };
     };
 

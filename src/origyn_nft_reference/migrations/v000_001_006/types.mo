@@ -8,6 +8,7 @@ import Nat "mo:base/Nat";
 import Principal "mo:base/Principal";
 import Deque "mo:base/Deque";
 import MapUtils "mo:map_7_0_0/utils";
+import Buffer "mo:base/Buffer";
 
 import Droute "mo:droute_client/Droute";
 
@@ -185,6 +186,31 @@ module {
     #extensible : CandyTypes.CandyShared;
   };
 
+  public func account_to_principal(account : Account) : Principal {
+    switch (account) {
+      case (#principal(val)) { val };
+      case (#account(val)) { val.owner };
+      case (#account_id(val)) { Principal.fromText(val) };
+      case (#extensible(val)) { Conversions.candySharedToPrincipal(val) };
+    };
+  };
+
+  public func account_to_owner_subaccount(account : Account) : {
+    owner : Principal;
+    sub_account : ?Blob;
+  } {
+    switch (account) {
+      case (#principal(val)) { { owner = val; sub_account = null } };
+      case (#account(val)) { val };
+      case (#account_id(val)) {
+        { owner = Principal.fromText(val); sub_account = null };
+      };
+      case (#extensible(val)) {
+        { owner = Conversions.candySharedToPrincipal(val); sub_account = null };
+      };
+    };
+  };
+
   public type TransactionID = v0_1_5.TransactionID;
 
   public type AuctionConfig = {
@@ -284,7 +310,6 @@ module {
 
   public type BidFeatureKey = {
     #broker;
-    #escrow;
     #fee_schema;
     #fee_accounts;
     // #amm;
@@ -297,7 +322,6 @@ module {
 
   public type BidFeature = {
     #broker : Account;
-    #escrow : EscrowRecord;
     #fee_schema : Text;
     #fee_accounts : FeeAccountsParams;
     // #amm : AMMParams; //see ICRC-62: AMMs for Ledger Native Markets
@@ -318,10 +342,18 @@ module {
     return feature_set;
   };
 
+  public func bidfeaturesmap_to_bidfeaturearray(items : BidFeatureMap) : [BidFeature] {
+    let feature_arr = Buffer.Buffer<BidFeature>(3);
+
+    for (thisItem in Map.vals(items)) {
+      feature_arr.add(thisItem);
+    };
+
+    return Buffer.toArray(feature_arr);
+  };
+
   public type BidRequest = {
-    escrow_receipt : EscrowReceipt;
-    sale_id : Text;
-    broker_id : ?Principal;
+    escrow_record : EscrowRecord;
     config : BidConfigShared;
   };
 
@@ -347,18 +379,6 @@ module {
       return null;
     };
     return ?broker;
-  };
-
-  public func load_escrow_bid_feature(_config : BidConfig) : ?EscrowRecord {
-    let config = switch (_config) {
-      case (?config) (config);
-      case (_) (return null);
-    };
-
-    let ?(#escrow(escrow)) = Map.get<BidFeatureKey, BidFeature>(config, bid_feature_set_tool, #escrow) else {
-      return null;
-    };
-    return ?escrow;
   };
 
   public func load_fee_schema_bid_feature(_config : BidConfig) : ?Text {
@@ -693,9 +713,6 @@ module {
       case (#broker) {
         return 11311112;
       };
-      case (#escrow) {
-        return 11311113;
-      };
       case (#fee_schema) {
         return 11311114;
       };
@@ -708,9 +725,6 @@ module {
   public func bid_feature_set_eq(a : BidFeatureKey, b : BidFeatureKey) : Bool {
     switch (a, b) {
       case (#broker, #broker) {
-        return true;
-      };
-      case (#escrow, #escrow) {
         return true;
       };
       case (#fee_schema, #fee_schema) {
@@ -744,9 +758,6 @@ module {
     switch (request) {
       case (#broker(e)) {
         return #broker;
-      };
-      case (#escrow(e)) {
-        return #escrow;
       };
       case (#fee_schema(e)) {
         return #fee_schema;
@@ -834,7 +845,7 @@ module {
 
   public type SalesConfig = {
     escrow_receipt : ?EscrowReceipt;
-    broker_id : ?Principal;
+    broker_id : ?Account;
     pricing : PricingConfigShared;
   };
 
@@ -866,8 +877,7 @@ module {
     config : PricingConfig;
     var current_bid_amount : Nat;
     var current_config : BidConfig;
-    var current_escrow : ?EscrowReceipt;
-    var current_broker_id : ?Principal;
+    var current_escrow : ?EscrowRecord;
     var end_date : Int;
     var start_date : Int;
     token : TokenSpec;

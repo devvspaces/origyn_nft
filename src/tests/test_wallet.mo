@@ -3,6 +3,7 @@ import AccountIdentifier "mo:principalmo/AccountIdentifier";
 import D "mo:base/Debug";
 import Error "mo:base/Error";
 import Principal "mo:base/Principal";
+import Array "mo:base/Array";
 import Result "mo:base/Result";
 import Blob "mo:base/Blob";
 import Time "mo:base/Time";
@@ -908,12 +909,26 @@ shared (deployer) actor class test_wallet() = this {
     D.print("in try bid" # debug_show ((canister, owner, ledger, amount, token_id, sale_id, broker)));
 
     D.print("calling sale");
+    let _config = switch (broker) {
+      case (?_broker) {
+        switch (config) {
+          case (?__config) {
+            ?Array.append<MigrationTypes.Current.BidFeature>(__config, [#broker(#account({ owner = _broker; sub_account = null }))]);
+          };
+          case (null) {
+            ?[#broker(#account({ owner = _broker; sub_account = null }))];
+          };
+        };
+      };
+      case (null) {
+        config;
+      };
+    };
+
     let trystart = try {
       await acanister.sale_nft_origyn(
         #bid({
-          broker_id = broker;
-          sale_id = sale_id;
-          escrow_receipt = {
+          escrow_record = {
             seller = #principal(owner);
             buyer = #principal(Principal.fromActor(this));
             token_id = token_id;
@@ -926,8 +941,11 @@ shared (deployer) actor class test_wallet() = this {
               fee = ?200000;
             });
             amount = amount;
+            sale_id = ?sale_id;
+            lock_to_date = null;
+            account_hash = null;
           };
-          config = config;
+          config = _config;
         })
       );
     } catch (e) {

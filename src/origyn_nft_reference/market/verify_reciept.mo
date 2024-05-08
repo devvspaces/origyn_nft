@@ -43,6 +43,25 @@ module {
   let account_handler = MigrationTypes.Current.account_handler;
   let token_handler = MigrationTypes.Current.token_handler;
 
+  public func verify_escrow_record(
+    state : StateAccess,
+    escrow : Types.EscrowRecord,
+    owner : ?Types.Account,
+  ) : Result.Result<MigrationTypes.Current.VerifiedReciept, Types.OrigynError> {
+    return verify_escrow_receipt(
+      state,
+      {
+        amount = escrow.amount;
+        buyer = escrow.buyer;
+        seller = escrow.seller;
+        token_id = escrow.token_id;
+        token = escrow.token;
+      },
+      owner,
+      escrow.sale_id,
+    );
+  };
+
   //verifies that an escrow reciept exists in this NFT
   /**
   * Verifies an escrow receipt to determine whether a buyer/seller/token_id tuple has a balance on file.

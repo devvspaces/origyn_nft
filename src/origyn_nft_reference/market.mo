@@ -47,16 +47,16 @@ module {
     verify_sale = false;
     ensure = false;
     invoice = false;
-    end_sale = false;
-    market = true;
-    royalties = true;
+    end_sale = true;
+    market = false;
+    royalties = false;
     offers = false;
     escrow = false;
     withdraw_escrow = false;
     withdraw_sale = false;
     withdraw_reject = false;
     withdraw_deposit = false;
-    withdraw_fee_deposit = true;
+    withdraw_fee_deposit = false;
     notifications = false;
     dutch = false;
     bid = false;
@@ -701,7 +701,10 @@ module {
       case (_) return #err(#trappable(Types.errors(?state.canistergeekLogger, #sale_not_found, "end_sale_nft_origyn - not an auction type ", ?caller)));
     };
 
+    debug if (debug_channel.end_sale) D.print("current_sale_state " # debug_show (current_sale_state));
+
     let bidder_fee_accounts : ?MigrationTypes.Current.FeeAccountsParams = MigrationTypes.Current.load_fee_accounts_bid_feature(current_sale_state.current_config);
+    let current_broker_id : ?MigrationTypes.Current.Account = MigrationTypes.Current.load_broker_bid_feature(current_sale_state.current_config);
 
     let buy_now = switch (buy_now_price) {
       case (null) { false };
@@ -1204,7 +1207,7 @@ module {
               fee = fee_;
               escrow = winning_escrow;
               royalty = royalty;
-              broker_id = current_sale_state.current_broker_id;
+              broker_id = current_broker_id;
               original_broker_id = current_sale.original_broker_id;
               sale_id = ?current_sale.sale_id;
               account_hash = account_hash;
@@ -2206,7 +2209,12 @@ module {
       sale_id,
       {
         sale_id = sale_id;
-        original_broker_id = request.sales_config.broker_id;
+        original_broker_id = switch (request.sales_config.broker_id) {
+          case (?_broker_id) {
+            ?MigrationTypes.Current.account_to_principal(_broker_id);
+          };
+          case (null) { null };
+        };
         broker_id = null; //currently the broker id for a auction doesn't do much. perhaps it should split the broker reward?
         token_id = request.token_id;
         sale_type = #auction(new_auction);
@@ -2695,7 +2703,6 @@ module {
     {
       auction with
       var current_bid_amount = auction.current_bid_amount;
-      var current_broker_id = auction.current_broker_id;
       var current_config : MigrationTypes.Current.BidConfig = null;
       var end_date = auction.end_date;
       var start_date = auction.start_date;
@@ -3285,6 +3292,9 @@ module {
             amount = balance;
             token = request.deposit.token;
             token_id = request.token_id;
+            sale_id = null;
+            lock_to_date = null;
+            account_hash = null;
           },
         );
 
@@ -3332,11 +3342,11 @@ module {
     *
     * @param {Types.State} state - The current state of the canister.
     * @param {MigrationTypes.Current.VerifiedReciept} verified - The verified receipt.
-    * @param {MigrationTypes.Current.EscrowReceipt} escrow - The escrow receipt.
+    * @param {MigrationTypes.Current.EscrowRecord} escrow - The escrow record.
     *
     * @returns {async* Bool} - A boolean value indicating whether the refund was successful or not.
     */
-  private func refund_failed_bid(state : Types.State, verified : MigrationTypes.Current.VerifiedReciept, escrow : MigrationTypes.Current.EscrowReceipt) : async* Bool {
+  private func refund_failed_bid(state : Types.State, verified : MigrationTypes.Current.VerifiedReciept, escrow : MigrationTypes.Current.EscrowRecord) : async* Bool {
     //we will close later after we try to refund a valid bid
     debug if (debug_channel.bid) D.print("refunding" # debug_show (verified.found_asset.escrow.amount));
     let service : Types.Service = actor ((Principal.toText(state.canister())));
@@ -3369,10 +3379,13 @@ module {
 
     debug if (debug_channel.bid) D.print("in bid " # debug_show ((request, canister_call)));
     D.print("ok here");
+
+    let ?sale_id : ?Text = request.escrow_record.sale_id else return #err(#trappable(Types.errors(?state.canistergeekLogger, #sale_id_does_not_match, "bid_nft_origyn - sales id not provided. please set in escrow records", ?caller)));
+
     //look for an existing sale
-    let ?current_sale = Map.get(state.state.nft_sales, Map.thash, request.sale_id) else {
-      debug if (debug_channel.bid) D.print("could not find sale " # debug_show (request.sale_id));
-      return #err(#trappable(Types.errors(?state.canistergeekLogger, #sale_id_does_not_match, "bid_nft_origyn - sales id did not match " # request.sale_id, ?caller)));
+    let ?current_sale = Map.get(state.state.nft_sales, Map.thash, sale_id) else {
+      debug if (debug_channel.bid) D.print("could not find sale " # debug_show (sale_id));
+      return #err(#trappable(Types.errors(?state.canistergeekLogger, #sale_id_does_not_match, "bid_nft_origyn - sales id did not match " # sale_id, ?caller)));
     };
     D.print("ok here 2");
 
@@ -3383,7 +3396,7 @@ module {
       case (#err(err)) return #err(#trappable(Types.errors(?state.canistergeekLogger, err.error, "bid_nft_origyn - find state " # err.flag_point, ?caller)));
     };
 
-    var metadata = switch (Metadata.get_metadata_for_token(state, request.escrow_receipt.token_id, caller, ?state.canister(), state.state.collection_data.owner)) {
+    var metadata = switch (Metadata.get_metadata_for_token(state, request.escrow_record.token_id, caller, ?state.canister(), state.state.collection_data.owner)) {
       case (#err(err)) return #err(#trappable(Types.errors(?state.canistergeekLogger, #token_not_found, "bid_nft_origyn " # err.flag_point, ?caller)));
       case (#ok(val)) val;
     };
@@ -3469,7 +3482,6 @@ module {
     // load new bid config :
     let {
       broker : ?Types.Account;
-      escrow : ?Types.EscrowRecord;
       _fee_schema : ?Text;
       fee_accounts : ?MigrationTypes.Current.FeeAccountsParams;
       config_map : MigrationTypes.Current.BidConfig;
@@ -3479,7 +3491,6 @@ module {
 
         {
           broker = MigrationTypes.Current.load_broker_bid_feature(?config_map);
-          escrow = MigrationTypes.Current.load_escrow_bid_feature(?config_map);
           // fee_schema = MigrationTypes.Current.load_fee_schema_bid_feature(?config_map);
           _fee_schema = null;
           fee_accounts = MigrationTypes.Current.load_fee_accounts_bid_feature(?config_map);
@@ -3489,7 +3500,6 @@ module {
       case (null) {
         {
           broker = null;
-          escrow = null;
           _fee_schema = null;
           fee_accounts = null;
           config_map = null;
@@ -3521,14 +3531,14 @@ module {
 
     switch (current_sale_state.status) {
       case (#open) {
-        if (state.get_time() >= current_sale_state.end_date) return #err(#trappable(Types.errors(?state.canistergeekLogger, #auction_ended, "bid_nft_origyn - sale is past close date " # request.sale_id, ?caller)));
+        if (state.get_time() >= current_sale_state.end_date) return #err(#trappable(Types.errors(?state.canistergeekLogger, #auction_ended, "bid_nft_origyn - sale is past close date " # sale_id, ?caller)));
       };
       case (#not_started) {
         if (state.get_time() >= current_sale_state.start_date and state.get_time() < current_sale_state.end_date) {
           current_sale_state.status := #open;
         };
       };
-      case (_) return #err(#trappable(Types.errors(?state.canistergeekLogger, #auction_ended, "bid_nft_origyn - sale is not open " # request.sale_id, ?caller)));
+      case (_) return #err(#trappable(Types.errors(?state.canistergeekLogger, #auction_ended, "bid_nft_origyn - sale is not open " # sale_id, ?caller)));
     };
 
     switch (current_sale_state.allow_list) {
@@ -3554,23 +3564,23 @@ module {
     debug if (debug_channel.bid) D.print(" owner is " # debug_show (owner));
 
     //make sure token ids match
-    if (current_sale.token_id != request.escrow_receipt.token_id) return #err(#trappable(Types.errors(?state.canistergeekLogger, #token_id_mismatch, "bid_nft_origyn - token id of sale does not match escrow receipt " # request.escrow_receipt.token_id, ?caller)));
+    if (current_sale.token_id != request.escrow_record.token_id) return #err(#trappable(Types.errors(?state.canistergeekLogger, #token_id_mismatch, "bid_nft_origyn - token id of sale does not match escrow receipt " # request.escrow_record.token_id, ?caller)));
 
     //make sure assets match
-    debug if (debug_channel.bid) D.print("checking asset sale type " # debug_show ((_get_token_from_sales_status(current_sale), request.escrow_receipt.token)));
-    if (Types.token_eq(_get_token_from_sales_status(current_sale), request.escrow_receipt.token) == false) return #err(#trappable(Types.errors(?state.canistergeekLogger, #asset_mismatch, "bid_nft_origyn - asset in sale and escrow receipt do not match " # debug_show (request.escrow_receipt.token) # debug_show (_get_token_from_sales_status(current_sale)), ?caller)));
+    debug if (debug_channel.bid) D.print("checking asset sale type " # debug_show ((_get_token_from_sales_status(current_sale), request.escrow_record.token)));
+    if (Types.token_eq(_get_token_from_sales_status(current_sale), request.escrow_record.token) == false) return #err(#trappable(Types.errors(?state.canistergeekLogger, #asset_mismatch, "bid_nft_origyn - asset in sale and escrow receipt do not match " # debug_show (request.escrow_record.token) # debug_show (_get_token_from_sales_status(current_sale)), ?caller)));
 
     //make sure owners match
-    if (Types.account_eq(owner, request.escrow_receipt.seller) == false) return #err(#trappable(Types.errors(?state.canistergeekLogger, #receipt_data_mismatch, "bid_nft_origyn - owner and seller do not match " # debug_show (request.escrow_receipt.token) # debug_show (_get_token_from_sales_status(current_sale)), ?caller)));
+    if (Types.account_eq(owner, request.escrow_record.seller) == false) return #err(#trappable(Types.errors(?state.canistergeekLogger, #receipt_data_mismatch, "bid_nft_origyn - owner and seller do not match " # debug_show (request.escrow_record.token) # debug_show (_get_token_from_sales_status(current_sale)), ?caller)));
 
     //make sure buyers match
-    if (Types.account_eq(#principal(caller), request.escrow_receipt.buyer) == false) return #err(#trappable(Types.errors(?state.canistergeekLogger, #receipt_data_mismatch, "bid_nft_origyn - caller and buyer do not match " # debug_show (request.escrow_receipt.token) # debug_show (_get_token_from_sales_status(current_sale)), ?caller)));
+    if (Types.account_eq(#principal(caller), request.escrow_record.buyer) == false) return #err(#trappable(Types.errors(?state.canistergeekLogger, #receipt_data_mismatch, "bid_nft_origyn - caller and buyer do not match " # debug_show (request.escrow_record.token) # debug_show (_get_token_from_sales_status(current_sale)), ?caller)));
 
-    debug if (debug_channel.bid) D.print(" about to verify escrow " # debug_show (request.escrow_receipt));
+    debug if (debug_channel.bid) D.print(" about to verify escrow " # debug_show (request.escrow_record));
 
     //make sure the receipt is valid
     debug if (debug_channel.bid) D.print("verifying Escrow");
-    var verified = switch (Verify.verify_escrow_receipt(state, request.escrow_receipt, null, ?request.sale_id)) {
+    var verified = switch (Verify.verify_escrow_receipt(state, request.escrow_record, null, ?sale_id)) {
       case (#err(err)) {
         //we could not verify the escrow, so we're going to try to claim it here as if escrow_nft_origyn was called first.
         //this adds an additional await to each item not already claimed, so it could get expensive in batch scenarios.
@@ -3579,49 +3589,49 @@ module {
           //not a canister call... trying to recognize escrow
 
           debug if (debug_channel.bid) D.print("Not a canister call, trying escrow");
-          state.canistergeekLogger.logMessage("bid_nft_origyn Not a canister call, trying recognize escrow " #debug_show ((request.escrow_receipt, request.sale_id)), #Option(null), null);
+          state.canistergeekLogger.logMessage("bid_nft_origyn Not a canister call, trying recognize escrow " #debug_show ((request.escrow_record, sale_id)), #Option(null), null);
           switch (
             Star.toResult(
               await* recognize_escrow_nft_origyn(
                 state,
                 {
                   deposit = {
-                    request.escrow_receipt with
-                    sale_id = ?request.sale_id;
+                    request.escrow_record with
+                    sale_id = ?sale_id;
                     trx_id = null;
                   };
                   lock_to_date = null;
-                  token_id = request.escrow_receipt.token_id;
+                  token_id = request.escrow_record.token_id;
                 },
                 caller,
               )
             )
           ) {
             case (#ok(val)) {
-              state.canistergeekLogger.logMessage("bid_nft_origyn recognize escrow succeeded " #debug_show ((request.escrow_receipt, request.sale_id)), #Option(null), null);
+              state.canistergeekLogger.logMessage("bid_nft_origyn recognize escrow succeeded " #debug_show ((request.escrow_record, sale_id)), #Option(null), null);
 
               debug if (debug_channel.bid) D.print("recognizing escrow was successful, recaling bid");
               return await* bid_nft_origyn(state, request, caller, true);
             };
             case (#err(err)) {
-              state.canistergeekLogger.logMessage("bid_nft_origyn recognize escrow failed " #debug_show ((request.escrow_receipt, request.sale_id, err.flag_point)), #Option(null), null);
+              state.canistergeekLogger.logMessage("bid_nft_origyn recognize escrow failed " #debug_show ((request.escrow_record, sale_id, err.flag_point)), #Option(null), null);
               if (debug_channel.bid) D.print("recognition of escrow failed, attempting recognition of deposit");
             };
           };
 
-          state.canistergeekLogger.logMessage("bid_nft_origyn attempting escrow from deposit " #debug_show ((request.escrow_receipt, request.sale_id)), #Option(null), null);
+          state.canistergeekLogger.logMessage("bid_nft_origyn attempting escrow from deposit " #debug_show ((request.escrow_record, sale_id)), #Option(null), null);
 
           switch (
             await* escrow_nft_origyn(
               state,
               {
                 deposit = {
-                  request.escrow_receipt with
-                  sale_id = ?request.sale_id;
+                  request.escrow_record with
+                  sale_id = ?sale_id;
                   trx_id = null;
                 };
                 lock_to_date = null;
-                token_id = request.escrow_receipt.token_id;
+                token_id = request.escrow_record.token_id;
               },
               caller,
             )
@@ -3640,7 +3650,7 @@ module {
     //we can continue with trappable because the awaits above are returned.
     debug if (debug_channel.bid) D.print("verified the escorw " # debug_show (verified.found_asset));
 
-    if (verified.found_asset.escrow.amount < request.escrow_receipt.amount) return #err(#trappable(Types.errors(?state.canistergeekLogger, #withdraw_too_large, "bid_nft_origyn - escrow - amount more than in escrow verified: " # Nat.toText(verified.found_asset.escrow.amount) # " request: " # Nat.toText(request.escrow_receipt.amount), ?caller)));
+    if (verified.found_asset.escrow.amount < request.escrow_record.amount) return #err(#trappable(Types.errors(?state.canistergeekLogger, #withdraw_too_large, "bid_nft_origyn - escrow - amount more than in escrow verified: " # Nat.toText(verified.found_asset.escrow.amount) # " request: " # Nat.toText(request.escrow_record.amount), ?caller)));
 
     //make sure auction is still running
     let current_time = state.get_time();
@@ -3650,7 +3660,7 @@ module {
     switch (current_sale_state.status) {
       case (#closed) {
         //we will close later after we try to refund a valid bid
-        ignore refund_failed_bid(state, verified, request.escrow_receipt);
+        ignore refund_failed_bid(state, verified, request.escrow_record);
         //last_withdraw_result := ?refund_id;
 
         //debug if(debug_channel.bid) D.print(debug_show(refund_id));
@@ -3673,7 +3683,7 @@ module {
     };
 
     //make sure amount is high enough
-    if (request.escrow_receipt.amount < required_bid) {
+    if (request.escrow_record.amount < required_bid) {
       //if the bid is too low we should refund their escrow
       debug if (debug_channel.bid) D.print("refunding not high enough bid " # debug_show (verified.found_asset.escrow.amount));
       let service : Types.Service = actor ((Principal.toText(state.canister())));
@@ -3695,7 +3705,7 @@ module {
     let buy_now = switch (buy_now_price) {
       case (null) false;
       case (?val) {
-        if (val <= request.escrow_receipt.amount) {
+        if (val <= request.escrow_record.amount) {
           true;
         } else {
           false;
@@ -3720,17 +3730,17 @@ module {
         if (val.result.kyc == #Fail or val.result.aml == #Fail) {
           debug if (debug_channel.bid) D.print("faild...returning bid" # debug_show (val));
 
-          ignore refund_failed_bid(state, verified, request.escrow_receipt);
+          ignore refund_failed_bid(state, verified, request.escrow_record);
           //last_withdraw_result := ?refund_id;
 
           return #err(#awaited(Types.errors(?state.canistergeekLogger, #kyc_fail, "bid_nft_origyn kyc or aml failed " # debug_show (val), ?caller)));
         };
         let kycamount = Option.get(val.result.amount, 0);
 
-        if ((kycamount > 0) and (request.escrow_receipt.amount > kycamount)) {
-          ignore refund_failed_bid(state, verified, request.escrow_receipt);
+        if ((kycamount > 0) and (request.escrow_record.amount > kycamount)) {
+          ignore refund_failed_bid(state, verified, request.escrow_record);
 
-          return #err(#awaited(Types.errors(?state.canistergeekLogger, #kyc_fail, "bid_nft_origyn kyc or aml amount too large " # debug_show ((val, kycamount, request.escrow_receipt)), ?caller)));
+          return #err(#awaited(Types.errors(?state.canistergeekLogger, #kyc_fail, "bid_nft_origyn kyc or aml amount too large " # debug_show ((val, kycamount, request.escrow_record)), ?caller)));
         };
 
         if (val.did_async) {
@@ -3739,14 +3749,14 @@ module {
 
       };
       case (#err(err)) {
-        ignore refund_failed_bid(state, verified, request.escrow_receipt);
+        ignore refund_failed_bid(state, verified, request.escrow_record);
 
         return #err(#awaited(Types.errors(?state.canistergeekLogger, err.error, "bid_nft_origyn auto try kyc failed " # err.flag_point, ?caller)));
       };
     };
 
     if (bRevalidate) {
-      verified := switch (Verify.verify_escrow_receipt(state, request.escrow_receipt, null, ?request.sale_id)) {
+      verified := switch (Verify.verify_escrow_record(state, request.escrow_record, null)) {
         case (#err(err)) {
           //we could not verify the escrow, so we're going to try to claim it here as if escrow_nft_origyn was called first.
           //this adds an additional await to each item not already claimed, so it could get expensive in batch scenarios.
@@ -3765,7 +3775,7 @@ module {
             metadata,
             current_sale_state.token,
             #account({ owner = caller; sub_account = null }),
-            request.sale_id,
+            sale_id,
             fee_schema,
             _fee_accounts,
           )
@@ -3780,43 +3790,16 @@ module {
       case (null) {};
     };
 
-    switch (current_sale_state.current_config) {
-      case (?val) {
-        switch (
-          _unlock_fee_accounts_according_to_fee_schema(
-            state,
-            metadata,
-            {
-              token = current_sale_state.token;
-              sale_id = request.sale_id;
-              fee_accounts = MigrationTypes.Current.load_fee_accounts_bid_feature(?val);
-              fee_schema = ?fee_schema;
-              owner = #account({ owner = caller; sub_account = null });
-            },
-          )
-        ) {
-          case (#ok()) {};
-          case (#err(e)) {
-            debug if (debug_channel.bid) D.print("Error unlocking last bidder token. Cron job will free those token automaticly after sale ended. // feature WIP");
-          };
-        };
-
-        current_sale_state.current_config := config_map;
-      };
-      case (null) { current_sale_state.current_config := config_map };
-    };
-
     debug if (debug_channel.bid) D.print("have buy now" # debug_show (buy_now, buy_now_price, current_sale_state.current_bid_amount));
 
     let new_trx = Metadata.add_transaction_record(
       state,
       {
-        token_id = request.escrow_receipt.token_id;
+        token_id = request.escrow_record.token_id;
         index = 0;
         txn_type = #auction_bid({
-          request.escrow_receipt with
-          broker_id = request.broker_id;
-          sale_id = request.sale_id;
+          request.escrow_record with
+          sale_id = sale_id;
           extensible = #Option(null);
         });
         timestamp = state.get_time();
@@ -3835,8 +3818,8 @@ module {
         //update the sale
 
         let newMinBid = switch (min_increase) {
-          case (#percentage(apercentage)) Int.abs(Float.toInt(Float.fromInt(request.escrow_receipt.amount) * apercentage)) + request.escrow_receipt.amount;
-          case (#amount(aamount)) request.escrow_receipt.amount + aamount;
+          case (#percentage(apercentage)) Int.abs(Float.toInt(Float.fromInt(request.escrow_record.amount) * apercentage)) + request.escrow_record.amount;
+          case (#amount(aamount)) request.escrow_record.amount + aamount;
         };
 
         debug if (debug_channel.bid) D.print("have a min bid" # debug_show (newMinBid));
@@ -3846,24 +3829,42 @@ module {
 
             //update state
             debug if (debug_channel.bid) D.print("updating the state" # debug_show (request));
-            current_sale_state.current_bid_amount := request.escrow_receipt.amount;
+            current_sale_state.current_bid_amount := request.escrow_record.amount;
             if (dutch == false) {
               current_sale_state.min_next_bid := newMinBid;
             };
-            current_sale_state.current_escrow := ?request.escrow_receipt;
-            current_sale_state.current_broker_id := request.broker_id;
+            current_sale_state.current_escrow := ?request.escrow_record;
+            current_sale_state.current_config := config_map;
             ignore Map.put<Principal, Int>(current_sale_state.participants, phash, caller, state.get_time());
           };
           case (?val) {
+            switch (
+              _unlock_fee_accounts_according_to_fee_schema(
+                state,
+                metadata,
+                {
+                  token = current_sale_state.token;
+                  sale_id = sale_id;
+                  fee_accounts = MigrationTypes.Current.load_fee_accounts_bid_feature(current_sale_state.current_config);
+                  fee_schema = ?fee_schema;
+                  owner = #account({ owner = caller; sub_account = null });
+                },
+              )
+            ) {
+              case (#ok()) {};
+              case (#err(e)) {
+                debug if (debug_channel.bid) D.print("Error unlocking last bidder token. Cron job will free those token automaticly after sale ended. // feature WIP");
+              };
+            };
 
+            current_sale_state.current_config := config_map;
             //update state
             debug if (debug_channel.bid) D.print("Before" # debug_show (val.amount) # debug_show (val));
-            current_sale_state.current_bid_amount := request.escrow_receipt.amount;
+            current_sale_state.current_bid_amount := request.escrow_record.amount;
             if (dutch == false) {
               current_sale_state.min_next_bid := newMinBid;
             };
-            current_sale_state.current_escrow := ?request.escrow_receipt;
-            current_sale_state.current_broker_id := request.broker_id;
+            current_sale_state.current_escrow := ?request.escrow_record;
             ignore Map.put<Principal, Int>(current_sale_state.participants, phash, caller, state.get_time());
             debug if (debug_channel.bid) D.print("After" # debug_show (val.amount) # debug_show (val));
             //refund the escrow
@@ -3880,8 +3881,6 @@ module {
               )
             );
 
-            // TODO GWOJDA : unlock state.fee_deposit_balances from previous buyer
-
             //last_withdraw_result := ?refund_id;
             debug if (debug_channel.bid) D.print("done");
             //debug if(debug_channel.bid) D.print(debug_show(refund_id));
@@ -3895,7 +3894,7 @@ module {
 
           let service : Types.Service = actor ((Principal.toText(state.canister())));
 
-          let result = await service.sale_nft_origyn(#end_sale(request.escrow_receipt.token_id));
+          let result = await service.sale_nft_origyn(#end_sale(request.escrow_record.token_id));
 
           switch (result) {
             case (#ok(val)) {

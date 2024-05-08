@@ -103,22 +103,55 @@ module {
           };
         };
 
-        {
-          config = config;
-          var current_bid_amount = val.current_bid_amount;
-          var current_broker_id = val.current_broker_id;
-          var current_config = null;
-          var end_date = val.end_date;
-          var start_date = val.start_date;
-          token = val.token;
-          var min_next_bid = val.min_next_bid;
-          var current_escrow = val.current_escrow;
-          var wait_for_quiet_count = val.wait_for_quiet_count;
-          allow_list = val.allow_list;
-          var participants = val.participants;
-          var status = val.status;
-          var winner = val.winner;
-          var notify_queue = ?(Deque.empty<(Principal, ?MigrationTypes.Current.SubscriptionID)>());
+        switch (val.current_escrow) {
+          case (?_current_escrow) {
+            {
+              config = config;
+              var current_bid_amount = val.current_bid_amount;
+              var current_broker_id = val.current_broker_id;
+              var current_config = null;
+              var end_date = val.end_date;
+              var start_date = val.start_date;
+              token = val.token;
+              var min_next_bid = val.min_next_bid;
+              var current_escrow = ?{
+                amount = _current_escrow.amount;
+                buyer = _current_escrow.buyer;
+                seller = _current_escrow.seller;
+                token_id = _current_escrow.token_id;
+                token = _current_escrow.token;
+                sale_id = null;
+                lock_to_date = null;
+                account_hash = null;
+              };
+              var wait_for_quiet_count = val.wait_for_quiet_count;
+              allow_list = val.allow_list;
+              var participants = val.participants;
+              var status = val.status;
+              var winner = val.winner;
+              var notify_queue = ?(Deque.empty<(Principal, ?MigrationTypes.Current.SubscriptionID)>());
+            };
+
+          };
+          case (null) {
+            {
+              config = config;
+              var current_bid_amount = val.current_bid_amount;
+              var current_broker_id = val.current_broker_id;
+              var current_config = null;
+              var end_date = val.end_date;
+              var start_date = val.start_date;
+              token = val.token;
+              var min_next_bid = val.min_next_bid;
+              var current_escrow = null;
+              var wait_for_quiet_count = val.wait_for_quiet_count;
+              allow_list = val.allow_list;
+              var participants = val.participants;
+              var status = val.status;
+              var winner = val.winner;
+              var notify_queue = ?(Deque.empty<(Principal, ?MigrationTypes.Current.SubscriptionID)>());
+            };
+          };
         };
       };
       case (_) {
