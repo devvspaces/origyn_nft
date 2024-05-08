@@ -103,13 +103,21 @@ module {
           };
         };
 
+        let _config = switch (val.current_broker_id) {
+          case (?_broker) {
+            ?MigrationTypes.Current.bidfeatures_to_map([#broker(#principal(_broker))]);
+          };
+          case (null) {
+            null;
+          };
+        };
+
         switch (val.current_escrow) {
           case (?_current_escrow) {
             {
               config = config;
               var current_bid_amount = val.current_bid_amount;
-              var current_broker_id = val.current_broker_id;
-              var current_config = null;
+              var current_config = _config;
               var end_date = val.end_date;
               var start_date = val.start_date;
               token = val.token;
@@ -137,8 +145,7 @@ module {
             {
               config = config;
               var current_bid_amount = val.current_bid_amount;
-              var current_broker_id = val.current_broker_id;
-              var current_config = null;
+              var current_config = _config;
               var end_date = val.end_date;
               var start_date = val.start_date;
               token = val.token;
