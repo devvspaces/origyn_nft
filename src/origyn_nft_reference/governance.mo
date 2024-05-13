@@ -8,6 +8,7 @@ import Conversions "mo:candy/conversion";
 import Properties "mo:candy/properties";
 
 import Metadata "metadata";
+import Market "market";
 import MigrationTypes "./migrations/types";
 import Types "types";
 import NFTUtils "utils";
@@ -57,6 +58,33 @@ module {
       //clears shared wallets from an NFT leaving only the last assigned owner in control of the NFT
         let ?metadata = Map.get(state.state.nft_metadata, Map.thash, request.token_id) else {
           return #err(Types.errors(?state.canistergeekLogger,  #token_not_found, "governance_nft_origyn - update_system_var token not found", ?caller));
+        };
+
+        //handle ending sales for any redeemed NFTs.
+        if(request.key == Types.metadata.__system_redeemed){
+           switch(await* Market.end_sale_nft_origyn(state, request.token_id, state.canister())){
+            case(#trappable(_)){
+              //do nothing
+            };
+            case(#awaited(_)){
+              //do nothing
+            };
+            case(#err(#trappable({error = #sale_not_over}))){
+              return #err(Types.errors(?state.canistergeekLogger,  #sale_not_over, "governance_nft_origyn - open sale pending", ?caller));
+            };
+            case(#err(#trappable({error = #sale_not_found}))){
+              //do nothing
+            };
+            case(#err(#trappable({error = #auction_ended}))){
+              //do nothing
+            };
+            case(#err(#trappable(err))){
+              return #err(Types.errors(?state.canistergeekLogger,  err.error, "governance_nft_origyn - trappable unknown error -" # debug_show(err), ?caller));
+            };
+            case(#err(#awaited(err))){
+              return #err(Types.errors(?state.canistergeekLogger,  err.error, "governance_nft_origyn - awaited unknown error -" # debug_show(err), ?caller));
+            };
+           };
         };
 
         let new_metadata = Metadata.set_system_var(metadata, request.key, request.val);

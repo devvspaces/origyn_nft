@@ -268,12 +268,28 @@ shared (deployer) actor class test_runner(tests : {
 
       switch(tests.test_runner_data){
 
+        
+
         case(null){};
         case(?test_runner_data){
-          //D.print("running data tests");
+          D.print("running data tests");
           let DATATestCanister : test_runner_nft_service = actor(Principal.toText(test_runner_data));
 
+          
+
           it.should("run data tests", func () : async C.TestResult = async {
+
+            let dfx : DFXTypes.Service = actor(Principal.toText(dfx_ledger));
+
+            let resultdfx = await dfx.icrc1_transfer({
+              to =  {owner = Principal.fromActor(DATATestCanister); subaccount= null};
+              fee = ?200_000;
+              memo = utils.memo_one;
+              from_subaccount = null;
+              created_at_time = null;
+              amount = 200_000_000_000_000;});
+
+            D.print("resultdfx data " # debug_show(resultdfx));
         
             let result = await DATATestCanister.test(tests.canister_factory, tests.storage_factory);
             //M.attempt(greeting, M.equals(T.text("Hello, Christoph!")))

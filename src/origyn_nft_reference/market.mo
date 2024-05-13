@@ -40,10 +40,10 @@ module {
 
   let debug_channel = {
       verify_escrow = true;
-      verify_sale = false;
+      verify_sale = true;
       ensure = false;
       invoice = false;
-      end_sale = false;
+      end_sale = true;
       market = false;
       royalties = true;
       offers = false;
@@ -320,7 +320,7 @@ module {
     caller: Principal) : Result.Result<Bool,Types.OrigynError>{
 
       debug if(debug_channel.ensure) D.print("in ensure");
-    let #ok(token_id) =Metadata.get_nft_id(metadata) else  return #err(Types.errors(?state.canistergeekLogger,  #token_not_found, "is_token_on_sale - could not find token_id ", ?caller));
+    let #ok(token_id) = Metadata.get_nft_id(metadata) else  return #err(Types.errors(?state.canistergeekLogger,  #token_not_found, "is_token_on_sale - could not find token_id ", ?caller));
 
     //look for an existing sale
     debug if(debug_channel.verify_sale) D.print("geting sale");
@@ -863,7 +863,7 @@ module {
             //only the canister can end a buy now
           } else {
 
-            if(Types.account_eq(#principal(caller), owner) == true and current_sale_state.current_escrow == null){
+            if((Types.account_eq(#principal(caller), owner) == true or caller == state.canister()) and current_sale_state.current_escrow == null){
               //an owner can cancel an auction that has no bids yet.
               //useful for buy it now sales with a long out end date.
 
@@ -2276,6 +2276,9 @@ module {
         if (Metadata.is_physical(metadata)) {
           if (Metadata.is_in_physical_escrow(metadata) == false) {
             return #err(Types.errors(?state.canistergeekLogger,  #token_non_transferable, "market_transfer_nft_origyn physical token must be escrowed", ?caller));
+          };
+          if (Metadata.is_redeemed(metadata) == true) {
+            return #err(Types.errors(?state.canistergeekLogger,  #token_non_transferable, "market_transfer_nft_origyn physical token has been redeemed and is no longer connected to the physical object", ?caller));
           };
         };
 
