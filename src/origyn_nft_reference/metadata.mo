@@ -222,8 +222,6 @@ module {
   * @return {CandyTypes.CandyShared} - the value of the requested system variable
   */
   public func get_system_var(metaData : CandyTypes.CandyShared, name : Text) : CandyTypes.CandyShared {
-    var this_metadata = metaData;
-    //D.print("Setting System");
     switch (Properties.getClassPropertyShared(metaData, Types.metadata.__system)) {
       case (null) {
         return #Option(null);
@@ -1284,7 +1282,7 @@ module {
       };
     };
 
-    let foundOwner = switch (Map.get<Types.Account, Bool>(wallet_shares, account_handler, anAccount)) {
+    let _foundOwner = switch (Map.get<Types.Account, Bool>(wallet_shares, account_handler, anAccount)) {
       case (?val) {
         return #ok(val);
       };
@@ -2038,7 +2036,7 @@ module {
   public func add_transaction_record<system>(state : Types.State, rec : MigrationTypes.Current.TransactionRecord, caller : Principal) : Result.Result<MigrationTypes.Current.TransactionRecord, Types.OrigynError> {
     //nyi: add indexes
     //only allow transactions for existing tokens
-    let metadata = if (rec.token_id == "") {
+    let _metadata = if (rec.token_id == "") {
       #Option(null);
     } else {
       switch (get_metadata_for_token(state, rec.token_id, caller, ?state.canister(), state.state.collection_data.owner)) {
@@ -2068,15 +2066,14 @@ module {
     };
 
     let values = BlockTypes.upgrade_block_to_icrc3(newTrx, state.icrc3.get_state().latest_hash);
-    ignore state.icrc3.add_record<system>(values.0,values.1);
+    ignore state.icrc3.add_record<system>(values.0, values.1);
     //todo: index here?
 
     SB.add(ledger, newTrx);
     SB.add(state.state.master_ledger, newTrx);
-    
 
     //Announce Trx
-    let announce = announceTransaction<system>(state, rec, caller, newTrx);
+    let _announce = announceTransaction<system>(state, rec);
 
     return #ok(newTrx);
   };
@@ -2085,11 +2082,9 @@ module {
   * Announces a transaction
   * @param {Types.State} state - the current state of the canister
   * @param {MigrationTypes.Current.TransactionRecord} rec - the transaction record being announced
-  * @param {Principal} caller - the caller of the function
-  * @param {MigrationTypes.Current.TransactionRecord} newTrx - the newly added transaction record
   * @returns {void}
   */
-  public func announceTransaction<system>(state : Types.State, rec : MigrationTypes.Current.TransactionRecord, caller : Principal, newTrx : MigrationTypes.Current.TransactionRecord) : () {
+  public func announceTransaction<system>(state : Types.State, rec : MigrationTypes.Current.TransactionRecord) : () {
     if (state.state.collection_data.announce_canister == null) { return };
 
     let eventNamespace = "com.origyn.nft.event";
@@ -2099,14 +2094,31 @@ module {
       };
       case (#mint _) { ("mint", #Text("mint")) };
       case (#sale_ended _) { ("sale_ended", #Text("sale_ended")) };
+      case (#burn(_)) { ("burn", #Text("burn")) };
+      case (#canister_managers_updated(_)) {
+        ("canister_managers_updated", #Text("canister_managers_updated"));
+      };
+      case (#canister_network_updated(_)) ("canister_network_updated", #Text("canister_network_updated"));
+      case (#canister_owner_updated(_)) ("canister_owner_updated", #Text("canister_owner_updated"));
+      case (#data(_)) ("data", #Text("data"));
+      case (#deposit_withdraw(_)) ("deposit_withdraw", #Text("deposit_withdraw"));
+      case (#escrow_deposit(_)) ("escrow_deposit", #Text("escrow_deposit"));
+      case (#escrow_withdraw(_)) ("escrow_withdraw", #Text("escrow_withdraw"));
+      case (#extensible(_)) ("extensible", #Text("extensible"));
+      case (#fee_deposit(_)) ("fee_deposit", #Text("fee_deposit"));
+      case (#fee_deposit_withdraw(_)) ("fee_deposit_withdraw", #Text("fee_deposit_withdraw"));
+      case (#owner_transfer(_)) ("owner_transfer", #Text("owner_transfer"));
+      case (#royalty_paid(_)) ("royalty_paid", #Text("royalty_paid"));
+      case (#sale_opened(_)) ("sale_opened", #Text("sale_opened"));
+      case (#sale_withdraw(_)) ("sale_withdraw", #Text("sale_withdraw"));
     };
 
     let eventName = eventNamespace # "." # eventType;
 
-    ignore Timer.setTimer(
+    ignore Timer.setTimer<system>(
       #seconds(0),
       func() : async () {
-        let event = await* Droute.publish(state.state.droute, eventName, payload);
+        let _ = await* Droute.publish(state.state.droute, eventName, payload);
       },
     );
 
@@ -2412,7 +2424,7 @@ module {
 
         state.state.collection_data.announce_canister := data;
 
-        let droute_client = Droute.new(
+        let _ = Droute.new(
           ?{
             mainId = data;
             publishersIndexId = null;
@@ -2787,7 +2799,6 @@ module {
                   },
                 ]);
               };
-
               case (#deposit_withdraw(val)) {
                 #Class([
 
@@ -2955,7 +2966,79 @@ module {
                   { name = "data"; value = val; immutable = true },
                 ]);
               };
+              case (#fee_deposit(val)) {
+                #Class([
+                  {
+                    name = "type";
+                    value = #Text("fee_deposit");
+                    immutable = true;
+                  },
+                  {
+                    name = "account";
+                    value = account_to_candy(val.account);
+                    immutable = true;
+                  },
+                  {
+                    name = "token";
+                    value = token_spec_to_candy(val.token);
+                    immutable = true;
+                  },
+                  {
+                    name = "amount";
+                    value = #Nat(val.amount);
+                    immutable = true;
+                  },
+                  {
+                    name = "extensible";
+                    value = val.extensible;
+                    immutable = true;
+                  },
+                ]);
+              };
+              case (#fee_deposit_withdraw(val)) {
+                #Class([
+                  {
+                    name = "type";
+                    value = #Text("fee_deposit");
+                    immutable = true;
+                  },
+                  {
+                    name = "account";
+                    value = account_to_candy(val.account);
+                    immutable = true;
+                  },
+                  {
+                    name = "token";
+                    value = token_spec_to_candy(val.token);
+                    immutable = true;
+                  },
+                  {
+                    name = "amount";
+                    value = #Nat(val.amount);
+                    immutable = true;
+                  },
+                  {
+                    name = "fee";
+                    value = #Nat(val.fee);
+                    immutable = true;
+                  },
+                  {
+                    name = "trx_id";
+                    value = switch (val.trx_id) {
+                      case (#nat(val)) { #Nat(val) };
+                      case (#text(val)) { #Text(val) };
+                      case (#extensible(val)) { val };
 
+                    };
+                    immutable = true;
+                  },
+                  {
+                    name = "extensible";
+                    value = val.extensible;
+                    immutable = true;
+                  },
+                ]);
+              };
             };
             immutable = true;
           },
