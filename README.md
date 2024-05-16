@@ -1,4 +1,4 @@
-# origyn_nft_reference - v0.1.5
+# origyn_nft_reference - v0.1.6
 
 <img src="https://gitlab.origyn.ch/origyn/engineering/opensource/origyn_nft/-/blob/develop/origyn_nft_pic.jpeg" />
 
@@ -65,19 +65,6 @@ yes yes | bash ./projects/bm/deploybm-local.sh
 ```
 
 Reusable scripts are placed at the root of the ./projects folder.
-
-### Git Large File Storage
-
-This project contains video files that are stored in Git LFS. They are now downloaded when you clone the repo.
-To download the videos, run the following:
-
-```
-git lfs install
-git lfs fetch
-git lfs checkout
-```
-
-Reference: https://git-lfs.github.com/
 
 ### deploy.js
 

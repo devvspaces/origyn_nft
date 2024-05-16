@@ -16,12 +16,16 @@
   "origyn_nft_reference": {
     "local": "qaa6y-5yaaa-aaaaa-aaafa-cai",
     "ic": "twdpa-6qaaa-aaaaj-adeuq-cai"
-    
   },
   "opie_test": {
     "ic": "3e73x-nqaaa-aaaaj-azrma-cai"
   },
-
+  "1g_staging_nft": {
+    "ic": "obapm-2iaaa-aaaak-qcgca-cai"
+  },
+  "10g_staging_nft": {
+    "ic": "xyo2o-gyaaa-aaaal-qb55a-cai"
+  },
   "egg": {
     "ic": "zkpdr-hqaaa-aaaak-ac4lq-cai"
   },
@@ -60,5 +64,11 @@
   },
   "yumi-gold-test": {
     "ic": "gtzpn-mqaaa-aaaal-qbvga-cai"
+  },
+  "staging_test_16": {
+    "ic": "obgym-uqaaa-aaaaj-qa32a-cai"
+  },
+  "staging_test_2": {
+    "ic": "jsg3y-aaaaa-aaaaj-qa3ja-cai"
   }
 }
