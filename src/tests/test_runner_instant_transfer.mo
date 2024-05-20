@@ -261,7 +261,7 @@ shared (deployer) actor class test_runner_instant_transfer(dfx_ledger : Principa
           });
           amount = 100_000_000;
         };
-        pricing = #instant;
+        pricing = #instant(null);
         broker_id = null;
       };
     });
@@ -285,7 +285,7 @@ shared (deployer) actor class test_runner_instant_transfer(dfx_ledger : Principa
           amount = 100_000_000;
         };
         broker_id = null;
-        pricing = #instant;
+        pricing = #instant(null);
       };
     });
 
@@ -315,7 +315,7 @@ shared (deployer) actor class test_runner_instant_transfer(dfx_ledger : Principa
           });
           amount = 100_000_000;
         };
-        pricing = #instant;
+        pricing = #instant(null);
         broker_id = null;
       };
     });
@@ -337,7 +337,7 @@ shared (deployer) actor class test_runner_instant_transfer(dfx_ledger : Principa
           });
           amount = 100_000_000;
         };
-        pricing = #instant;
+        pricing = #instant(null);
         broker_id = null;
       };
     });
@@ -368,7 +368,7 @@ shared (deployer) actor class test_runner_instant_transfer(dfx_ledger : Principa
           });
           amount = 100_000_000;
         };
-        pricing = #instant;
+        pricing = #instant(null);
         broker_id = null;
       };
     });
@@ -391,7 +391,7 @@ shared (deployer) actor class test_runner_instant_transfer(dfx_ledger : Principa
           });
           amount = 100_000_000;
         };
-        pricing = #instant;
+        pricing = #instant(null);
         broker_id = null;
       };
     });
@@ -848,7 +848,7 @@ shared (deployer) actor class test_runner_instant_transfer(dfx_ledger : Principa
           });
           amount = 100_000_000;
         };
-        pricing = #instant;
+        pricing = #instant(null);
         broker_id = null;
       };
     });

@@ -208,7 +208,7 @@ module {
         token_id = token_id;
         sales_config = {
           escrow_receipt = ?first_asset.1;
-          pricing = #instant;
+          pricing = #instant(null);
           broker_id = null;
         };
       },
@@ -280,7 +280,7 @@ module {
         token_id = token_id;
         sales_config = {
           escrow_receipt = ?first_asset.1;
-          pricing = #instant;
+          pricing = #instant(null);
           broker_id = null;
         };
       },
@@ -389,7 +389,7 @@ module {
             token_id = data;
             sales_config = {
               escrow_receipt = ?first_asset.1;
-              pricing = #instant;
+              pricing = #instant(null);
               broker_id = null;
             };
           },

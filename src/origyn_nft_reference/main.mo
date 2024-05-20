@@ -908,7 +908,7 @@ shared (deployer) actor class Nft_Canister() = this {
     };
     let log_data : Text = "Token : " # request.token_id # (
       switch (request.sales_config.pricing) {
-        case (#instant) {
+        case (#instant(item)) {
           ", type : instant " # debug_show (request);
         };
 
@@ -960,7 +960,7 @@ shared (deployer) actor class Nft_Canister() = this {
       // var first_item = request[0];
       var log_data : Text = "Token : " # this_item.token_id # (
         switch (this_item.sales_config.pricing) {
-          case (#instant) {
+          case (#instant(val)) {
             ", type : instant " # debug_show (request);
           };
 

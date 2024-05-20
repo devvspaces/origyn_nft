@@ -1194,7 +1194,7 @@ module {
 
         //let royaltyList = Buffer.Buffer<(Types.Account, Nat)>(royalty.size() + 1);
         if (winning_escrow.amount >= remaning_fee) {
-          var remaining = Nat.sub(winning_escrow.amount, fee_);
+          var remaining = remaning_fee;
           //if the fee is bigger than the amount we aren't going to pay anything
           //this should really be prevented elsewhere
 
@@ -1347,6 +1347,38 @@ module {
     };
   };
 
+  private func async_market_transfer_unlock_fee_account_callback(
+    state : StateAccess,
+    metadata : CandyTypes.CandyShared,
+    request : {
+      token : Types.TokenSpec;
+      sale_id : Text;
+      fee_accounts : ?MigrationTypes.Current.FeeAccountsParams;
+      fee_schema : ?Text;
+      owner : MigrationTypes.Current.Account;
+    },
+    ret : Result.Result<Types.MarketTransferRequestReponse, Types.OrigynError>,
+  ) : Result.Result<Types.MarketTransferRequestReponse, Types.OrigynError> {
+    switch (
+      _unlock_fee_accounts_according_to_fee_schema(
+        state,
+        metadata,
+        {
+          token = request.token;
+          sale_id = request.sale_id;
+          fee_accounts = request.fee_accounts;
+          fee_schema = request.fee_schema;
+          owner = request.owner;
+        },
+      )
+    ) {
+      case (#ok()) {};
+      case (#err(e)) { return #err(e) };
+    };
+
+    return ret;
+  };
+
   //handles async market transfer operations like instant where interaction with other canisters is required
   /**
     * Handles async market transfer operations like instant where interaction with other canisters is required
@@ -1417,10 +1449,52 @@ module {
       };
     };
 
+    let h = SHA256.New();
+    h.write(Conversions.candySharedToBytes(#Text("com.origyn.nft.sale-id")));
+    h.write(Conversions.candySharedToBytes(#Text("token-id")));
+    h.write(Conversions.candySharedToBytes(#Text(request.token_id)));
+    h.write(Conversions.candySharedToBytes(#Text("seller")));
+    h.write(Conversions.candySharedToBytes(#Nat(MigrationTypes.Current.account_hash_uncompressed(owner))));
+    h.write(Conversions.candySharedToBytes(#Text("timestamp")));
+    h.write(Conversions.candySharedToBytes(#Int(state.get_time())));
+    let internal_sale_id : Text = Conversions.candySharedToText(#Bytes(h.sum([])));
+
     debug if (debug_channel.market) D.print("checking pricing");
 
     switch (request.sales_config.pricing) {
-      case (#instant) {
+      case (#instant(instant_config)) {
+        let {
+          fee_schema : ?Text;
+          fee_accounts : ?MigrationTypes.Current.FeeAccountsParams;
+          config_map : MigrationTypes.Current.InstantConfig;
+        } = switch (instant_config) {
+          case (?config) {
+            let config_map = MigrationTypes.Current.instantfeatures_to_map(config);
+
+            {
+              fee_schema = MigrationTypes.Current.load_fee_schema_instant_feature(?config_map);
+              fee_accounts = MigrationTypes.Current.load_fee_accounts_instant_feature(?config_map);
+              config_map = ?config_map;
+            };
+          };
+          case (null) {
+            {
+              fee_schema = null;
+              fee_accounts = null;
+              config_map = null;
+            };
+          };
+        };
+
+        let _fee_schema : Text = if (this_is_minted == false) {
+          Types.metadata.__system_primary_royalty;
+        } else {
+          switch (fee_schema) {
+            case (?val) { val };
+            case (null) { Types.metadata.__system_secondary_royalty };
+          };
+        };
+
         //the nft or staged nft is being instant transfered
 
         //if this is a marketable NFT, we need to create a waiver period
@@ -1571,6 +1645,24 @@ module {
           };
         };
 
+        let royalty = switch (Properties.getClassPropertyShared(metadata, Types.metadata.__system)) {
+          case (null) { [] };
+          case (?val) {
+            debug if (debug_channel.market) D.print("found metadata" # debug_show (val.value));
+            royalty_to_array(val.value, _fee_schema);
+          };
+        };
+
+        // make sur royalties definition didnt changed and no error can occured after transfering nft and funds.
+        for (this_item in royalty.vals()) {
+          let loaded_royalty = switch (Royalties._load_royalty(_fee_schema, this_item)) {
+            case (#ok(val)) { val };
+            case (#err(err)) {
+              return #err(Types.errors(?state.canistergeekLogger, #malformed_metadata, "end_sale_nft_origyn - error _load_royalty ", ?caller));
+            };
+          };
+        };
+
         //reentrancy risk so we remove the credit from the escrow
         debug if (debug_channel.market) D.print("updating the asset list");
         debug if (debug_channel.market) D.print(debug_show (Map.size(verified.found_asset_list)));
@@ -1602,51 +1694,153 @@ module {
           case (#ok(new_metadata)) new_metadata;
         };
 
-        let (trx_id : Types.TransactionID, account_hash : ?Blob, fee : Nat) = switch (escrow.token) {
+        switch (fee_accounts) {
+          case (?fee_accounts) {
+            debug if (debug_channel.market) D.print("fee_accounts is set !");
+            if (_fee_schema != Types.metadata.__system_fixed_royalty) {
+              debug if (debug_channel.market) D.print("but __system_fixed_royalty bad value, only com.origyn.royalties.fixed can be used -> error");
+              return #err(Types.errors(?state.canistergeekLogger, #malformed_metadata, "market_transfer_nft_origyn fee_accounts need fixed fee_schema. Not compatible yet others royalties schema.", ?caller));
+            };
+
+            switch (
+              _lock_fee_accounts_according_to_fee_schema(
+                state,
+                metadata,
+                escrow.token,
+                owner,
+                internal_sale_id,
+                _fee_schema,
+                fee_accounts,
+              )
+            ) {
+              case (#ok()) {};
+              case (#err(e)) { return #err(e) };
+            };
+          };
+          case (null) {};
+        };
+
+        let (trx_id : ?Types.TransactionID, account_hash : ?Blob, fee : ?Nat) = switch (escrow.token) {
           case (#ic(token)) {
             switch (token.standard) {
               case (#Ledger or #ICRC1) {
-                debug if (debug_channel.market) D.print("found ledger and sending sale " # debug_show (escrow));
-                let checker = Ledger_Interface.Ledger_Interface();
-                try {
-                  switch (Star.toResult(await* checker.transfer_sale(state.canister(), escrow, request.token_id, caller))) {
-                    case (#ok(val)) {
-                      (val.0, ?val.1.account.sub_account, val.2);
-                    };
-                    case (#err(err)) {
-                      //put the escrow back because the payment failed
-                      Verify.handle_escrow_update_error(state, escrow, ?owner, verified.found_asset, verified.found_asset_list);
-
-                      //put the owner back if the transaction fails
-                      metadata := switch (Metadata.set_nft_owner(state, request.token_id, owner, caller)) {
-                        case (#err(err)) return #err(Types.errors(?state.canistergeekLogger, err.error, "market_transfer_nft_origyn can't set inflight owner " # err.flag_point, ?caller));
-                        case (#ok(new_metadata)) new_metadata;
+                if (escrow.amount > Option.get<Nat>(token.fee, 0)) {
+                  debug if (debug_channel.market) D.print("found ledger and sending sale " # debug_show (escrow));
+                  let checker = Ledger_Interface.Ledger_Interface();
+                  try {
+                    switch (Star.toResult(await* checker.transfer_sale(state.canister(), escrow, request.token_id, caller))) {
+                      case (#ok(val)) {
+                        (?val.0, ?val.1.account.sub_account, ?val.2);
                       };
+                      case (#err(err)) {
+                        //put the escrow back because the payment failed
+                        Verify.handle_escrow_update_error(state, escrow, ?owner, verified.found_asset, verified.found_asset_list);
 
-                      return #err(Types.errors(?state.canistergeekLogger, err.error, "market_transfer_nft_origyn instant " # err.flag_point, ?caller));
+                        //put the owner back if the transaction fails
+                        metadata := switch (Metadata.set_nft_owner(state, request.token_id, owner, caller)) {
+                          case (#err(err)) return #err(Types.errors(?state.canistergeekLogger, err.error, "market_transfer_nft_origyn can't set inflight owner " # err.flag_point, ?caller));
+                          case (#ok(new_metadata)) new_metadata;
+                        };
+
+                        return async_market_transfer_unlock_fee_account_callback(
+                          state,
+                          metadata,
+                          {
+                            token = escrow.token;
+                            sale_id = internal_sale_id;
+                            fee_accounts = fee_accounts;
+                            fee_schema = ?_fee_schema;
+                            owner = owner;
+                          },
+                          #err(Types.errors(?state.canistergeekLogger, err.error, "market_transfer_nft_origyn instant " # err.flag_point, ?caller)),
+                        );
+                      };
                     };
-                  };
-                } catch (e) {
-                  //put the escrow back because payment failed
-                  Verify.handle_escrow_update_error(state, escrow, ?owner, verified.found_asset, verified.found_asset_list);
+                  } catch (e) {
+                    //put the escrow back because payment failed
+                    Verify.handle_escrow_update_error(state, escrow, ?owner, verified.found_asset, verified.found_asset_list);
 
-                  //put the owner back if the transaction fails
-                  metadata := switch (Metadata.set_nft_owner(state, request.token_id, owner, caller)) {
-                    case (#err(err)) return #err(Types.errors(?state.canistergeekLogger, err.error, "market_transfer_nft_origyn can't set inflight owner " # err.flag_point, ?caller));
-                    case (#ok(new_metadata)) new_metadata;
-                  };
+                    //put the owner back if the transaction fails
+                    metadata := switch (Metadata.set_nft_owner(state, request.token_id, owner, caller)) {
+                      case (#err(err)) {
+                        return async_market_transfer_unlock_fee_account_callback(
+                          state,
+                          metadata,
+                          {
+                            token = escrow.token;
+                            sale_id = internal_sale_id;
+                            fee_accounts = fee_accounts;
+                            fee_schema = ?_fee_schema;
+                            owner = owner;
+                          },
+                          #err(Types.errors(?state.canistergeekLogger, err.error, "market_transfer_nft_origyn can't set inflight owner " # err.flag_point, ?caller)),
+                        );
+                      };
+                      case (#ok(new_metadata)) new_metadata;
+                    };
 
-                  return #err(Types.errors(?state.canistergeekLogger, #unauthorized_access, "market_transfer_nft_origyn instant catch branch" # Error.message(e), ?caller));
+                    return async_market_transfer_unlock_fee_account_callback(
+                      state,
+                      metadata,
+                      {
+                        token = escrow.token;
+                        sale_id = internal_sale_id;
+                        fee_accounts = fee_accounts;
+                        fee_schema = ?_fee_schema;
+                        owner = owner;
+                      },
+                      #err(Types.errors(?state.canistergeekLogger, #unauthorized_access, "market_transfer_nft_origyn instant catch branch" # Error.message(e), ?caller)),
+                    );
+                  };
+                } else if (_fee_schema == Types.metadata.__system_fixed_royalty) {
+                  (null, null, null);
+                } else {
+                  return async_market_transfer_unlock_fee_account_callback(
+                    state,
+                    metadata,
+                    {
+                      token = escrow.token;
+                      sale_id = internal_sale_id;
+                      fee_accounts = fee_accounts;
+                      fee_schema = ?_fee_schema;
+                      owner = owner;
+                    },
+                    #err(Types.errors(?state.canistergeekLogger, #nyi, "market_transfer_nft_origyn - price bellow token fee. only possible with fixed fees schema", ?caller)),
+                  );
                 };
               };
               case (_) {
                 //put the owner back if the transaction fails
                 metadata := switch (Metadata.set_nft_owner(state, request.token_id, owner, caller)) {
-                  case (#err(err)) return #err(Types.errors(?state.canistergeekLogger, err.error, "market_transfer_nft_origyn can't set inflight owner " # err.flag_point, ?caller));
+                  case (#err(err)) {
+                    return async_market_transfer_unlock_fee_account_callback(
+                      state,
+                      metadata,
+                      {
+                        token = escrow.token;
+                        sale_id = internal_sale_id;
+                        fee_accounts = fee_accounts;
+                        fee_schema = ?_fee_schema;
+                        owner = owner;
+                      },
+                      #err(Types.errors(?state.canistergeekLogger, err.error, "market_transfer_nft_origyn can't set inflight owner " # err.flag_point, ?caller)),
+                    );
+                  };
                   case (#ok(new_metadata)) new_metadata;
                 };
 
-                return #err(Types.errors(?state.canistergeekLogger, #nyi, "market_transfer_nft_origyn - ic type nyi - " # debug_show (token), ?caller));
+                return async_market_transfer_unlock_fee_account_callback(
+                  state,
+                  metadata,
+                  {
+                    token = escrow.token;
+                    sale_id = internal_sale_id;
+                    fee_accounts = fee_accounts;
+                    fee_schema = ?_fee_schema;
+                    owner = owner;
+                  },
+                  #err(Types.errors(?state.canistergeekLogger, #nyi, "market_transfer_nft_origyn - ic type nyi - " # debug_show (token), ?caller)),
+                );
               };
             };
           };
@@ -1654,11 +1848,35 @@ module {
           case (#extensible(val)) {
             //put the owner back if the transaction fails
             metadata := switch (Metadata.set_nft_owner(state, request.token_id, owner, caller)) {
-              case (#err(err)) return #err(Types.errors(?state.canistergeekLogger, err.error, "market_transfer_nft_origyn can't set inflight owner " # err.flag_point, ?caller));
+              case (#err(err)) {
+                return async_market_transfer_unlock_fee_account_callback(
+                  state,
+                  metadata,
+                  {
+                    token = escrow.token;
+                    sale_id = internal_sale_id;
+                    fee_accounts = fee_accounts;
+                    fee_schema = ?_fee_schema;
+                    owner = owner;
+                  },
+                  #err(Types.errors(?state.canistergeekLogger, err.error, "market_transfer_nft_origyn can't set inflight owner " # err.flag_point, ?caller)),
+                );
+              };
               case (#ok(new_metadata)) new_metadata;
             };
 
-            return #err(Types.errors(?state.canistergeekLogger, #nyi, "market_transfer_nft_origyn - extensible token nyi - " # debug_show (val), ?caller));
+            return async_market_transfer_unlock_fee_account_callback(
+              state,
+              metadata,
+              {
+                token = escrow.token;
+                sale_id = internal_sale_id;
+                fee_accounts = fee_accounts;
+                fee_schema = ?_fee_schema;
+                owner = owner;
+              },
+              #err(Types.errors(?state.canistergeekLogger, #nyi, "market_transfer_nft_origyn - extensible token nyi - " # debug_show (val), ?caller)),
+            );
           };
         };
 
@@ -1673,7 +1891,19 @@ module {
             case (#err(err)) {
               //put the escrow back because the minting failed
               Verify.handle_escrow_update_error(state, escrow, ?owner, verified.found_asset, verified.found_asset_list);
-              return #err(Types.errors(?state.canistergeekLogger, err.error, "market_transfer_nft_origyn mint attempt" # err.flag_point, ?caller));
+
+              return async_market_transfer_unlock_fee_account_callback(
+                state,
+                metadata,
+                {
+                  token = escrow.token;
+                  sale_id = internal_sale_id;
+                  fee_accounts = fee_accounts;
+                  fee_schema = ?_fee_schema;
+                  owner = owner;
+                },
+                #err(Types.errors(?state.canistergeekLogger, err.error, "market_transfer_nft_origyn mint attempt" # err.flag_point, ?caller)),
+              );
             };
             case (#ok(val)) {
               debug if (debug_channel.market) D.print("updating metadata after mint");
@@ -1734,7 +1964,19 @@ module {
                 Map.set(verified.found_asset_list, token_handler, verified.found_asset.token_spec, target_escrow);
                 }
               }; */
-              return #err(Types.errors(?state.canistergeekLogger, #update_class_error, "Market transfer Origyn - error setting owner item is now in limbo, use governance to fix" # escrow.token_id, ?caller));
+
+              return async_market_transfer_unlock_fee_account_callback(
+                state,
+                metadata,
+                {
+                  token = escrow.token;
+                  sale_id = internal_sale_id;
+                  fee_accounts = fee_accounts;
+                  fee_schema = ?_fee_schema;
+                  owner = owner;
+                },
+                #err(Types.errors(?state.canistergeekLogger, #update_class_error, "Market transfer Origyn - error setting owner item is now in limbo, use governance to fix" # escrow.token_id, ?caller)),
+              );
             };
 
             case (#ok(new_metadata)) new_metadata;
@@ -1766,7 +2008,18 @@ module {
             )
           ) {
             case (#err(err)) {
-              return #err(Types.errors(?state.canistergeekLogger, err.error, "market_transfer_nft_origyn adding transaction" # err.flag_point, ?caller));
+              return async_market_transfer_unlock_fee_account_callback(
+                state,
+                metadata,
+                {
+                  token = escrow.token;
+                  sale_id = internal_sale_id;
+                  fee_accounts = fee_accounts;
+                  fee_schema = ?_fee_schema;
+                  owner = owner;
+                },
+                #err(Types.errors(?state.canistergeekLogger, err.error, "market_transfer_nft_origyn adding transaction" # err.flag_point, ?caller)),
+              );
             };
             case (#ok(val)) { val };
           };
@@ -1809,9 +2062,54 @@ module {
         //note: this code path is always taken since checker.transferSale requires it or errors
         //we have included it here so that we can use Nat.sub without fear of underflow
 
-        if (escrow.amount > fee) {
-          let total = Nat.sub(escrow.amount, fee);
-          var remaining = Nat.sub(escrow.amount, fee);
+        var fee_accounts_with_owner = Buffer.Buffer<(MigrationTypes.Current.FeeName, MigrationTypes.Current.Account)>(5);
+        for (royalties_name in Option.get(fee_accounts, []).vals()) {
+          let _ = fee_accounts_with_owner.add((royalties_name, owner));
+        };
+
+        let fee_ : Nat = Option.get(fee, 0);
+        let total = Nat.sub(escrow.amount, fee_);
+        var fee_accounts_with_owner_array = Buffer.toArray(fee_accounts_with_owner);
+
+        debug if (debug_channel.market) D.print("fee_accounts is " # debug_show (fee_accounts_with_owner_array));
+
+        var remaning_fee : Nat = 0;
+        for (this_item in royalty.vals()) {
+          let loaded_royalty = switch (Royalties._load_royalty(_fee_schema, this_item)) {
+            case (#ok(val)) { val };
+            // case (#err(err)) {
+            // Impossible
+            // };
+          };
+
+          let tag = switch (loaded_royalty) {
+            case (#fixed(val)) { val.tag };
+            case (#dynamic(val)) { val.tag };
+          };
+
+          debug if (debug_channel.market) D.print("remaning_fee " #debug_show (remaning_fee) # " _fee_accounts is " # debug_show (fee_accounts_with_owner_array));
+          switch (Array.find<(MigrationTypes.Current.FeeName, MigrationTypes.Current.Account)>(fee_accounts_with_owner_array, func((fee_name, acc)) { return fee_name == tag })) {
+            case (?val) {
+              //this fees will be paid by a specific account
+              debug if (debug_channel.market) D.print("royalty matched in provided _fee_accounts. will use this account to pay royalties instead of winning escrow");
+            };
+            case (null) {
+              //this fees will be paid by winning_escrow directly
+              let total_royalty = switch (loaded_royalty) {
+                case (#fixed(val)) {
+                  Int.abs(Float.toInt(Float.ceil(val.fixedXDR)));
+                };
+                case (#dynamic(val)) {
+                  (total * Int.abs(Float.toInt(val.rate * 1_000_000))) / 1_000_000;
+                };
+              };
+              remaning_fee += total_royalty;
+            };
+          };
+        };
+
+        if (escrow.amount > remaning_fee) {
+          var remaining = remaning_fee;
 
           debug if (debug_channel.royalties) D.print("calling process royalty" # debug_show ((total, remaining)));
 
@@ -1821,7 +2119,7 @@ module {
               name = _fee_schema;
               var remaining = remaining;
               total = total;
-              fee = fee;
+              fee = fee_;
               escrow = escrow;
               royalty = royalty;
               sale_id = null;
@@ -1831,7 +2129,7 @@ module {
               metadata = metadata;
               token_id = ?request.token_id;
               token = escrow.token;
-              fee_accounts_with_owner = [];
+              fee_accounts_with_owner = fee_accounts_with_owner_array;
               fee_schema = _fee_schema;
               owner = owner;
             },
@@ -1861,12 +2159,12 @@ module {
           withdraw_to = new_sale_balance.seller })));
 
           for ((thisRoyalty, is_fee_account) in royalty_result.1.vals()) {
-            // if (is_fee_account) {
-            //   request_buffer.add(#withdraw(#fee_deposit({ account = thisRoyalty.buyer; token = thisRoyalty.token; amount = thisRoyalty.amount; withdraw_to = thisRoyalty.seller; status = #locked({ sale_id = sale_id }) })));
-            // } else {
-            request_buffer.add(#withdraw(#sale({ thisRoyalty with
-            withdraw_to = thisRoyalty.seller })));
-            // };
+            if (is_fee_account) {
+              request_buffer.add(#withdraw(#fee_deposit({ account = thisRoyalty.buyer; token = thisRoyalty.token; amount = thisRoyalty.amount; withdraw_to = thisRoyalty.seller; status = #locked({ sale_id = internal_sale_id }) })));
+            } else {
+              request_buffer.add(#withdraw(#sale({ thisRoyalty with
+              withdraw_to = thisRoyalty.seller })));
+            };
           };
           debug if (debug_channel.royalties) D.print("attempt to distribute royalties request instant" # debug_show (Buffer.toArray(request_buffer)));
 
@@ -1879,6 +2177,38 @@ module {
 
       case (_) return #err(Types.errors(?state.canistergeekLogger, #nyi, "market_transfer_nft_origyn nyi pricing type async", ?caller));
     };
+  };
+
+  private func market_transfer_unlock_fee_account_callback(
+    state : StateAccess,
+    metadata : CandyTypes.CandyShared,
+    request : {
+      token : Types.TokenSpec;
+      sale_id : Text;
+      fee_accounts : ?MigrationTypes.Current.FeeAccountsParams;
+      fee_schema : ?Text;
+      owner : MigrationTypes.Current.Account;
+    },
+    ret : Result.Result<Types.MarketTransferRequestReponse, Types.OrigynError>,
+  ) : Result.Result<Types.MarketTransferRequestReponse, Types.OrigynError> {
+    switch (
+      _unlock_fee_accounts_according_to_fee_schema(
+        state,
+        metadata,
+        {
+          token = request.token;
+          sale_id = request.sale_id;
+          fee_accounts = request.fee_accounts;
+          fee_schema = request.fee_schema;
+          owner = request.owner;
+        },
+      )
+    ) {
+      case (#ok()) {};
+      case (#err(e)) { return #err(e) };
+    };
+
+    return ret;
   };
 
   //handles non-async market functions like starting an auction
@@ -2144,22 +2474,54 @@ module {
         caller,
       );
     } catch (e) {
-      return #err(Types.errors(?state.canistergeekLogger, #kyc_error, "market_transfer_nft_origyn seller kyc failed " # Error.message(e), ?caller));
+      return market_transfer_unlock_fee_account_callback(
+        state,
+        metadata,
+        {
+          token = token;
+          owner = #account({ owner = caller; sub_account = null });
+          sale_id = sale_id;
+          fee_accounts = fee_accounts;
+          fee_schema = fee_schema;
+        },
+        #err(Types.errors(?state.canistergeekLogger, #kyc_error, "market_transfer_nft_origyn seller kyc failed " # Error.message(e), ?caller)),
+      );
     };
 
     switch (kyc_result) {
       case (#ok(val)) {
 
         if (val.result.kyc == #Fail or val.result.aml == #Fail) {
-
-          return #err(Types.errors(?state.canistergeekLogger, #kyc_fail, "market_transfer_nft_origyn kyc or aml failed " # debug_show (val), ?caller));
+          return market_transfer_unlock_fee_account_callback(
+            state,
+            metadata,
+            {
+              token = token;
+              owner = #account({ owner = caller; sub_account = null });
+              sale_id = sale_id;
+              fee_accounts = fee_accounts;
+              fee_schema = fee_schema;
+            },
+            #err(Types.errors(?state.canistergeekLogger, #kyc_fail, "market_transfer_nft_origyn kyc or aml failed " # debug_show (val), ?caller)),
+          );
         };
 
         //amount doesn't matter for seller
 
       };
       case (#err(err)) {
-        return #err(Types.errors(?state.canistergeekLogger, err.error, "market_transfer_nft_origyn auto try kyc failed " # err.flag_point, ?caller));
+        return market_transfer_unlock_fee_account_callback(
+          state,
+          metadata,
+          {
+            token = token;
+            owner = #account({ owner = caller; sub_account = null });
+            sale_id = sale_id;
+            fee_accounts = fee_accounts;
+            fee_schema = fee_schema;
+          },
+          #err(Types.errors(?state.canistergeekLogger, err.error, "market_transfer_nft_origyn auto try kyc failed " # err.flag_point, ?caller)),
+        );
       };
     };
 

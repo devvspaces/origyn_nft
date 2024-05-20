@@ -21,6 +21,7 @@ import Iter "mo:base/Iter";
 import Principal "mo:base/Principal";
 import Deque "mo:base/Deque";
 import MapUtils "mo:map_7_0_0/utils";
+import Option "mo:base/Option";
 
 import ICRC3 "mo:icrc3-mo";
 
@@ -421,6 +422,70 @@ module {
     return ?fee_accounts;
   };
 
+  public type InstantFeatureKey = {
+    #fee_schema;
+    #fee_accounts;
+  };
+
+  public type InstantFeatureMap = Map.Map<InstantFeatureKey, InstantFeature>;
+  public type InstantConfig = ?InstantFeatureMap;
+
+  public type InstantConfigShared = ?[InstantFeature];
+
+  public type InstantFeature = {
+    #fee_schema : Text;
+    #fee_accounts : FeeAccountsParams;
+  };
+
+  public func instantfeatures_to_map(items : [InstantFeature]) : InstantFeatureMap {
+    let feature_set = Map.new<InstantFeatureKey, InstantFeature>();
+
+    for (thisItem in items.vals()) {
+      ignore Map.put<InstantFeatureKey, InstantFeature>(
+        feature_set,
+        instant_feature_set_tool,
+        instantfeature_to_key(thisItem),
+        thisItem,
+      );
+    };
+
+    return feature_set;
+  };
+
+  public func instantfeaturesmap_to_instantfeaturearray(items : InstantFeatureMap) : [InstantFeature] {
+    let feature_arr = Buffer.Buffer<InstantFeature>(3);
+
+    for (thisItem in Map.vals(items)) {
+      feature_arr.add(thisItem);
+    };
+
+    return Buffer.toArray(feature_arr);
+  };
+
+  public func load_fee_schema_instant_feature(_config : InstantConfig) : ?Text {
+    let config = switch (_config) {
+      case (?config) (config);
+      case (_) (return null);
+    };
+
+    let ?(#fee_schema(fee_schema)) = Map.get<InstantFeatureKey, InstantFeature>(config, bid_feature_set_tool, #fee_schema) else {
+      return null;
+    };
+    return ?fee_schema;
+  };
+
+  public func load_fee_accounts_instant_feature(_config : InstantConfig) : ?FeeAccountsParams {
+    let config = switch (_config) {
+      case (?config) (config);
+      case (_) (return null);
+    };
+
+    let ?(#fee_accounts(fee_accounts)) = Map.get<InstantFeatureKey, InstantFeature>(config, bid_feature_set_tool, #fee_accounts) else {
+      return null;
+    };
+    return ?fee_accounts;
+  };
+
   public func ask_feature_set_eq(a : AskFeatureKey, b : AskFeatureKey) : Bool {
 
     switch (a, b) {
@@ -755,6 +820,61 @@ module {
     };
   };
 
+  public func instant_feature_set_hash(a : InstantFeatureKey) : Nat {
+    switch (a) {
+      case (#fee_schema) {
+        return 11311114;
+      };
+      case (#fee_accounts) {
+        return 11311115;
+      };
+    };
+  };
+
+  public func instant_feature_set_eq(a : InstantFeatureKey, b : InstantFeatureKey) : Bool {
+    switch (a, b) {
+      case (#fee_schema, #fee_schema) {
+        return true;
+      };
+      case (#fee_accounts, #fee_accounts) {
+        return true;
+      };
+      case (_, _) {
+        return false;
+      };
+    };
+  };
+
+  public func instantfeature_to_key(request : InstantFeature) : InstantFeatureKey {
+    switch (request) {
+      case (#fee_schema(e)) {
+        return #fee_schema;
+      };
+      case (#fee_accounts(e)) {
+        return #fee_accounts;
+      };
+    };
+  };
+
+  public func instant_features_to_value(features : [InstantFeature]) : ICRC3.Value {
+    let newMap = Buffer.Buffer<(Text, ICRC3.Value)>(1);
+
+    for (thisItem in features.vals()) {
+      switch (thisItem) {
+        case (#fee_accounts(value)) {
+          let feeAccounts = Buffer.Buffer<ICRC3.Value>(value.size());
+          for (account in value.vals()) {
+            feeAccounts.add(#Array([#Text(account)]));
+          };
+          newMap.add(("fee_accounts", #Array(Buffer.toArray(feeAccounts))));
+        };
+        case (#fee_schema(value)) newMap.add(("fee_schema", #Text(value)));
+      };
+    };
+
+    return #Map(Buffer.toArray(newMap));
+  };
+
   public func features_to_map(items : AskFeatureArray) : AskFeatureMap {
     let feature_set = Map.new<AskFeatureKey, AskFeature>();
 
@@ -843,8 +963,10 @@ module {
 
   public let bid_feature_set_tool = (bid_feature_set_hash, bid_feature_set_eq) : MapUtils.HashUtils<BidFeatureKey>;
 
+  public let instant_feature_set_tool = (instant_feature_set_hash, instant_feature_set_eq) : MapUtils.HashUtils<InstantFeatureKey>;
+
   public type PricingConfig = {
-    #instant; //executes an escrow recipt transfer -only available for non-marketable NFTs
+    #instant : InstantConfig; //executes an escrow recipt transfer -only available for non-marketable NFTs
     //below have not been signficantly desinged or vetted
     #auction : AuctionConfig; //depricated - use ask
     #ask : AskConfig;
@@ -852,7 +974,7 @@ module {
   };
 
   public type PricingConfigShared = {
-    #instant; //executes an escrow recipt transfer -only available for non-marketable NFTs
+    #instant : InstantConfigShared; //executes an escrow recipt transfer -only available for non-marketable NFTs
     //below have not been signficantly desinged or vetted
     #auction : AuctionConfig; //depricated - use ask
     #ask : AskConfigShared;
@@ -872,19 +994,10 @@ module {
 
   public func pricing_shared_to_pricing(request : PricingConfigShared) : PricingConfig {
     switch (request) {
-      case (#instant) #instant; //executes an escrow recipt transfer -only available for non-marketable NFTs
+      case (#instant(val)) #instant(?instantfeatures_to_map(Option.get(val, []))); //executes an escrow recipt transfer -only available for non-marketable NFTs
       //below have not been signficantly desinged or vetted
       case (#auction(val)) #auction(val); //depricated - use ask
-      case (#ask(val)) {
-        #ask(
-          ?features_to_map(
-            switch (val) {
-              case (null) [];
-              case (?val) val;
-            }
-          )
-        );
-      };
+      case (#ask(val)) { #ask(?features_to_map(Option.get(val, []))) };
       case (#extensible(e)) #extensible(e);
     };
   };
@@ -1147,7 +1260,10 @@ module {
   public func pricing_config_to_value(config : PricingConfigShared) : ICRC3.Value {
     //todo: extensible values should be checked for size
     switch (config) {
-      case (#instant) return #Text("Instant");
+      case (#instant(?value)) {
+        return (instant_features_to_value(Iter.toArray(value.vals())));
+      };
+      case (#instant(null)) { #Text("Instant") };
       case (#auction(value)) {
         let newMap = Buffer.Buffer<(Text, ICRC3.Value)>(1);
 

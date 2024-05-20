@@ -281,7 +281,7 @@ shared (deployer) actor class test_wallet() = this {
           });
           amount = 100_000_000;
         };
-        pricing = #instant;
+        pricing = #instant(null);
         broker_id = null;
       };
 

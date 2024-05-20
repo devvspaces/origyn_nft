@@ -590,7 +590,7 @@ shared (deployer) actor class test_runner(dfx_ledger : Principal, dfx_ledger2 : 
           });
           amount = 100_000_000;
         };
-        pricing = #instant;
+        pricing = #instant(null);
         broker_id = null;
       };
 
@@ -684,7 +684,7 @@ shared (deployer) actor class test_runner(dfx_ledger : Principal, dfx_ledger2 : 
           });
           amount = 100_000_000;
         };
-        pricing = #instant;
+        pricing = #instant(null);
         broker_id = null;
       };
 
@@ -734,7 +734,7 @@ shared (deployer) actor class test_runner(dfx_ledger : Principal, dfx_ledger2 : 
           });
           amount = 100_000_000;
         };
-        pricing = #instant;
+        pricing = #instant(null);
         broker_id = null;
       };
 
@@ -811,7 +811,7 @@ shared (deployer) actor class test_runner(dfx_ledger : Principal, dfx_ledger2 : 
           });
           amount = 100_000_000;
         };
-        pricing = #instant;
+        pricing = #instant(null);
         broker_id = null;
       };
 
@@ -1230,7 +1230,7 @@ shared (deployer) actor class test_runner(dfx_ledger : Principal, dfx_ledger2 : 
           });
           amount = 100_000_000;
         };
-        pricing = #instant;
+        pricing = #instant(null);
         broker_id = null;
       };
 
@@ -1377,7 +1377,7 @@ shared (deployer) actor class test_runner(dfx_ledger : Principal, dfx_ledger2 : 
           });
           amount = 100_000_000;
         };
-        pricing = #instant;
+        pricing = #instant(null);
         broker_id = null;
       };
 
@@ -1422,7 +1422,7 @@ shared (deployer) actor class test_runner(dfx_ledger : Principal, dfx_ledger2 : 
           });
           amount = 100_000_000;
         };
-        pricing = #instant;
+        pricing = #instant(null);
         broker_id = null;
       };
 
@@ -1542,7 +1542,7 @@ shared (deployer) actor class test_runner(dfx_ledger : Principal, dfx_ledger2 : 
           });
           amount = 100_000_000;
         };
-        pricing = #instant;
+        pricing = #instant(null);
         broker_id = null;
       };
 
@@ -2076,7 +2076,7 @@ shared (deployer) actor class test_runner(dfx_ledger : Principal, dfx_ledger2 : 
           });
           amount = 100_000_000;
         };
-        pricing = #instant;
+        pricing = #instant(null);
         broker_id = ? #principal(Principal.fromActor(b_wallet));
       };
 
@@ -2151,7 +2151,7 @@ shared (deployer) actor class test_runner(dfx_ledger : Principal, dfx_ledger2 : 
           });
           amount = 100_000_000;
         };
-        pricing = #instant;
+        pricing = #instant(null);
         broker_id = ? #principal(Principal.fromActor(b_wallet));
       };
 
@@ -2367,7 +2367,7 @@ shared (deployer) actor class test_runner(dfx_ledger : Principal, dfx_ledger2 : 
           });
           amount = 100_000_000;
         };
-        pricing = #instant;
+        pricing = #instant(null);
         broker_id = null;
       };
 
@@ -9891,7 +9891,7 @@ shared (deployer) actor class test_runner(dfx_ledger : Principal, dfx_ledger2 : 
           });
           amount = 100_000_000;
         };
-        pricing = #instant;
+        pricing = #instant(null);
         broker_id = null;
       };
 
@@ -9941,7 +9941,7 @@ shared (deployer) actor class test_runner(dfx_ledger : Principal, dfx_ledger2 : 
           });
           amount = 100_000_000;
         };
-        pricing = #instant;
+        pricing = #instant(null);
         broker_id = null;
       };
 
@@ -10017,7 +10017,7 @@ shared (deployer) actor class test_runner(dfx_ledger : Principal, dfx_ledger2 : 
           });
           amount = 100_000_000;
         };
-        pricing = #instant;
+        pricing = #instant(null);
         broker_id = null;
       };
 

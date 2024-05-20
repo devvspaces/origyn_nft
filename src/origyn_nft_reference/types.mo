@@ -326,6 +326,7 @@ module {
   public type DutchParams = MigrationTypes.Current.DutchParams;
 
   public type AskFeature = MigrationTypes.Current.AskFeature;
+  public type InstantFeature = MigrationTypes.Current.InstantFeature;
 
   public type NiftyConfig = {
     duration : ?Int;
@@ -377,7 +378,14 @@ module {
   public func AuctionState_stabalize_for_xfer(val : AuctionState) : AuctionStateShared {
     {
       config = switch (val.config) {
-        case (#instant) #instant;
+        case (#instant(val)) {
+          switch (val) {
+            case (null) #instant(null);
+            case (?items) {
+              #instant(?(Iter.toArray<InstantFeature>(Map.vals(items))));
+            };
+          };
+        };
         case (#auction(e)) #auction(e);
         case (#ask(e)) {
           switch (e) {
@@ -463,7 +471,7 @@ module {
     kyc_client : KYC.kyc;
     canistergeekLogger : Canistergeek.Logger;
     handle_notify : () -> async ();
-    icrc3:  ICRC3.ICRC3;
+    icrc3 : ICRC3.ICRC3;
     notify_timer : {
       get : () -> ?Nat;
       set : (?Nat) -> ();

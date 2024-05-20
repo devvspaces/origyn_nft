@@ -194,7 +194,7 @@ module {
 
     let upgradePricingConfig = func(x : v0_1_5.PricingConfig) : v0_1_6.PricingConfig {
       switch (x) {
-        case (#instant) { #instant };
+        case (#instant) { #instant(null) };
         case (#auction(e)) { #auction(e) };
         case (#extensible(e)) { #extensible(e) };
         case (#ask(e)) {
@@ -233,7 +233,7 @@ module {
 
     let upgradePricingConfigShared = func(x : v0_1_5.PricingConfigShared) : v0_1_6.PricingConfigShared {
       switch (x) {
-        case (#instant) { #instant };
+        case (#instant) { #instant(null) };
         case (#auction(e)) { #auction(e) };
         case (#extensible(e)) { #extensible(e) };
         case (#ask(e)) {
