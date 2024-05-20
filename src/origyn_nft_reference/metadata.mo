@@ -117,6 +117,24 @@ module {
     };
   };
 
+  //confirms if a token has been redeemed
+  /**
+  * Confirms whether a token is in physical escrow.
+  * @param metadata - the metadata for the token.
+  * @returns a boolean indicating whether the token is in physical escrow.
+  */
+  public func is_redeemed(metadata: CandyTypes.CandyShared) : Bool 
+  {
+    let property = get_system_var(metadata, Types.metadata.__system_redeemed);
+
+    switch (property) {
+      case(#Option(null)) {return false};
+      case(_) {return Conversions.candySharedToBool(property)};
+    };
+  };  
+
+
+
   //sets a system variable in the metadata
   /**
   * Confirms whether a token is in physical escrow.

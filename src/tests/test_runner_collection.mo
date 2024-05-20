@@ -64,7 +64,7 @@ shared (deployer) actor class test_runner_collection(dfx_ledger: Principal, dfx_
             S.test("testCollectionData", switch(await testCollectionData()){case(#success){true};case(_){false};}, M.equals<Bool>(T.bool(true))),
             //S.test("testCollectionMetadata", switch(await testCollectionMetadata()){case(#success){true};case(_){false};}, M.equals<Bool>(T.bool(true))),
             //S.test("testCollectionNFTList", switch(await testCollectionNFTList()){case(#success){true};case(_){false};}, M.equals<Bool>(T.bool(true))),
-            //S.test("testCollectionOwner", switch(await testCollectionOWner()){case(#success){true};case(_){false};}, M.equals<Bool>(T.bool(true))),
+            //S.test("testCollectionOwner", switch(await testCollectionOwner()){case(#success){true};case(_){false};}, M.equals<Bool>(T.bool(true))),
             //S.test("testCollectionManager", switch(await testCollectionManager()){case(#success){true};case(_){false};}, M.equals<Bool>(T.bool(true))),
             
             //S.test("testInstantTransfer", switch(await Instant_Test.testInstantTransfer()){case(#success){true};case(_){false};}, M.equals<Bool>(T.bool(true))),

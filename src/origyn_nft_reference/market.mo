@@ -745,7 +745,8 @@ module {
         //only the canister can end a buy now
       } else {
 
-        if (Types.account_eq(#principal(caller), owner) == true and current_sale_state.current_escrow == null) {
+        if((Types.account_eq(#principal(caller), owner) == true or caller == state.canister()) and current_sale_state.current_escrow == null){
+ 
           //an owner can cancel an auction that has no bids yet.
           //useful for buy it now sales with a long out end date.
 
@@ -1920,6 +1921,10 @@ module {
       if (Metadata.is_in_physical_escrow(metadata) == false) {
         return #err(Types.errors(?state.canistergeekLogger, #token_non_transferable, "market_transfer_nft_origyn physical token must be escrowed", ?caller));
       };
+      if (Metadata.is_redeemed(metadata) == true) {
+            return #err(Types.errors(?state.canistergeekLogger,  #token_non_transferable, "market_transfer_nft_origyn physical token has been redeemed and is no longer connected to the physical object", ?caller));
+      };
+
     };
 
     let owner = switch (
