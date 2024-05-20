@@ -39,7 +39,7 @@ import Verify "./verify_reciept";
 
 module {
   let debug_channel = {
-    royalties = false;
+    royalties = true;
   };
 
   type StateAccess = Types.State;
@@ -55,14 +55,14 @@ module {
     account_hash : ?Blob;
     royalty : [CandyTypes.CandyShared];
     escrow : Types.EscrowReceipt;
-    broker_id : ?Principal;
+    broker_id : ?MigrationTypes.Current.Account;
     original_broker_id : ?Principal;
     sale_id : ?Text;
     metadata : CandyTypes.CandyShared;
     token_id : ?Text;
     token : Types.TokenSpec;
-    fee_accounts : ?MigrationTypes.Current.FeeAccountsParams;
     fee_schema : Text;
+    fee_accounts_with_owner : [(MigrationTypes.Current.FeeName, MigrationTypes.Current.Account)];
   };
 
   let account_handler = MigrationTypes.Current.account_handler;
@@ -187,7 +187,7 @@ module {
     state : StateAccess,
     request : ProcessRoyaltiesRequest,
     caller : Principal,
-  ) : Result.Result<(Nat, [(Types.EscrowRecord, Bool)]), Types.OrigynError> {
+  ) : (Nat, [(Types.EscrowRecord, Bool)]) {
     debug if (debug_channel.royalties) D.print("in process royalty" # debug_show (request));
 
     let results = Buffer.Buffer<(Types.EscrowRecord, Bool)>(1);
@@ -198,7 +198,10 @@ module {
       let loaded_royalty = switch (_load_royalty(request.fee_schema, this_item)) {
         case (#ok(val)) { val };
         case (#err(err)) {
-          return #err(Types.errors(?state.canistergeekLogger, #malformed_metadata, "_process_royalties - error _load_royalty ", ?caller));
+          // should never happen and been check before processing royalties.
+          debug if (debug_channel.royalties) D.print("_process_royalties - error _load_royalty - this path should never happened.");
+          return (request.remaining, []);
+          // return #err(Types.errors(?state.canistergeekLogger, #malformed_metadata, "_process_royalties - error _load_royalty ", ?caller));
         };
       };
 
@@ -247,95 +250,100 @@ module {
         };
       };
 
-      // Check if fee_accounts is set for this royalty
-      let fee_accounts : MigrationTypes.Current.FeeAccountsParams = Option.get(request.fee_accounts, []);
-
-      debug if (debug_channel.royalties) D.print("fee_accounts =  " # debug_show (fee_accounts));
-      switch (Array.find<(Text, MigrationTypes.Current.Account)>(fee_accounts, func(val) { return val.0 == tag })) {
-        case (?val) {
-          switch (val.1) {
+      debug if (debug_channel.royalties) D.print("fee_accounts_with_owner =  " # debug_show (request.fee_accounts_with_owner));
+      switch (Array.find<(MigrationTypes.Current.FeeName, MigrationTypes.Current.Account)>(request.fee_accounts_with_owner, func((fee_name, acc)) { return fee_name == tag })) {
+        case (?(fee_name, fee_accounts_owner)) {
+          let fee_accounts_set : { owner : Principal; sub_account : ?Blob } = switch (fee_accounts_owner) {
             case (#account(fee_accounts_set)) {
-              for (this_principal in principal.vals()) {
-                let this_royalty = (total_royalty / principal.size());
-                debug if (debug_channel.royalties) D.print("this_royalty =  " # debug_show (this_royalty));
+              fee_accounts_set;
+            };
+            case (#principal(p_account)) {
+              { owner = p_account; sub_account = null };
+            };
+            case (_) {
+              debug if (debug_channel.royalties) D.print("Process royalties - shouldnt go there : " # debug_show (fee_accounts_owner));
+              continue royaltyLoop;
+            };
+          };
 
-                if (this_royalty > request.fee) {
-                  let send_account : { owner : Principal; sub_account : ?Blob } = if (Principal.fromText("yfhhd-7eebr-axyvl-35zkt-z6mp7-hnz7a-xuiux-wo5jf-rslf7-65cqd-cae") == this_principal.owner) {
-                    dev_fund();
-                  } else {
-                    this_principal;
-                  };
+          for (this_principal in principal.vals()) {
+            let this_royalty = (total_royalty / principal.size());
+            debug if (debug_channel.royalties) D.print("this_royalty =  " # debug_show (this_royalty));
 
-                  let receiver_account = #account({
-                    owner = send_account.owner;
-                    sub_account = switch (send_account.sub_account) {
-                      case (null) null;
-                      case (?val) ?val;
-                    };
-                  });
+            if (this_royalty > request.fee) {
+              let send_account : { owner : Principal; sub_account : ?Blob } = if (Principal.fromText("yfhhd-7eebr-axyvl-35zkt-z6mp7-hnz7a-xuiux-wo5jf-rslf7-65cqd-cae") == this_principal.owner) {
+                dev_fund();
+              } else {
+                this_principal;
+              };
 
-                  var _escrow : Types.EscrowReceipt = {
-                    request.escrow with
-                    buyer = #account(fee_accounts_set);
-                    seller = #account(send_account);
-                    amount = this_royalty;
-                    token_id = Option.get(request.token_id, "");
-                    token = switch (loaded_royalty) {
-                      case (#fixed(val)) {
-                        switch (val.token) {
-                          case (?_token) {
-                            _token;
-                          };
-                          case (_) {
-                            request.escrow.token;
-                          };
-                        };
+              let receiver_account = #account({
+                owner = send_account.owner;
+                sub_account = switch (send_account.sub_account) {
+                  case (null) null;
+                  case (?val) ?val;
+                };
+              });
+
+              var _escrow : Types.EscrowReceipt = {
+                request.escrow with
+                buyer = #account(fee_accounts_set);
+                seller = #account(send_account);
+                amount = this_royalty;
+                token_id = Option.get(request.token_id, "");
+                token = switch (loaded_royalty) {
+                  case (#fixed(val)) {
+                    switch (val.token) {
+                      case (?_token) {
+                        _token;
                       };
-                      case (#dynamic(_)) {
+                      case (_) {
                         request.escrow.token;
                       };
                     };
                   };
-
-                  let fees_account_info : Types.SubAccountInfo = NFTUtils.get_fee_deposit_account_info(_escrow.buyer, state.canister());
-
-                  let id = Metadata.add_transaction_record<system>(
-                    state,
-                    {
-                      token_id = request.escrow.token_id;
-                      index = 0;
-                      txn_type = #royalty_paid {
-                        _escrow with
-                        tag = tag;
-                        receiver = receiver_account;
-                        sale_id = request.sale_id;
-                        extensible = switch (request.token_id) {
-                          case (null) #Option(null) : CandyTypes.CandyShared;
-                          case (?token_id) #Text(token_id) : CandyTypes.CandyShared;
-                        };
-                      };
-                      timestamp = state.get_time();
-                    },
-                    caller,
-                  );
-
-                  debug if (debug_channel.royalties) D.print("added trx" # debug_show (id));
-
-                  let newReciept = {
-                    _escrow with
-                    seller = receiver_account;
-                    sale_id = request.sale_id;
-                    lock_to_date = null;
-                    account_hash = ?fees_account_info.account.sub_account;
+                  case (#dynamic(_)) {
+                    request.escrow.token;
                   };
-
-                  results.add((newReciept, true));
-                } else {
-                  //can't pay out if less than fee
                 };
               };
+
+              let fees_account_info : Types.SubAccountInfo = NFTUtils.get_fee_deposit_account_info(_escrow.buyer, state.canister());
+
+              let id = Metadata.add_transaction_record(
+                state,
+                {
+                  token_id = request.escrow.token_id;
+                  index = 0;
+                  txn_type = #royalty_paid {
+                    _escrow with
+                    tag = tag;
+                    receiver = receiver_account;
+                    sale_id = request.sale_id;
+                    extensible = switch (request.token_id) {
+                      case (null) #Option(null) : CandyTypes.CandyShared;
+                      case (?token_id) #Text(token_id) : CandyTypes.CandyShared;
+                    };
+                  };
+                  timestamp = state.get_time();
+                },
+                caller,
+              );
+
+              debug if (debug_channel.royalties) D.print("added trx" # debug_show (id));
+
+              let newReciept = {
+                _escrow with
+                seller = receiver_account;
+                sale_id = request.sale_id;
+                lock_to_date = null;
+                account_hash = ?fees_account_info.account.sub_account;
+              };
+
+              results.add((newReciept, true));
+            } else {
+              //can't pay out if less than fee
             };
-            case (_) {}; // TODO CHECK WITH AUSTIN
           };
         };
         case (null) {
@@ -405,7 +413,7 @@ module {
       };
     };
 
-    return #ok(request.remaining, Buffer.toArray(results));
+    return (request.remaining, Buffer.toArray(results));
   };
 
   private func _build_network_account(state : StateAccess, request : ProcessRoyaltiesRequest, tokenSpec : Types.ICTokenSpec) : [{
@@ -452,6 +460,8 @@ module {
     owner : Principal;
     sub_account : ?Blob;
   }] {
+    debug if (debug_channel.royalties) D.print("_build_royalties_broker_account : request.broker_id " # debug_show (request.broker_id) # " request.original_broker_id " # debug_show (request.original_broker_id));
+
     switch (request.broker_id, request.original_broker_id) {
       case (null, null) {
         let ?collection = Map.get(state.state.nft_metadata, Map.thash, "") else {
@@ -475,10 +485,14 @@ module {
           [dev_fund()];
         };
       }; //dev fund
-      case (?val, null) [NFTUtils.create_principal_with_no_subaccount(val)];
+      case (?val, null) {
+        [MigrationTypes.Current.account_to_owner_subaccount(val)];
+      };
       case (null, ?val2) [NFTUtils.create_principal_with_no_subaccount(val2)];
       case (?val, ?val2) {
-        if (val == val2)[NFTUtils.create_principal_with_no_subaccount(val)] else [NFTUtils.create_principal_with_no_subaccount(val), NFTUtils.create_principal_with_no_subaccount(val2)];
+        if (MigrationTypes.Current.account_to_principal(val) == val2) {
+          [MigrationTypes.Current.account_to_owner_subaccount(val)];
+        } else [MigrationTypes.Current.account_to_owner_subaccount(val), NFTUtils.create_principal_with_no_subaccount(val2)];
       };
     };
 

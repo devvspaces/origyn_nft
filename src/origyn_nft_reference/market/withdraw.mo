@@ -151,6 +151,7 @@ module {
     debug if (debug_channel.withdraw_fee_deposit) D.print(debug_show (withdraw));
     if (caller != state.canister() and Types.account_eq(#principal(caller), details.account) == false) {
       //cant withdraw for someone else
+      debug if (debug_channel.withdraw_fee_deposit) D.print("withdraw - buyer and caller do not match");
       return #err(#trappable(Types.errors(?state.canistergeekLogger, #unauthorized_access, "_withdraw_fee_deposit - withdraw - buyer and caller do not match", ?caller)));
     };
 
@@ -200,18 +201,22 @@ module {
             try {
               switch (await* checker.send_payment_minus_fee(details.withdraw_to, token, details.amount, ?fee_deposit_account.account.sub_account, caller)) {
                 case (#ok(val)) ?val;
-                case (#err(err)) return #err(#awaited(Types.errors(?state.canistergeekLogger, #escrow_withdraw_payment_failed, "withdraw_nft_origyn - deposit - ledger payment failed err branch " # err.flag_point # " " # debug_show ((details.withdraw_to, token, details.amount, ?fee_deposit_account.account.sub_account, caller)), ?caller)));
-
+                case (#err(err)) {
+                  debug if (debug_channel.withdraw_fee_deposit) D.print("withdraw_fee_deposit : deposit - ledger payment failed err branch " # err.flag_point # " " # debug_show ((details.withdraw_to, token, details.amount, ?fee_deposit_account.account.sub_account, caller)));
+                  return #err(#awaited(Types.errors(?state.canistergeekLogger, #escrow_withdraw_payment_failed, "withdraw_fee_deposit - deposit - ledger payment failed err branch " # err.flag_point # " " # debug_show ((details.withdraw_to, token, details.amount, ?fee_deposit_account.account.sub_account, caller)), ?caller)));
+                };
               };
             } catch (e) {
-              return #err(#awaited(Types.errors(?state.canistergeekLogger, #escrow_withdraw_payment_failed, "withdraw_nft_origyn - deposit - ledger payment failed catch branch " # Error.message(e), ?caller)));
+              return #err(#awaited(Types.errors(?state.canistergeekLogger, #escrow_withdraw_payment_failed, "withdraw_fee_deposit - deposit - ledger payment failed catch branch " # Error.message(e), ?caller)));
             };
           };
-          case (_) return #err(#awaited(Types.errors(?state.canistergeekLogger, #nyi, "withdraw_nft_origyn - deposit - - ledger type nyi - " # debug_show (details), ?caller)));
+          case (_) return #err(#awaited(Types.errors(?state.canistergeekLogger, #nyi, "withdraw_fee_deposit - deposit - - ledger type nyi - " # debug_show (details), ?caller)));
         };
       };
-      case (#extensible(val)) return #err(#trappable(Types.errors(?state.canistergeekLogger, #nyi, "withdraw_nft_origyn - deposit - -  token standard nyi - " # debug_show (details), ?caller)));
+      case (#extensible(val)) return #err(#trappable(Types.errors(?state.canistergeekLogger, #nyi, "withdraw_fee_deposit - deposit - -  token standard nyi - " # debug_show (details), ?caller)));
     };
+
+    debug if (debug_channel.withdraw_fee_deposit) D.print("withdraw_fee_deposit : succesful transaction :" # debug_show (transaction_id) # debug_show (details));
 
     switch (details.status) {
       case (#locked(val)) {
@@ -222,20 +227,24 @@ module {
               account = details.account;
               token = details.token;
               sale_id = val.sale_id;
+              update_balance = true;
             },
           )
         ) {
-          case (#ok(val)) {};
-          case (#err(err)) return #err(#trappable(Types.errors(?state.canistergeekLogger, #nyi, "_withdraw_fee_deposit - failed to unlock token " # debug_show (err), ?caller)));
+          case (#ok(val)) {
+            debug if (debug_channel.withdraw_fee_deposit) D.print("withdraw_fee_deposit : succesful unlock token :" # debug_show (val));
+          };
+          case (#err(err)) {
+            debug if (debug_channel.withdraw_fee_deposit) D.print("withdraw_fee_deposit : failed to unlock token " # debug_show (err));
+            return #err(#trappable(Types.errors(?state.canistergeekLogger, #nyi, "_withdraw_fee_deposit - failed to unlock token " # debug_show (err), ?caller)));
+          };
         };
       };
       case (#unlocked) {};
     };
 
-    debug if (debug_channel.withdraw_fee_deposit) D.print("succesful transaction :" # debug_show (transaction_id) # debug_show (details));
-
     switch (transaction_id) {
-      case (null) return #err(#awaited(Types.errors(?state.canistergeekLogger, #escrow_withdraw_payment_failed, "withdraw_nft_origyn - escrow -  payment failed txid null", ?caller)));
+      case (null) return #err(#awaited(Types.errors(?state.canistergeekLogger, #escrow_withdraw_payment_failed, "withdraw_fee_deposit - escrow -  payment failed txid null", ?caller)));
       case (?transaction_id) {
         switch (
           Metadata.add_transaction_record<system>(
@@ -256,7 +265,7 @@ module {
           )
         ) {
           case (#ok(val)) return #awaited(#withdraw(val));
-          case (#err(err)) return #err(#awaited(Types.errors(?state.canistergeekLogger, err.error, "withdraw_nft_origyn - escrow - ledger not updated" # debug_show (transaction_id), ?caller)));
+          case (#err(err)) return #err(#awaited(Types.errors(?state.canistergeekLogger, err.error, "withdraw_fee_deposit - escrow - ledger not updated" # debug_show (transaction_id), ?caller)));
         };
       };
     };
@@ -502,7 +511,7 @@ module {
       case (#ic(token)) {
         let token_fee = Option.get(token.fee, 0);
         if (a_ledger.amount <= token_fee) {
-          debug if (debug_channel.withdraw_sale) D.print("withdraw fee");
+          debug if (debug_channel.withdraw_sale) D.print("withdraw fee is larger than amount");
           return #err(#trappable(Types.errors(?state.canistergeekLogger, #withdraw_too_large, "withdraw_nft_origyn - sales - withdraw fee is larger than amount", ?caller)));
         };
       };

@@ -1,6 +1,6 @@
 [package]
 name = "origyn-nft"
-version = "0.1.5"
+version = "0.1.6"
 description = "The reference implementation for the ORIGYN NFT."
 repository = "https://github.com/ORIGYN_SA/origyn_nft"
 

@@ -75,14 +75,14 @@ shared (deployer) actor class Nft_Canister() = this {
   };
 
   let CandyTypes = MigrationTypes.Current.CandyTypes;
-  
+
   let Properties = MigrationTypes.Current.Properties;
   let Workspace = MigrationTypes.Current.Workspace;
   let JSON = MigrationTypes.Current.JSON;
 
   debug if (debug_channel.instantiation) D.print("creating a canister");
 
-  let {thash;} = Map;
+  let { thash } = Map;
 
   // A standard file chunk size.  The IC limits intercanister messages to ~2MB+ so we set that here
   stable var SIZE_CHUNK = 2048000; //max message size
@@ -244,32 +244,31 @@ shared (deployer) actor class Nft_Canister() = this {
 
   let ct = CertTree.Ops(state_current.cert_store);
 
-  private func updated_certification(cert: Blob, lastIndex: Nat) : Bool{
+  private func updated_certification(cert : Blob, lastIndex : Nat) : Bool {
 
     ct.setCertifiedData();
-    
+
     return true;
   };
 
-  private func get_icrc3_environment() : ICRC3.Environment{
+  private func get_icrc3_environment() : ICRC3.Environment {
     ?{
       updated_certification = ?updated_certification;
       get_certificate_store = ?get_certificate_store;
     };
   };
 
-
-  func ensure_block_types(icrc3Class: ICRC3.ICRC3) : () {
+  func ensure_block_types(icrc3Class : ICRC3.ICRC3) : () {
     D.print("in ensure_block_types: ");
     let supportedBlocks = Buffer.fromIter<ICRC3.BlockType>(icrc3Class.supported_block_types().vals());
 
-    let blockequal = func(a : {block_type: Text}, b : {block_type: Text}) : Bool {
+    let blockequal = func(a : { block_type : Text }, b : { block_type : Text }) : Bool {
       a.block_type == b.block_type;
     };
 
-    for(thisItem in BlockTypes.supported_blocktypes().vals()){
-      if(Buffer.indexOf<ICRC3.BlockType>({block_type = thisItem.0; url=thisItem.1;}, supportedBlocks, blockequal) == null){
-        supportedBlocks.add({block_type = thisItem.0; url = thisItem.1});
+    for (thisItem in BlockTypes.supported_blocktypes().vals()) {
+      if (Buffer.indexOf<ICRC3.BlockType>({ block_type = thisItem.0; url = thisItem.1 }, supportedBlocks, blockequal) == null) {
+        supportedBlocks.add({ block_type = thisItem.0; url = thisItem.1 });
       };
     };
 
@@ -277,19 +276,18 @@ shared (deployer) actor class Nft_Canister() = this {
   };
 
   func icrc3() : ICRC3.ICRC3 {
-    switch(_icrc3){
-      case(null){
+    switch (_icrc3) {
+      case (null) {
         let initclass : ICRC3.ICRC3 = ICRC3.ICRC3(?state_current.icrc3_migration_state, Principal.fromActor(this), get_icrc3_environment());
-        
+
         _icrc3 := ?initclass;
         ensure_block_types(initclass);
-        
+
         initclass;
       };
-      case(?val) val;
+      case (?val) val;
     };
   };
-
 
   private func get_notify_timer() : ?Nat {
     notify_timer;
@@ -377,8 +375,7 @@ shared (deployer) actor class Nft_Canister() = this {
 
   private func __implement_icrc3<system>() : Bool {
 
-
-    if(icrc3().stats().lastIndex > 0) return false;
+    if (icrc3().stats().lastIndex > 0) return false;
 
     var last_phash : ?Blob = null;
     for (thisItem in SB.vals(state_current.master_ledger)) {
@@ -2500,7 +2497,7 @@ shared (deployer) actor class Nft_Canister() = this {
     * @param {Principal} operator - The principal of the operator to be checked.
     * @returns {DIP721.Result_1} A result indicating whether the operator is approved for all tokens.
     */
-  public query  func dip721_is_approved_for_all(owner : Principal, operator : Principal) : async DIP721.DIP721BoolResult {
+  public query func dip721_is_approved_for_all(owner : Principal, operator : Principal) : async DIP721.DIP721BoolResult {
     return (#Ok(false));
   };
 
@@ -2738,7 +2735,7 @@ shared (deployer) actor class Nft_Canister() = this {
     * Secure access to storage metrics for this server
     * @returns The storage metrics for this server
     */
-  public shared  func storage_info_secure_nft_origyn() : async Types.StorageMetricsResult {
+  public shared func storage_info_secure_nft_origyn() : async Types.StorageMetricsResult {
 
     if (halt == true) {
       throw Error.reject("canister is in maintenance mode");
@@ -2925,20 +2922,19 @@ shared (deployer) actor class Nft_Canister() = this {
     * Returns the list of supported interfaces for the DIP721 collection.
     * @returns {[DIP721.SupportedInterface]} The list of supported interfaces for the DIP721 collection.
     */
-  public query  func dip721_supported_interfaces() : async [DIP721.DIP721SupportedInterface] {
+  public query func dip721_supported_interfaces() : async [DIP721.DIP721SupportedInterface] {
     return [#TransactionHistory];
   };
-
 
   /// *************************
   /// ***** ICRC3 *****
   /// *************************
 
-  public query func icrc3_get_blocks(args: [ICRC3.TransactionRange]) : async ICRC3.GetTransactionsResult{
+  public query func icrc3_get_blocks(args : [ICRC3.TransactionRange]) : async ICRC3.GetTransactionsResult {
     return icrc3().get_blocks(args);
   };
 
-  public query func icrc3_get_archives(args: ICRC3.GetArchivesArgs) : async ICRC3.GetArchivesResult{
+  public query func icrc3_get_archives(args : ICRC3.GetArchivesArgs) : async ICRC3.GetArchivesResult {
     return icrc3().get_archives(args);
   };
 
@@ -3006,7 +3002,7 @@ shared (deployer) actor class Nft_Canister() = this {
     Option.get<Text>(state.state.collection_data.name, Principal.toText(state.canister()));
   };
 
-  public query  func icrc7_symbol() : async Text {
+  public query func icrc7_symbol() : async Text {
 
     let state = get_state();
     Option.get<Text>(state.state.collection_data.symbol, Principal.toText(state.canister()));
@@ -3103,36 +3099,49 @@ shared (deployer) actor class Nft_Canister() = this {
     Iter.size(keys);
   };
 
-  public query  func icrc7_supply_cap() : async ?Nat {
+  public query func icrc7_supply_cap() : async ?Nat {
     null;
   };
-  public query  func icrc7_max_approvals_per_token_or_collection() : async ?Nat {
+  public query func icrc7_max_approvals_per_token_or_collection() : async ?Nat {
     null;
   };
-  public query  func icrc7_max_query_batch_size() : async ?Nat {
-    null;
+  public query (msg) func icrc7_max_query_batch_size() : async ?Nat {
+    ?100;
   };
-  public query  func icrc7_max_update_batch_size() : async ?Nat {
-    null;
+  public query (msg) func icrc7_max_update_batch_size() : async ?Nat {
+    ?1;
   };
-  public query  func icrc7_default_take_value() : async ?Nat {
-    null;
+  public query (msg) func icrc7_default_take_value() : async ?Nat {
+    ?100;
   };
-  public query  func icrc7_max_take_value() : async ?Nat {
-    null;
+  public query (msg) func icrc7_max_take_value() : async ?Nat {
+    ?100;
   };
-  public query  func icrc7_max_revoke_approvals() : async ?Nat {
-    null;
-  };
-  public query  func icrc7_max_memo_size() : async ?Nat {
+
+  public query func icrc7_max_revoke_approvals() : async ?Nat {
     null;
   };
 
-  public query (msg) func icrc7_token_metadata(token_ids : [Nat]) : async [(Nat, ?(Text, ICRC7.Value))] {
+  public query (msg) func icrc7_max_memo_size() : async ?Nat {
+    ?32;
+  };
+
+  public query (msg) func icrc7_atomic_batch_transfers() : async ?Bool {
+    ?false;
+  };
+  public query (msg) func icrc7_tx_window() : async ?Nat {
+    let _tmp : Nat = 24 * 60 * 60;
+    return ?_tmp;
+  };
+  public query (msg) func icrc7_permitted_drift() : async ?Nat {
+    ?120;
+  };
+
+  public query (msg) func icrc7_token_metadata(token_ids : [Nat]) : async [?[(Text, ICRC7.Value)]] {
 
     let state = get_state();
 
-    let aBuf = Buffer.Buffer<(Nat, ?(Text, ICRC7.Value))>(token_ids.size());
+    let aBuf = Buffer.Buffer<?[(Text, ICRC7.Value)]>(token_ids.size());
 
     for (token_id in token_ids.vals()) {
 
@@ -3140,25 +3149,22 @@ shared (deployer) actor class Nft_Canister() = this {
         case (#ok(metadata)) {
           let json = JSON.value_to_json(Metadata.get_clean_metadata(metadata, msg.caller));
 
-          aBuf.add((token_id), ?("com.origyn.nft.metadata.json", #Text(json)));
+          aBuf.add(?[("com.origyn.nft.metadata.json", #Text(json))]);
         };
         case (_) {
-          aBuf.add((token_id), null);
+          aBuf.add(null);
         };
       };
     };
 
-    return Buffer.toArray<(Nat, ?(Text, ICRC7.Value))>(aBuf);
+    return Buffer.toArray<?[(Text, ICRC7.Value)]>(aBuf);
   };
 
-  public query (msg) func icrc7_owner_of(token_ids : [Nat]) : async [{
-    token_id : Nat;
-    account : ?ICRC7.Account;
-  }] {
+  public query (msg) func icrc7_owner_of(token_ids : [Nat]) : async [?ICRC7.Account] {
 
     let state = get_state();
 
-    let aBuf = Buffer.Buffer<{ token_id : Nat; account : ?ICRC7.Account }>(token_ids.size());
+    let aBuf = Buffer.Buffer<?ICRC7.Account>(token_ids.size());
 
     for (token_id in token_ids.vals()) {
 
@@ -3168,37 +3174,35 @@ shared (deployer) actor class Nft_Canister() = this {
             Metadata.get_nft_owner(metadata)
           ) {
             case (#err(err)) {
-              aBuf.add({ token_id = token_id; account = null });
+              aBuf.add(null);
             };
             case (#ok(val)) {
               switch (val) {
                 case (#principal(data)) {
-                  aBuf.add({
-                    token_id = token_id;
-                    account = ?{
+                  aBuf.add(
+                    ?{
                       owner = data;
                       subaccount = null;
-                    };
-                  });
+                    }
+                  );
                 };
                 case (#account(data)) {
-                  aBuf.add({
-                    token_id = token_id;
-                    account = ?{
+                  aBuf.add(
+                    ?{
                       owner = data.owner;
                       subaccount = data.sub_account;
-                    };
-                  });
+                    }
+                  );
                 };
                 case (_) {
-                  aBuf.add({ token_id = token_id; account = null });
+                  aBuf.add(null);
                 };
               };
             };
           };
         };
         case (_) {
-          aBuf.add({ token_id = token_id; account = null });
+          aBuf.add(null);
         };
       };
     };
@@ -3207,10 +3211,17 @@ shared (deployer) actor class Nft_Canister() = this {
 
   };
 
-  public query func icrc7_balance_of(account : ICRC7.Account) : async Nat {
+  public query func icrc7_balance_of(items : [ICRC7.Account]) : async [Nat] {
 
+    let state = get_state();
+    let aBuf = Buffer.Buffer<Nat>(items.size());
+    for (thisItem in items.vals()) {
+      let balance : Nat = Metadata.get_NFTs_for_user(get_state(), #account({ owner = thisItem.owner; sub_account = thisItem.subaccount })).size();
+      aBuf.add(balance);
+    };
 
-    Metadata.get_NFTs_for_user(get_state(), #account({ owner = account.owner; sub_account = account.subaccount })).size();
+    return Buffer.toArray<Nat>(aBuf);
+
   };
 
   public query (msg) func icrc7_tokens(prev : ?Nat, take : ?Nat32) : async [Nat] {
@@ -3238,18 +3249,19 @@ shared (deployer) actor class Nft_Canister() = this {
     return result;
   };
 
-  public shared (msg) func icrc7_transfer(request : ICRC7.TransferArgs) : async ICRC7.TransferResult {
+  public shared (msg) func icrc7_transfer(requests : [ICRC7.TransferArgs]) : async ICRC7.TransferResult {
 
-    if (request.token_ids.size() != 1) {
+    if (requests.size() != 1) {
       return D.trap("origyn_nft does not support batch transactions through ICRC7. use market_transfer_batch_nft_origyn");
     };
+    let request = requests[0];
 
-    let log_data : Text = "To :" # debug_show (request.to) # " - Token : " # Nat.toText(request.token_ids[0]);
+    let log_data : Text = "To :" # debug_show (request.to) # " - Token : " # Nat.toText(request.token_id);
     canistergeekLogger.logMessage("transferICRC7", #Text("transferICRC7"), ?msg.caller);
     canistergeekMonitor.collectMetrics();
     debug if (debug_channel.function_announce) D.print("in transferICRC7");
     // Existing escrow acts as approval
-    let result = await* Owner.transferICRC7(get_state(), request.from, request.to, request.token_ids[0], msg.caller);
+    let result = await* Owner.transferICRC7(get_state(), { owner = msg.caller; subaccount = request.from_subaccount }, request.to, request.token_id, msg.caller);
 
     return [result];
   };
@@ -3531,7 +3543,7 @@ shared (deployer) actor class Nft_Canister() = this {
     * @param {Canistergeek.GetMetricsParameters} parameters - Parameters for getting canister metrics.
     * @returns {?Canistergeek.CanisterMetrics} - Canister metrics or null if not found.
     */
-  public query  func getCanisterMetrics(parameters : Types.Canistergeek.GetMetricsParameters) : async ?Types.Canistergeek.CanisterMetrics {
+  public query func getCanisterMetrics(parameters : Types.Canistergeek.GetMetricsParameters) : async ?Types.Canistergeek.CanisterMetrics {
 
     canistergeekMonitor.getMetrics(parameters);
   };
@@ -3540,7 +3552,7 @@ shared (deployer) actor class Nft_Canister() = this {
     * Collects canister metrics.
     * @returns {null}
     */
-  public query  func collectCanisterMetrics() : async () {
+  public query func collectCanisterMetrics() : async () {
     canistergeekMonitor.collectMetrics();
   };
 

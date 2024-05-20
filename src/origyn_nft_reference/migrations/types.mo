@@ -11,18 +11,18 @@ module {
   public let Current = v0_1_6;
 
   public type Args = {
-    owner: Principal;
-    storage_space: Nat;
+    owner : Principal;
+    storage_space : Nat;
     // you can add any fields here to pass external data to your migrations
   };
 
   public type State = {
-    #v0_0_0: {#id; #data: ()};
-    #v0_1_0: { #id; #data: v0_1_0.State };
-    #v0_1_3: { #id; #data: v0_1_3.State };
-    #v0_1_4: { #id; #data: v0_1_4.State };
-    #v0_1_5: { #id; #data: v0_1_5.State };
-    #v0_1_6: { #id; #data: v0_1_6.State };
+    #v0_0_0 : { #id; #data : () };
+    #v0_1_0 : { #id; #data : v0_1_0.State };
+    #v0_1_3 : { #id; #data : v0_1_3.State };
+    #v0_1_4 : { #id; #data : v0_1_4.State };
+    #v0_1_5 : { #id; #data : v0_1_5.State };
+    #v0_1_6 : { #id; #data : v0_1_6.State };
     // do not forget to add your new migration state types here
   };
 };

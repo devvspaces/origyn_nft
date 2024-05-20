@@ -293,10 +293,19 @@ module {
     transaction : ?TransactionRecord;
   };
 
-  public type BidRequest = {
-    escrow_receipt : EscrowReceipt;
-    sale_id : Text;
-    broker_id : ?Principal;
+  public type BidRequest = MigrationTypes.Current.BidRequest;
+
+  public type ManageSaleRequest = {
+    #end_sale : Text; //token_id
+    #open_sale : Text; //token_id;
+    #escrow_deposit : EscrowRequest;
+    #fee_deposit : FeeDepositRequest;
+    #recognize_escrow : EscrowRequest;
+    #refresh_offers : ?Account;
+    #bid : BidRequest;
+    #withdraw : WithdrawRequest;
+    #distribute_sale : DistributeSaleRequest;
+    #ask_subscribe : AskSubscribeRequest;
   };
 
   public type DistributeSaleRequest = {
@@ -313,7 +322,6 @@ module {
 
   public type PricingConfigShared = MigrationTypes.Current.PricingConfigShared;
 
-  public type AskConfig = ?[AskFeature];
   public type AskConfigShared = MigrationTypes.Current.AskConfigShared;
   public type DutchParams = MigrationTypes.Current.DutchParams;
 
@@ -349,7 +357,7 @@ module {
   public type AuctionStateShared = {
     config : PricingConfigShared;
     current_bid_amount : Nat;
-    current_broker_id : ?Principal;
+    current_config : MigrationTypes.Current.BidConfigShared;
     end_date : Int;
     start_date : Int;
     min_next_bid : Nat;
@@ -382,7 +390,12 @@ module {
         case (#extensible(e)) #extensible(e);
       };
       current_bid_amount = val.current_bid_amount;
-      current_broker_id = val.current_broker_id;
+      current_config = switch (val.current_config) {
+        case (?curr_conf) {
+          ?MigrationTypes.Current.bidfeaturesmap_to_bidfeaturearray(curr_conf);
+        };
+        case (null) { null };
+      };
       end_date = val.end_date;
       start_date = val.start_date;
       token = val.token;
@@ -636,19 +649,6 @@ module {
     sale_id : ?Text; //locks the escrow to a specific sale
     lock_to_date : ?Int; //locks the escrow to a timestamp
     account_hash : ?Blob; //sub account the host holds the funds in
-  };
-
-  public type ManageSaleRequest = {
-    #end_sale : Text; //token_id
-    #open_sale : Text; //token_id;
-    #escrow_deposit : EscrowRequest;
-    #fee_deposit : FeeDepositRequest;
-    #recognize_escrow : EscrowRequest;
-    #refresh_offers : ?Account;
-    #bid : BidRequest;
-    #withdraw : WithdrawRequest;
-    #distribute_sale : DistributeSaleRequest;
-    #ask_subscribe : AskSubscribeRequest;
   };
 
   public type AskSubscribeRequest = {
@@ -932,6 +932,7 @@ module {
     #kyc_error;
     #kyc_fail;
     #low_fee_balance;
+    #no_fee_accounts_provided;
   };
 
   public func errors(logger : ?Canistergeek.Logger, the_error : Errors, flag_point : Text, caller : ?Principal) : OrigynError {
@@ -1393,6 +1394,14 @@ module {
         return {
           number = 4012;
           text = "low_fee_balance";
+          error = the_error;
+          flag_point = flag_point;
+        };
+      };
+      case (#no_fee_accounts_provided) {
+        return {
+          number = 4013;
+          text = "no_fee_accounts_provided";
           error = the_error;
           flag_point = flag_point;
         };

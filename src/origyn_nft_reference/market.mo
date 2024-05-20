@@ -43,23 +43,23 @@ import Royalties "market/royalties";
 module {
 
   let debug_channel = {
-    verify_escrow = true;
+    verify_escrow = false;
     verify_sale = false;
     ensure = false;
     invoice = false;
-    end_sale = false;
-    market = true;
-    royalties = true;
+    end_sale = true;
+    market = false;
+    royalties = false;
     offers = false;
-    escrow = true;
-    withdraw_escrow = true;
-    withdraw_sale = true;
+    escrow = false;
+    withdraw_escrow = false;
+    withdraw_sale = false;
     withdraw_reject = false;
     withdraw_deposit = false;
-    withdraw_fee_deposit = true;
-    notifications = true;
+    withdraw_fee_deposit = false;
+    notifications = false;
     dutch = false;
-    bid = true;
+    bid = false;
     kyc = false;
   };
 
@@ -566,6 +566,57 @@ module {
     return #ok(#fee_deposit_info(NFTUtils.get_fee_deposit_account_info(account, state.canister())));
   };
 
+  private func end_sale_unlock_fee_account_callback(
+    state : StateAccess,
+    metadata : CandyTypes.CandyShared,
+    request : {
+      token : Types.TokenSpec;
+      sale_id : Text;
+      seller_fee_accounts : ?MigrationTypes.Current.FeeAccountsParams;
+      bidder_fee_accounts : ?MigrationTypes.Current.FeeAccountsParams;
+      fee_schema : ?Text;
+      owner : MigrationTypes.Current.Account;
+    },
+    ret : Star.Star<Types.ManageSaleResponse, Types.OrigynError>,
+  ) : Star.Star<Types.ManageSaleResponse, Types.OrigynError> {
+
+    switch (
+      _unlock_fee_accounts_according_to_fee_schema(
+        state,
+        metadata,
+        {
+          token = request.token;
+          sale_id = request.sale_id;
+          fee_accounts = request.seller_fee_accounts;
+          fee_schema = request.fee_schema;
+          owner = request.owner;
+        },
+      )
+    ) {
+      case (#ok()) {};
+      case (#err(e)) { return #err(#trappable(e)) };
+    };
+
+    switch (
+      _unlock_fee_accounts_according_to_fee_schema(
+        state,
+        metadata,
+        {
+          token = request.token;
+          sale_id = request.sale_id;
+          fee_accounts = request.bidder_fee_accounts;
+          fee_schema = request.fee_schema;
+          owner = request.owner;
+        },
+      )
+    ) {
+      case (#ok()) {};
+      case (#err(e)) { return #err(#trappable(e)) };
+    };
+
+    return ret;
+  };
+
   //ends a sale if it is past the date or a buy it now has occured
   public func end_sale_nft_origyn(state : StateAccess, token_id : Text, caller : Principal) : async* Star.Star<Types.ManageSaleResponse, Types.OrigynError> {
     debug if (debug_channel.end_sale) D.print("in end_sale_nft_origyn");
@@ -614,71 +665,21 @@ module {
 
     //debug if(debug_channel.end_sale) D.print("current sale state " # debug_show(current_sale_state));
 
-    let { buy_now_price; start_date; fee_accounts; fee_schema : ?Text } = switch (current_sale_state.config) {
+    let { buy_now_price; start_date; seller_fee_accounts; fee_schema : ?Text } = switch (current_sale_state.config) {
       case (#auction(config)) {
         {
           buy_now_price = config.buy_now;
           start_date = config.start_date;
-          fee_accounts = null;
+          seller_fee_accounts = null;
           fee_schema = null;
         };
       };
       case (#ask(config)) {
-        let buy_now = switch (config) {
-          case (null) null;
-          case (?config) {
-            switch (Map.get(config, MigrationTypes.Current.ask_feature_set_tool, #buy_now)) {
-              case (? #buy_now(val)) {
-                ?val;
-              };
-              case (_) { null };
-            };
-          };
-        };
-        let dutch = switch (config) {
-          case (null) null;
-          case (?config) {
-            switch (Map.get(config, MigrationTypes.Current.ask_feature_set_tool, #dutch)) {
-              case (? #dutch(val)) {
-                ?val;
-              };
-              case (_) { null };
-            };
-          };
-        };
-        let fee_accounts = switch (config) {
-          case (null) null;
-          case (?config) {
-            switch (Map.get(config, MigrationTypes.Current.ask_feature_set_tool, #fee_accounts)) {
-              case (? #fee_accounts(val)) {
-                ?val;
-              };
-              case (_) { null };
-            };
-          };
-        };
-        let fee_schema = switch (config) {
-          case (null) null;
-          case (?config) {
-            switch (Map.get(config, MigrationTypes.Current.ask_feature_set_tool, #fee_schema)) {
-              case (? #fee_schema(val)) {
-                ?val;
-              };
-              case (_) { null };
-            };
-          };
-        };
-        let start_date = switch (config) {
-          case (null) null;
-          case (?config) {
-            switch (Map.get(config, MigrationTypes.Current.ask_feature_set_tool, #start_date)) {
-              case (? #buy_now(val)) {
-                ?val;
-              };
-              case (_) { null };
-            };
-          };
-        };
+        let buy_now : ?Nat = MigrationTypes.Current.load_buy_now_ask_feature(config);
+        let dutch : ?MigrationTypes.Current.DutchParams = MigrationTypes.Current.load_dutch_ask_feature(config);
+        let seller_fee_accounts : ?MigrationTypes.Current.FeeAccountsParams = MigrationTypes.Current.load_fee_accounts_ask_feature(config);
+        let fee_schema : ?Text = MigrationTypes.Current.load_fee_schema_ask_feature(config);
+        let start_date : ?Int = MigrationTypes.Current.load_start_date_ask_feature(config);
         {
           buy_now_price = switch (buy_now, dutch) {
             case (?buy_now, null) {
@@ -693,12 +694,17 @@ module {
             };
           };
           start_date = start_date;
-          fee_accounts = fee_accounts;
+          seller_fee_accounts = seller_fee_accounts;
           fee_schema = fee_schema;
         };
       };
       case (_) return #err(#trappable(Types.errors(?state.canistergeekLogger, #sale_not_found, "end_sale_nft_origyn - not an auction type ", ?caller)));
     };
+
+    debug if (debug_channel.end_sale) D.print("current_sale_state " # debug_show (current_sale_state));
+
+    let bidder_fee_accounts : ?MigrationTypes.Current.FeeAccountsParams = MigrationTypes.Current.load_fee_accounts_bid_feature(current_sale_state.current_config);
+    let current_broker_id : ?MigrationTypes.Current.Account = MigrationTypes.Current.load_broker_bid_feature(current_sale_state.current_config);
 
     let buy_now = switch (buy_now_price) {
       case (null) { false };
@@ -730,7 +736,7 @@ module {
       case (_) {};
     };
 
-    debug if (debug_channel.end_sale) D.print("handled current stauts" # debug_show (buy_now, buy_now_price, current_sale_state.current_bid_amount));
+    debug if (debug_channel.end_sale) D.print("handled current status" # debug_show (buy_now, buy_now_price, current_sale_state.current_bid_amount));
 
     //make sure auction is still over
     if (state.get_time() < current_sale_state.end_date) {
@@ -766,7 +772,19 @@ module {
               caller,
             )
           ) {
-            case (#ok(new_trx)) return #trappable(#end_sale(new_trx));
+            case (#ok(new_trx)) return end_sale_unlock_fee_account_callback(
+              state,
+              metadata,
+              {
+                token = current_sale_state.token;
+                sale_id = current_sale.sale_id;
+                seller_fee_accounts = seller_fee_accounts;
+                bidder_fee_accounts = bidder_fee_accounts;
+                fee_schema = fee_schema;
+                owner = owner;
+              },
+              #trappable(#end_sale(new_trx)),
+            );
             case (#err(err)) return #err(#trappable(err));
           };
         };
@@ -777,18 +795,11 @@ module {
 
     //check reserve MKT0038
     let reserve = switch (current_sale_state.config) {
-      case (#auction(config)) {
-        config.reserve;
+      case (#auction(config)) { config.reserve };
+      case (#ask(config)) {
+        MigrationTypes.Current.load_reserve_ask_feature(config);
       };
-      case (#ask(?config)) {
-        switch (Map.get(config, MigrationTypes.Current.ask_feature_set_tool, #reserve)) {
-          case (?(#reserve(val))) ?val;
-          case (_) null;
-        };
-      };
-      case (_) {
-        null;
-      };
+      case (_) { null };
     };
 
     debug if (debug_channel.end_sale) D.print("checking reserve" # debug_show (reserve));
@@ -819,12 +830,43 @@ module {
               caller,
             )
           ) {
-            case (#ok(new_trx)) return #trappable(#end_sale(new_trx));
+            case (#ok(new_trx)) return end_sale_unlock_fee_account_callback(
+              state,
+              metadata,
+              {
+                token = current_sale_state.token;
+                sale_id = current_sale.sale_id;
+                seller_fee_accounts = seller_fee_accounts;
+                bidder_fee_accounts = bidder_fee_accounts;
+                fee_schema = fee_schema;
+                owner = owner;
+              },
+              #trappable(#end_sale(new_trx)),
+            );
             case (#err(err)) return #err(#trappable(err));
           };
         };
       };
       case (null) {};
+    };
+
+    let _fee_schema : Text = Option.get<Text>(fee_schema, Types.metadata.__system_secondary_royalty);
+
+    let royalty = switch (Properties.getClassPropertyShared(metadata, Types.metadata.__system)) {
+      case (null) { [] };
+      case (?val) {
+        royalty_to_array(val.value, _fee_schema);
+      };
+    };
+
+    // make sur royalties definition didnt changed and no error can occured after transfering nft and funds.
+    for (this_item in royalty.vals()) {
+      let loaded_royalty = switch (Royalties._load_royalty(_fee_schema, this_item)) {
+        case (#ok(val)) { val };
+        case (#err(err)) {
+          return #err(#awaited(Types.errors(?state.canistergeekLogger, #malformed_metadata, "end_sale_nft_origyn - error _load_royalty ", ?caller)));
+        };
+      };
     };
 
     debug if (debug_channel.end_sale) D.print("checking escrow" # debug_show (current_sale_state.current_escrow));
@@ -853,7 +895,19 @@ module {
             caller,
           )
         ) {
-          case (#ok(new_trx)) return #trappable(#end_sale(new_trx));
+          case (#ok(new_trx)) return end_sale_unlock_fee_account_callback(
+            state,
+            metadata,
+            {
+              token = current_sale_state.token;
+              sale_id = current_sale.sale_id;
+              seller_fee_accounts = seller_fee_accounts;
+              bidder_fee_accounts = bidder_fee_accounts;
+              fee_schema = fee_schema;
+              owner = owner;
+            },
+            #trappable(#end_sale(new_trx)),
+          );
           case (#err(err)) return #err(#trappable(err));
         };
 
@@ -906,101 +960,107 @@ module {
         //move the payment to the sale revenue account
         //nyi: use transfer batch to split across royalties
 
-        let (trx_id : Types.TransactionID, account_hash : ?Blob, fee : ?Nat) = switch (winning_escrow.token) {
+        let (trx_id : ?Types.TransactionID, account_hash : ?Blob, fee : ?Nat) = switch (winning_escrow.token) {
           case (#ic(token)) {
             switch (token.standard) {
               case (#Ledger or #ICRC1) {
-                debug if (debug_channel.end_sale) D.print("found ledger");
-                let checker = Ledger_Interface.Ledger_Interface();
-                try {
-                  switch (Star.toResult(await* checker.transfer_sale(state.canister(), winning_escrow, token_id, caller))) {
-                    case (#ok(val)) {
-                      (val.0, ?val.1.account.sub_account, token.fee);
-                    };
-                    case (#err(err)) {
-                      //put the escrow back because the payment failed
-                      switch (Verify.verify_escrow_receipt(state, winning_escrow, ?owner, null)) {
-                        case (#ok(reverify)) {
-                          let target_escrow = {
-                            account_hash = reverify.found_asset.escrow.account_hash;
-                            amount = Nat.add(reverify.found_asset.escrow.amount, winning_escrow.amount);
-                            buyer = reverify.found_asset.escrow.buyer;
-                            seller = reverify.found_asset.escrow.seller;
-                            token_id = reverify.found_asset.escrow.token_id;
-                            token = reverify.found_asset.escrow.token;
-                            sale_id = reverify.found_asset.escrow.sale_id;
-                            lock_to_date = reverify.found_asset.escrow.lock_to_date;
+                if (winning_escrow.amount > Option.get<Nat>(token.fee, 0)) {
+                  debug if (debug_channel.end_sale) D.print("found ledger");
+                  let checker = Ledger_Interface.Ledger_Interface();
+                  try {
+                    switch (Star.toResult(await* checker.transfer_sale(state.canister(), winning_escrow, token_id, caller))) {
+                      case (#ok(val)) {
+                        (?val.0, ?val.1.account.sub_account, token.fee);
+                      };
+                      case (#err(err)) {
+                        //put the escrow back because the payment failed
+                        switch (Verify.verify_escrow_receipt(state, winning_escrow, ?owner, null)) {
+                          case (#ok(reverify)) {
+                            let target_escrow = {
+                              account_hash = reverify.found_asset.escrow.account_hash;
+                              amount = Nat.add(reverify.found_asset.escrow.amount, winning_escrow.amount);
+                              buyer = reverify.found_asset.escrow.buyer;
+                              seller = reverify.found_asset.escrow.seller;
+                              token_id = reverify.found_asset.escrow.token_id;
+                              token = reverify.found_asset.escrow.token;
+                              sale_id = reverify.found_asset.escrow.sale_id;
+                              lock_to_date = reverify.found_asset.escrow.lock_to_date;
+                            };
+
+                            Map.set(reverify.found_asset_list, token_handler, verified.found_asset.token_spec, target_escrow);
+
                           };
-
-                          Map.set(reverify.found_asset_list, token_handler, verified.found_asset.token_spec, target_escrow);
-
-                        };
-                        case (#err(err)) {
-                          let target_escrow = {
-                            account_hash = verified.found_asset.escrow.account_hash;
-                            amount = winning_escrow.amount;
-                            buyer = verified.found_asset.escrow.buyer;
-                            seller = verified.found_asset.escrow.seller;
-                            token_id = verified.found_asset.escrow.token_id;
-                            token = verified.found_asset.escrow.token;
-                            sale_id = verified.found_asset.escrow.sale_id;
-                            lock_to_date = verified.found_asset.escrow.lock_to_date;
+                          case (#err(err)) {
+                            let target_escrow = {
+                              account_hash = verified.found_asset.escrow.account_hash;
+                              amount = winning_escrow.amount;
+                              buyer = verified.found_asset.escrow.buyer;
+                              seller = verified.found_asset.escrow.seller;
+                              token_id = verified.found_asset.escrow.token_id;
+                              token = verified.found_asset.escrow.token;
+                              sale_id = verified.found_asset.escrow.sale_id;
+                              lock_to_date = verified.found_asset.escrow.lock_to_date;
+                            };
+                            Map.set(verified.found_asset_list, token_handler, verified.found_asset.token_spec, target_escrow);
                           };
-                          Map.set(verified.found_asset_list, token_handler, verified.found_asset.token_spec, target_escrow);
                         };
-                      };
 
-                      //put the owner back if the transaction fails
-                      metadata := switch (Metadata.set_nft_owner(state, token_id, owner, caller)) {
-                        case (#err(err)) return #err(#awaited(Types.errors(?state.canistergeekLogger, err.error, "market_transfer_nft_origyn can't set inflight owner " # err.flag_point, ?caller)));
-                        case (#ok(new_metadata)) new_metadata;
-                      };
+                        //put the owner back if the transaction fails
+                        metadata := switch (Metadata.set_nft_owner(state, token_id, owner, caller)) {
+                          case (#err(err)) return #err(#awaited(Types.errors(?state.canistergeekLogger, err.error, "market_transfer_nft_origyn can't set inflight owner " # err.flag_point, ?caller)));
+                          case (#ok(new_metadata)) new_metadata;
+                        };
 
-                      return #err(#awaited(Types.errors(?state.canistergeekLogger, err.error, "end_sale_nft_origyn " # err.flag_point, ?caller)));
+                        return #err(#awaited(Types.errors(?state.canistergeekLogger, err.error, "end_sale_nft_origyn " # err.flag_point, ?caller)));
+                      };
                     };
-                  };
-                } catch (e) {
-                  //put the escrow back because the payment failed
-                  switch (Verify.verify_escrow_receipt(state, winning_escrow, ?owner, null)) {
-                    case (#ok(reverify)) {
-                      let target_escrow = {
-                        account_hash = reverify.found_asset.escrow.account_hash;
-                        amount = Nat.add(reverify.found_asset.escrow.amount, winning_escrow.amount);
-                        buyer = reverify.found_asset.escrow.buyer;
-                        seller = reverify.found_asset.escrow.seller;
-                        token_id = reverify.found_asset.escrow.token_id;
-                        token = reverify.found_asset.escrow.token;
-                        sale_id = reverify.found_asset.escrow.sale_id;
-                        lock_to_date = reverify.found_asset.escrow.lock_to_date;
+                  } catch (e) {
+                    //put the escrow back because the payment failed
+                    switch (Verify.verify_escrow_receipt(state, winning_escrow, ?owner, null)) {
+                      case (#ok(reverify)) {
+                        let target_escrow = {
+                          account_hash = reverify.found_asset.escrow.account_hash;
+                          amount = Nat.add(reverify.found_asset.escrow.amount, winning_escrow.amount);
+                          buyer = reverify.found_asset.escrow.buyer;
+                          seller = reverify.found_asset.escrow.seller;
+                          token_id = reverify.found_asset.escrow.token_id;
+                          token = reverify.found_asset.escrow.token;
+                          sale_id = reverify.found_asset.escrow.sale_id;
+                          lock_to_date = reverify.found_asset.escrow.lock_to_date;
+                        };
+
+                        Map.set(reverify.found_asset_list, token_handler, verified.found_asset.token_spec, target_escrow);
+
                       };
-
-                      Map.set(reverify.found_asset_list, token_handler, verified.found_asset.token_spec, target_escrow);
-
-                    };
-                    case (#err(err)) {
-                      let target_escrow = {
-                        account_hash = verified.found_asset.escrow.account_hash;
-                        amount = winning_escrow.amount;
-                        buyer = verified.found_asset.escrow.buyer;
-                        seller = verified.found_asset.escrow.seller;
-                        token_id = verified.found_asset.escrow.token_id;
-                        token = verified.found_asset.escrow.token;
-                        sale_id = verified.found_asset.escrow.sale_id;
-                        lock_to_date = verified.found_asset.escrow.lock_to_date;
+                      case (#err(err)) {
+                        let target_escrow = {
+                          account_hash = verified.found_asset.escrow.account_hash;
+                          amount = winning_escrow.amount;
+                          buyer = verified.found_asset.escrow.buyer;
+                          seller = verified.found_asset.escrow.seller;
+                          token_id = verified.found_asset.escrow.token_id;
+                          token = verified.found_asset.escrow.token;
+                          sale_id = verified.found_asset.escrow.sale_id;
+                          lock_to_date = verified.found_asset.escrow.lock_to_date;
+                        };
+                        Map.set(verified.found_asset_list, token_handler, verified.found_asset.token_spec, target_escrow);
                       };
-                      Map.set(verified.found_asset_list, token_handler, verified.found_asset.token_spec, target_escrow);
                     };
+
+                    //put the owner back if the transaction fails
+                    metadata := switch (Metadata.set_nft_owner(state, token_id, owner, caller)) {
+                      case (#err(err)) return #err(#awaited(Types.errors(?state.canistergeekLogger, err.error, "market_transfer_nft_origyn can't set inflight owner " # err.flag_point, ?caller)));
+                      case (#ok(new_metadata)) new_metadata;
+                    };
+
+                    return #err(#awaited(Types.errors(?state.canistergeekLogger, #unauthorized_access, "end_sale_nft_origyn catch branch" # Error.message(e), ?caller)));
                   };
 
-                  //put the owner back if the transaction fails
-                  metadata := switch (Metadata.set_nft_owner(state, token_id, owner, caller)) {
-                    case (#err(err)) return #err(#awaited(Types.errors(?state.canistergeekLogger, err.error, "market_transfer_nft_origyn can't set inflight owner " # err.flag_point, ?caller)));
-                    case (#ok(new_metadata)) new_metadata;
-                  };
-
-                  return #err(#awaited(Types.errors(?state.canistergeekLogger, #unauthorized_access, "end_sale_nft_origyn catch branch" # Error.message(e), ?caller)));
+                } else if (_fee_schema == Types.metadata.__system_fixed_royalty) {
+                  (null, null, null);
+                } else {
+                  return #err(#awaited(Types.errors(?state.canistergeekLogger, #nyi, "end_sale_nft_origyn - price bellow token fee. only possible with fixed fees schema", ?caller)));
                 };
-
               };
               case (_) return #err(#awaited(Types.errors(?state.canistergeekLogger, #nyi, "end_sale_nft_origyn - non ic type nyi - " # debug_show (token), ?caller)));
             };
@@ -1035,110 +1095,130 @@ module {
         //log royalties
         //currently for auctions there are only secondary royalties
 
-        let _fee_schema : Text = switch (fee_schema) {
-          case (?val) {
-            if (val != Types.metadata.__system_fixed_royalty) {
-              val;
-            } else {
-              Types.metadata.__system_fixed_royalty;
+        debug if (debug_channel.market) D.print("fee_schema is " # debug_show (_fee_schema));
+        debug if (debug_channel.market) D.print("royalty is " # debug_show (royalty));
+        debug if (debug_channel.market) D.print("bidder_fee_accounts is " # debug_show (bidder_fee_accounts));
+        debug if (debug_channel.market) D.print("seller_fee_accounts is " # debug_show (seller_fee_accounts));
+
+        var fee_accounts_with_owner = Buffer.Buffer<(MigrationTypes.Current.FeeName, MigrationTypes.Current.Account)>(5);
+        let _bidder_fee_accounts = Option.get(bidder_fee_accounts, []);
+        let _seller_fee_accounts = Option.get(seller_fee_accounts, []);
+
+        for (royalties_name in Royalties.royalties_names.vals()) {
+          switch (Array.find<MigrationTypes.Current.FeeName>(_bidder_fee_accounts, func x = x == royalties_name)) {
+            case (?val) {
+              debug if (debug_channel.market) D.print("check if seller also provided a fee_schema for this royalty.");
+              switch (Array.find<MigrationTypes.Current.FeeName>(_seller_fee_accounts, func x = x == royalties_name)) {
+                case (?val) {
+                  debug if (debug_channel.market) D.print("Free seller_fee_account fee_account : " #debug_show (val));
+                  switch (
+                    _unlock_fee_accounts_according_to_fee_schema(
+                      state,
+                      metadata,
+                      {
+                        token = current_sale_state.token;
+                        sale_id = current_sale.sale_id;
+                        fee_accounts = ?[val];
+                        fee_schema = ?_fee_schema;
+                        owner = owner;
+                      },
+                    )
+                  ) {
+                    case (#ok()) {};
+                    case (#err(e)) {
+                      /* Error here but we can not return error. Create garbage collector to get back this unlocked tokens.*/
+                    };
+                  };
+                };
+                case (_) {};
+              };
+
+              debug if (debug_channel.market) D.print("(_bidder_fee_account, winning_escrow.buyer) " # debug_show ((val, winning_escrow.buyer)));
+              let _ = fee_accounts_with_owner.add((val, winning_escrow.buyer));
+            };
+            case (null) {
+              switch (Array.find<MigrationTypes.Current.FeeName>(_seller_fee_accounts, func x = x == royalties_name)) {
+                case (?val) {
+                  debug if (debug_channel.market) D.print("(_seller_fee_account, owner) " # debug_show ((val, owner)));
+                  let _ = fee_accounts_with_owner.add((val, owner));
+                };
+                case (null) {};
+              };
             };
           };
-          case (null) { Types.metadata.__system_secondary_royalty };
         };
-
-        debug if (debug_channel.market) D.print("fee_schema is " # debug_show (_fee_schema));
-
-        let royalty = switch (Properties.getClassPropertyShared(metadata, Types.metadata.__system)) {
-          case (null) { [] };
-          case (?val) {
-            royalty_to_array(val.value, _fee_schema);
-          };
-        };
-
-        debug if (debug_channel.market) D.print("royalty is " # debug_show (royalty));
 
         let fee_ : Nat = Option.get(fee, 0);
         let total = Nat.sub(winning_escrow.amount, fee_);
+        var fee_accounts_with_owner_array = Buffer.toArray(fee_accounts_with_owner);
 
-        debug if (debug_channel.market) D.print("fee_accounts is " # debug_show (fee_accounts));
-        let remaning_fee : Nat = switch (fee_accounts) {
-          case (?_fee_accounts) {
-            var _r_fees : Nat = 0;
-            for (this_item in royalty.vals()) {
-              let loaded_royalty = switch (Royalties._load_royalty(_fee_schema, this_item)) {
-                case (#ok(val)) { val };
-                case (#err(err)) {
-                  return #err(#awaited(Types.errors(?state.canistergeekLogger, #malformed_metadata, "end_sale_nft_origyn - error _load_royalty ", ?caller)));
-                };
-              };
+        debug if (debug_channel.market) D.print("fee_accounts is " # debug_show (fee_accounts_with_owner_array));
 
-              let tag = switch (loaded_royalty) {
-                case (#fixed(val)) { val.tag };
-                case (#dynamic(val)) { val.tag };
-              };
-
-              debug if (debug_channel.market) D.print("remaning_fee _fee_accounts is " # debug_show (_fee_accounts));
-              switch (Array.find<(Text, MigrationTypes.Current.Account)>(_fee_accounts, func(val) { return val.0 == tag })) {
-                case (?val) {
-                  //this fees will be paid by a specific account
-                  debug if (debug_channel.market) D.print("royalty matched in provided _fee_accounts. will use this account to pay royalties instead of winning escrow");
-                };
-                case (null) {
-                  //this fees will be paid by winning_escrow directly
-                  let total_royalty = switch (loaded_royalty) {
-                    case (#fixed(val)) {
-                      Int.abs(Float.toInt(Float.ceil(val.fixedXDR)));
-                    };
-                    case (#dynamic(val)) {
-                      (total * Int.abs(Float.toInt(val.rate * 1_000_000))) / 1_000_000;
-                    };
-                  };
-                  _r_fees += total_royalty;
-                };
-              };
-            };
-            _r_fees;
+        var remaning_fee : Nat = 0;
+        for (this_item in royalty.vals()) {
+          let loaded_royalty = switch (Royalties._load_royalty(_fee_schema, this_item)) {
+            case (#ok(val)) { val };
+            // case (#err(err)) {
+            // Impossible
+            // };
           };
-          case (null) { fee_ };
+
+          let tag = switch (loaded_royalty) {
+            case (#fixed(val)) { val.tag };
+            case (#dynamic(val)) { val.tag };
+          };
+
+          debug if (debug_channel.market) D.print("remaning_fee " #debug_show (remaning_fee) # " _fee_accounts is " # debug_show (fee_accounts_with_owner_array));
+          switch (Array.find<(MigrationTypes.Current.FeeName, MigrationTypes.Current.Account)>(fee_accounts_with_owner_array, func((fee_name, acc)) { return fee_name == tag })) {
+            case (?val) {
+              //this fees will be paid by a specific account
+              debug if (debug_channel.market) D.print("royalty matched in provided _fee_accounts. will use this account to pay royalties instead of winning escrow");
+            };
+            case (null) {
+              //this fees will be paid by winning_escrow directly
+              let total_royalty = switch (loaded_royalty) {
+                case (#fixed(val)) {
+                  Int.abs(Float.toInt(Float.ceil(val.fixedXDR)));
+                };
+                case (#dynamic(val)) {
+                  (total * Int.abs(Float.toInt(val.rate * 1_000_000))) / 1_000_000;
+                };
+              };
+              remaning_fee += total_royalty;
+            };
+          };
         };
 
         debug if (debug_channel.market) D.print("winning_escrow.amount is " # debug_show (winning_escrow.amount));
         debug if (debug_channel.market) D.print("remaning_fee is " # debug_show (remaning_fee));
 
         //let royaltyList = Buffer.Buffer<(Types.Account, Nat)>(royalty.size() + 1);
-        if (winning_escrow.amount > remaning_fee) {
+        if (winning_escrow.amount >= remaning_fee) {
           var remaining = Nat.sub(winning_escrow.amount, fee_);
           //if the fee is bigger than the amount we aren't going to pay anything
           //this should really be prevented elsewhere
 
-          let royalty_result = switch (
-            Royalties._process_royalties(
-              state,
-              {
-                name = _fee_schema;
-                var remaining = remaining;
-                total = total;
-                fee = fee_;
-                escrow = winning_escrow;
-                royalty = royalty;
-                broker_id = current_sale_state.current_broker_id;
-                original_broker_id = current_sale.original_broker_id;
-                sale_id = ?current_sale.sale_id;
-                account_hash = account_hash;
-                metadata = metadata;
-                token_id = ?token_id;
-                token = winning_escrow.token;
-                fee_accounts = fee_accounts;
-                fee_schema = _fee_schema;
-              },
-              caller,
-            )
-          ) {
-            case (#ok(val)) { val };
-            case (#err(err)) {
-              return #err(#awaited(Types.errors(?state.canistergeekLogger, #malformed_metadata, "end_sale_nft_origyn - error _process_royalties ", ?caller)));
-            };
-          };
+          let royalty_result = Royalties._process_royalties(
+            state,
+            {
+              name = _fee_schema;
+              var remaining = remaining;
+              total = total;
+              fee = fee_;
+              escrow = winning_escrow;
+              royalty = royalty;
+              broker_id = current_broker_id;
+              original_broker_id = current_sale.original_broker_id;
+              sale_id = ?current_sale.sale_id;
+              account_hash = account_hash;
+              metadata = metadata;
+              token_id = ?token_id;
+              token = winning_escrow.token;
+              fee_accounts_with_owner = fee_accounts_with_owner_array;
+              fee_schema = _fee_schema;
+            },
+            caller,
+          );
 
           remaining := royalty_result.0;
 
@@ -1491,6 +1571,30 @@ module {
           };
         };
 
+        let _fee_schema : Text = if (this_is_minted == false) {
+          Types.metadata.__system_primary_royalty;
+        } else {
+          Types.metadata.__system_secondary_royalty;
+        };
+
+        let royalty = switch (Properties.getClassPropertyShared(metadata, Types.metadata.__system)) {
+          case (null) { [] };
+          case (?val) {
+            debug if (debug_channel.market) D.print("found metadata" # debug_show (val.value));
+            royalty_to_array(val.value, _fee_schema);
+          };
+        };
+
+        // make sur royalties definition didnt changed and no error can occured after transfering nft and funds.
+        for (this_item in royalty.vals()) {
+          let loaded_royalty = switch (Royalties._load_royalty(_fee_schema, this_item)) {
+            case (#ok(val)) { val };
+            case (#err(err)) {
+              return #err(Types.errors(?state.canistergeekLogger, #malformed_metadata, "end_sale_nft_origyn - error _load_royalty ", ?caller));
+            };
+          };
+        };
+
         //reentrancy risk so we remove the credit from the escrow
         debug if (debug_channel.market) D.print("updating the asset list");
         debug if (debug_channel.market) D.print(debug_show (Map.size(verified.found_asset_list)));
@@ -1701,21 +1805,6 @@ module {
         debug if (debug_channel.market) D.print(debug_show (verified.found_asset));
 
         debug if (debug_channel.market) D.print("calculating royalty" # debug_show (metadata));
-
-        let _fee_schema : Text = if (b_freshmint == false) {
-          Types.metadata.__system_secondary_royalty;
-        } else {
-          Types.metadata.__system_primary_royalty;
-        };
-
-        let royalty = switch (Properties.getClassPropertyShared(metadata, Types.metadata.__system)) {
-          case (null) { [] };
-          case (?val) {
-            debug if (debug_channel.market) D.print("found metadata" # debug_show (val.value));
-            royalty_to_array(val.value, _fee_schema);
-          };
-        };
-
         debug if (debug_channel.market) D.print("royalty is " # debug_show (royalty));
         //note: this code path is always taken since checker.transferSale requires it or errors
         //we have included it here so that we can use Nat.sub without fear of underflow
@@ -1726,34 +1815,28 @@ module {
 
           debug if (debug_channel.royalties) D.print("calling process royalty" # debug_show ((total, remaining)));
 
-          let royalty_result = switch (
-            Royalties._process_royalties(
-              state,
-              {
-                name = _fee_schema;
-                var remaining = remaining;
-                total = total;
-                fee = fee;
-                escrow = escrow;
-                royalty = royalty;
-                sale_id = null;
-                broker_id = request.sales_config.broker_id;
-                original_broker_id = null;
-                account_hash = account_hash;
-                metadata = metadata;
-                token_id = ?request.token_id;
-                token = escrow.token;
-                fee_accounts = null; // not sure here
-                fee_schema = _fee_schema;
-              },
-              caller,
-            )
-          ) {
-            case (#ok(val)) { val };
-            case (#err(err)) {
-              return #err(Types.errors(?state.canistergeekLogger, #malformed_metadata, "market_transfer_nft_origyn - error _process_royalties ", ?caller));
-            };
-          };
+          let royalty_result = Royalties._process_royalties(
+            state,
+            {
+              name = _fee_schema;
+              var remaining = remaining;
+              total = total;
+              fee = fee;
+              escrow = escrow;
+              royalty = royalty;
+              sale_id = null;
+              broker_id = request.sales_config.broker_id;
+              original_broker_id = null;
+              account_hash = account_hash;
+              metadata = metadata;
+              token_id = ?request.token_id;
+              token = escrow.token;
+              fee_accounts_with_owner = [];
+              fee_schema = _fee_schema;
+              owner = owner;
+            },
+            caller,
+          );
 
           remaining := royalty_result.0;
 
@@ -1987,7 +2070,7 @@ module {
         {
           reserve = null;
           buy_now = null;
-          token : MigrationTypes.Current.TokenSpec = NFTUtils.OGY();
+          token : MigrationTypes.Current.TokenSpec = MigrationTypes.Current.OGY();
           start_date : Int = state.get_time();
           start_price : Nat = 1;
           end_date : Int = state.get_time() + NFTUtils.MINUTE_LENGTH;
@@ -2023,93 +2106,20 @@ module {
               };
             };
 
-            let royalties : [CandyTypes.CandyShared] = switch (Properties.getClassPropertyShared(metadata, Types.metadata.__system)) {
-              case (null) { [] };
-              case (?val) {
-                royalty_to_array(val.value, fee_schema);
-              };
+            switch (
+              _lock_fee_accounts_according_to_fee_schema(
+                state,
+                metadata,
+                ret.token,
+                #account({ owner = caller; sub_account = null }),
+                sale_id,
+                fee_schema,
+                fee_accounts,
+              )
+            ) {
+              case (#ok()) { ret };
+              case (#err(e)) { return #err(e) };
             };
-            debug if (debug_channel.market) D.print("royalties = " # debug_show (royalties));
-
-            for (royalty in royalties.vals()) {
-              let loaded_royalty = switch (Royalties._load_royalty(fee_schema, royalty)) {
-                case (#ok(val)) {
-                  switch (val) {
-                    case (#fixed(v)) { v };
-                    // case (#dynamic(v)) {v;}; TODO not available now
-                    case (_) {
-                      debug if (debug_channel.market) D.print("but __system_fixed_royalty is not set -> error");
-                      return #err(Types.errors(?state.canistergeekLogger, #malformed_metadata, "market_transfer_nft_origyn fee_accounts need fixed fee_schema. Not compatible yet others royalties schema.", ?caller));
-                    };
-                  };
-                };
-                case (#err(err)) { return #err(err) };
-              };
-
-              let (token_spec, specific_token_set) = switch (loaded_royalty.token) {
-                case (?val) {
-                  if (val == ret.token) { (val, false) } else { (val, true) };
-                };
-                case (_) { (ret.token, false) };
-              };
-
-              let tmp_locked_fees = Buffer.Buffer<(MigrationTypes.Current.Account, MigrationTypes.Current.TokenSpec, Nat)>(5);
-              var found = false;
-              let royalties_names : [Text] = Royalties.royalties_names;
-
-              // check if fund are provisioned by #fee_deposit
-              for ((royalties_name, account) in fee_accounts.vals()) {
-                switch (Array.find<Text>(royalties_names, func(val) { return val == royalties_name })) {
-                  case (?val) {};
-                  case (null) {
-                    debug if (debug_channel.market) D.print("bad royalty name = " # debug_show (royalties_name) # " and should be one of " # debug_show (royalties_names));
-                    return #err(Types.errors(?state.canistergeekLogger, #improper_interface, "market_transfer_nft_origyn bad royalty name = " # debug_show (royalties_name) # " and should be one of " # debug_show (royalties_names), ?caller));
-                  };
-                };
-
-                if (royalties_name == loaded_royalty.tag) {
-                  let fees : Nat = Int.abs(Float.toInt(Float.ceil(loaded_royalty.fixedXDR)));
-
-                  debug if (debug_channel.market) D.print("royalties_name = " # debug_show (royalties_name) # " fees " # debug_show (fees));
-                  switch (
-                    FeeAccount.lock_token_fee_balance(
-                      state,
-                      {
-                        account = account;
-                        token = token_spec;
-                        token_to_lock = fees;
-                        sale_id = sale_id;
-                      },
-                    )
-                  ) {
-                    case (#ok(val)) {
-                      tmp_locked_fees.add(account, token_spec, fees);
-                    };
-                    case (#err(err)) {
-                      for ((_account, _token_spec, fees) in tmp_locked_fees.vals()) {
-                        let _ = FeeAccount.unlock_token_fee_balance(
-                          state,
-                          {
-                            account = _account;
-                            token = _token_spec;
-                            sale_id = sale_id;
-                          },
-                        );
-                      };
-                      return #err(Types.errors(?state.canistergeekLogger, #low_fee_balance, "market_transfer_nft_origyn low_fee_balance", ?caller));
-                    };
-                  };
-                  found := true;
-                };
-              };
-
-              if (specific_token_set == true and found == false) {
-                debug if (debug_channel.market) D.print("Specific token set for this royalty : " # debug_show (loaded_royalty.tag) # " but no fee_account setted to pay this royalty.");
-                return #err(Types.errors(?state.canistergeekLogger, #improper_interface, "market_transfer_nft_origyn specific token set for this royalty : " # debug_show (loaded_royalty.tag) # " but no fee_account setted to pay this royalty.", ?caller));
-              };
-            };
-
-            ret;
           };
           case (null) { ret };
         };
@@ -2164,6 +2174,7 @@ module {
       var start_date : Int = start_date;
       var min_next_bid = start_price;
       var current_escrow = null;
+      var current_config = null;
       var wait_for_quiet_count = ?0;
       seller = owner;
       token = token;
@@ -2198,7 +2209,12 @@ module {
       sale_id,
       {
         sale_id = sale_id;
-        original_broker_id = request.sales_config.broker_id;
+        original_broker_id = switch (request.sales_config.broker_id) {
+          case (?_broker_id) {
+            ?MigrationTypes.Current.account_to_principal(_broker_id);
+          };
+          case (null) { null };
+        };
         broker_id = null; //currently the broker id for a auction doesn't do much. perhaps it should split the broker reward?
         token_id = request.token_id;
         sale_type = #auction(new_auction);
@@ -2256,26 +2272,9 @@ module {
       case (_) state.get_time();
     };
 
-    let dutch = switch (Map.get(ask_details, MigrationTypes.Current.ask_feature_set_tool, #dutch)) {
-      case (? #dutch(val)) {
-        ?val;
-      };
-      case (_) { null };
-    };
-
-    let fee_accounts : ?MigrationTypes.Current.FeeAccountsParams = switch (Map.get(ask_details, MigrationTypes.Current.ask_feature_set_tool, #fee_accounts)) {
-      case (? #fee_accounts(val)) {
-        ?val;
-      };
-      case (_) { null };
-    };
-
-    let fee_schema : ?Text = switch (Map.get(ask_details, MigrationTypes.Current.ask_feature_set_tool, #fee_schema)) {
-      case (? #fee_schema(val)) {
-        ?val;
-      };
-      case (_) { null };
-    };
+    let dutch : ?MigrationTypes.Current.DutchParams = MigrationTypes.Current.load_dutch_ask_feature(?ask_details);
+    let fee_accounts : ?MigrationTypes.Current.FeeAccountsParams = MigrationTypes.Current.load_fee_accounts_ask_feature(?ask_details);
+    let fee_schema : ?Text = MigrationTypes.Current.load_fee_schema_ask_feature(?ask_details);
 
     let _fee_schema : Text = switch (fee_schema) {
       case (?val) {
@@ -2315,7 +2314,7 @@ module {
           switch (fee_accounts) {
             case (?_fee_accounts) {
               debug if (debug_channel.market) D.print("remaning_fee _fee_accounts is " # debug_show (_fee_accounts));
-              switch (Array.find<(Text, MigrationTypes.Current.Account)>(_fee_accounts, func(val) { return val.0 == tag })) {
+              switch (Array.find<Text>(_fee_accounts, func(val) { return val == tag })) {
                 case (?val) {
                   //this fees will be paid by specific fee_account directly
                   debug if (debug_channel.market) D.print("royalty matched in provided _fee_accounts. will use this account to pay royalties instead of winning escrow");
@@ -2378,7 +2377,7 @@ module {
               switch (fee_accounts) {
                 case (?_fee_accounts) {
                   debug if (debug_channel.market) D.print("remaning_fee _fee_accounts is " # debug_show (_fee_accounts));
-                  switch (Array.find<(Text, MigrationTypes.Current.Account)>(_fee_accounts, func(val) { return val.0 == tag })) {
+                  switch (Array.find<Text>(_fee_accounts, func(val) { return val == tag })) {
                     case (?val) {
                       //this fees will be paid by specific fee_account directly
                       debug if (debug_channel.market) D.print("royalty matched in provided _fee_accounts. will use this account to pay royalties instead of winning escrow");
@@ -2450,30 +2449,9 @@ module {
       case (_) { null };
     };
 
-    let reserve = switch (Map.get(ask_details, MigrationTypes.Current.ask_feature_set_tool, #reserve)) {
-      case (? #reserve(val)) {
-        ?val;
-      };
-      case (_) { null };
-    };
-
-    let token : MigrationTypes.Current.TokenSpec = switch (Map.get(ask_details, MigrationTypes.Current.ask_feature_set_tool, #token)) {
-      case (? #token(val)) {
-        val;
-      };
-      case (_) {
-        NFTUtils.OGY();
-      };
-    };
-
-    let notify : [Principal] = switch (Map.get(ask_details, MigrationTypes.Current.ask_feature_set_tool, #notify)) {
-      case (? #notify(val)) {
-        val;
-      };
-      case (_) {
-        [];
-      };
-    };
+    let reserve : ?Nat = MigrationTypes.Current.load_reserve_ask_feature(?ask_details);
+    let token : MigrationTypes.Current.TokenSpec = MigrationTypes.Current.load_token_ask_feature(?ask_details);
+    let notify : [Principal] = MigrationTypes.Current.load_notify_ask_feature(?ask_details);
 
     switch (buy_now, reserve) {
       case (?buy_now, ?reserve) {
@@ -2725,7 +2703,7 @@ module {
     {
       auction with
       var current_bid_amount = auction.current_bid_amount;
-      var current_broker_id = auction.current_broker_id;
+      var current_config : MigrationTypes.Current.BidConfig = null;
       var end_date = auction.end_date;
       var start_date = auction.start_date;
       var min_next_bid = final_price;
@@ -3314,6 +3292,9 @@ module {
             amount = balance;
             token = request.deposit.token;
             token_id = request.token_id;
+            sale_id = null;
+            lock_to_date = null;
+            account_hash = null;
           },
         );
 
@@ -3361,11 +3342,11 @@ module {
     *
     * @param {Types.State} state - The current state of the canister.
     * @param {MigrationTypes.Current.VerifiedReciept} verified - The verified receipt.
-    * @param {MigrationTypes.Current.EscrowReceipt} escrow - The escrow receipt.
+    * @param {MigrationTypes.Current.EscrowRecord} escrow - The escrow record.
     *
     * @returns {async* Bool} - A boolean value indicating whether the refund was successful or not.
     */
-  private func refund_failed_bid(state : Types.State, verified : MigrationTypes.Current.VerifiedReciept, escrow : MigrationTypes.Current.EscrowReceipt) : async* Bool {
+  private func refund_failed_bid(state : Types.State, verified : MigrationTypes.Current.VerifiedReciept, escrow : MigrationTypes.Current.EscrowRecord) : async* Bool {
     //we will close later after we try to refund a valid bid
     debug if (debug_channel.bid) D.print("refunding" # debug_show (verified.found_asset.escrow.amount));
     let service : Types.Service = actor ((Principal.toText(state.canister())));
@@ -3398,10 +3379,13 @@ module {
 
     debug if (debug_channel.bid) D.print("in bid " # debug_show ((request, canister_call)));
     D.print("ok here");
+
+    let ?sale_id : ?Text = request.escrow_record.sale_id else return #err(#trappable(Types.errors(?state.canistergeekLogger, #sale_id_does_not_match, "bid_nft_origyn - sales id not provided. please set in escrow records", ?caller)));
+
     //look for an existing sale
-    let ?current_sale = Map.get(state.state.nft_sales, Map.thash, request.sale_id) else {
-      debug if (debug_channel.bid) D.print("could not find sale " # debug_show (request.sale_id));
-      return #err(#trappable(Types.errors(?state.canistergeekLogger, #sale_id_does_not_match, "bid_nft_origyn - sales id did not match " # request.sale_id, ?caller)));
+    let ?current_sale = Map.get(state.state.nft_sales, Map.thash, sale_id) else {
+      debug if (debug_channel.bid) D.print("could not find sale " # debug_show (sale_id));
+      return #err(#trappable(Types.errors(?state.canistergeekLogger, #sale_id_does_not_match, "bid_nft_origyn - sales id did not match " # sale_id, ?caller)));
     };
     D.print("ok here 2");
 
@@ -3412,100 +3396,149 @@ module {
       case (#err(err)) return #err(#trappable(Types.errors(?state.canistergeekLogger, err.error, "bid_nft_origyn - find state " # err.flag_point, ?caller)));
     };
 
-    var metadata = switch (Metadata.get_metadata_for_token(state, request.escrow_receipt.token_id, caller, ?state.canister(), state.state.collection_data.owner)) {
+    var metadata = switch (Metadata.get_metadata_for_token(state, request.escrow_record.token_id, caller, ?state.canister(), state.state.collection_data.owner)) {
       case (#err(err)) return #err(#trappable(Types.errors(?state.canistergeekLogger, #token_not_found, "bid_nft_origyn " # err.flag_point, ?caller)));
       case (#ok(val)) val;
     };
 
-    let { buy_now_price; start_date; min_increase; dutch } = switch (current_sale_state.config) {
+    let {
+      buy_now_price;
+      start_date;
+      min_increase : MigrationTypes.Current.MinIncreaseType;
+      dutch : Bool;
+      bid_pays_fees : ?MigrationTypes.Current.BidPaysFeesParams;
+      seller_fee_schema : ?Text;
+      seller_fee_accounts;
+    } = switch (current_sale_state.config) {
       case (#auction(config)) {
         {
           buy_now_price = config.buy_now;
           start_date = config.start_date;
           min_increase = config.min_increase;
           dutch = false;
+          bid_pays_fees = null;
+          seller_fee_schema = null;
+          seller_fee_accounts = null;
         };
       };
       case (#ask(config)) {
-        let buy_now = switch (config) {
-          case (null) null;
+        switch (config) {
           case (?config) {
-            switch (Map.get(config, MigrationTypes.Current.ask_feature_set_tool, #buy_now)) {
-              case (? #buy_now(val)) {
-                ?val;
-              };
-              case (_) { null };
-            };
-          };
-        };
-        let dutch = switch (config) {
-          case (null) null;
-          case (?config) {
-            switch (Map.get(config, MigrationTypes.Current.ask_feature_set_tool, #dutch)) {
-              case (? #dutch(val)) {
-                ?val;
-              };
-              case (_) { null };
-            };
-          };
-        };
-        let start_date = switch (config) {
-          case (null) null;
-          case (?config) {
-            switch (Map.get(config, MigrationTypes.Current.ask_feature_set_tool, #start_date)) {
-              case (? #start_date(val)) {
-                ?val;
-              };
-              case (_) { null };
-            };
-          };
-        };
-        let min_increase = switch (config) {
-          case (null) #percentage(0.05);
-          case (?config) {
-            switch (Map.get(config, MigrationTypes.Current.ask_feature_set_tool, #min_increase)) {
-              case (? #min_increase(val)) {
-                val;
-              };
+            let buy_now : ?Nat = MigrationTypes.Current.load_buy_now_ask_feature(?config);
+            let dutch : ?MigrationTypes.Current.DutchParams = MigrationTypes.Current.load_dutch_ask_feature(?config);
+            let start_date : ?Int = MigrationTypes.Current.load_start_date_ask_feature(?config);
+            let seller_fee_schema : ?Text = MigrationTypes.Current.load_fee_schema_ask_feature(?config);
+            let seller_fee_accounts : ?MigrationTypes.Current.FeeAccountsParams = MigrationTypes.Current.load_fee_accounts_ask_feature(?config);
+            // TODO GWOJDA
+            // let bid_pays_fees : ?MigrationTypes.Current.FeeAccountsParams = MigrationTypes.Current.load_fee_accounts_ask_feature(?config);
+
+            let min_increase : MigrationTypes.Current.MinIncreaseType = switch (Map.get<MigrationTypes.Current.AskFeatureKey, MigrationTypes.Current.AskFeature>(config, MigrationTypes.Current.ask_feature_set_tool, #min_increase)) {
+              case (? #min_increase(val)) { val };
               case (_) { #percentage(0.05) };
             };
-          };
-        };
-        {
-          buy_now_price = switch (buy_now, dutch) {
-            case (?buy_now, null) {
-              ?buy_now;
-            };
-            case (null, ?dutch) {
-              let current_state = calc_dutch_price(state, current_sale_state, metadata);
-              ?current_state.min_next_bid;
-            };
-            case (_, _) {
-              null;
-            };
-          };
 
-          start_date = start_date;
-          min_increase = min_increase;
-          dutch = switch (dutch) {
-            case (null) false;
-            case (?val) true;
+            let buy_now_price = switch (buy_now, dutch) {
+              case (?buy_now, null) {
+                ?buy_now;
+              };
+              case (null, ?dutch) {
+                let current_state = calc_dutch_price(state, current_sale_state, metadata);
+                ?current_state.min_next_bid;
+              };
+              case (_, _) {
+                null;
+              };
+            };
+
+            {
+              buy_now_price = buy_now_price;
+              start_date = start_date;
+              min_increase = min_increase;
+              bid_pays_fees = null; // TODO
+              seller_fee_schema = seller_fee_schema;
+              seller_fee_accounts = seller_fee_accounts;
+              dutch = switch (dutch) {
+                case (null) false;
+                case (?val) true;
+              };
+            };
+          };
+          case (null) {
+            {
+              buy_now_price = null;
+              start_date = null;
+              min_increase = #percentage(0.05);
+              dutch = false;
+              bid_pays_fees = null;
+              seller_fee_schema = null;
+              seller_fee_accounts = null;
+            };
           };
         };
       };
       case (_) return #err(#trappable(Types.errors(?state.canistergeekLogger, #sale_not_found, "bid_nft_origyn - not an auction type ", ?caller)));
     };
 
+    // load new bid config :
+    let {
+      broker : ?Types.Account;
+      _fee_schema : ?Text;
+      fee_accounts : ?MigrationTypes.Current.FeeAccountsParams;
+      config_map : MigrationTypes.Current.BidConfig;
+    } = switch (request.config) {
+      case (?config) {
+        let config_map = MigrationTypes.Current.bidfeatures_to_map(config);
+
+        {
+          broker = MigrationTypes.Current.load_broker_bid_feature(?config_map);
+          // fee_schema = MigrationTypes.Current.load_fee_schema_bid_feature(?config_map);
+          _fee_schema = null;
+          fee_accounts = MigrationTypes.Current.load_fee_accounts_bid_feature(?config_map);
+          config_map = ?config_map;
+        };
+      };
+      case (null) {
+        {
+          broker = null;
+          _fee_schema = null;
+          fee_accounts = null;
+          config_map = null;
+        };
+      };
+    };
+
+    let fee_schema : Text = Option.get<Text>(_fee_schema, Option.get<Text>(seller_fee_schema, Types.metadata.__system_secondary_royalty));
+
+    switch (bid_pays_fees) {
+      case (?bid_pays) {
+        switch (fee_accounts) {
+          case (?fee_acc) {
+            for (bid_p in bid_pays.vals()) {
+              if (Array.find<MigrationTypes.Current.FeeName>(fee_acc, func x = x == bid_p) == null) {
+                return #err(#trappable(Types.errors(?state.canistergeekLogger, #no_fee_accounts_provided, "bid_nft_origyn - bidder as to pay fee : " # debug_show (bid_pays_fees) # " please provide fee_accounts as config parameter.", ?caller)));
+              };
+            };
+          };
+          case (null) {
+            if (fee_accounts == null) {
+              return #err(#trappable(Types.errors(?state.canistergeekLogger, #no_fee_accounts_provided, "bid_nft_origyn - bidder as to pay fee : " # debug_show (bid_pays_fees) # " please provide fee_accounts as config parameter.", ?caller)));
+            };
+          };
+        };
+      };
+      case (null) {};
+    };
+
     switch (current_sale_state.status) {
       case (#open) {
-        if (state.get_time() >= current_sale_state.end_date) return #err(#trappable(Types.errors(?state.canistergeekLogger, #auction_ended, "bid_nft_origyn - sale is past close date " # request.sale_id, ?caller)));
+        if (state.get_time() >= current_sale_state.end_date) return #err(#trappable(Types.errors(?state.canistergeekLogger, #auction_ended, "bid_nft_origyn - sale is past close date " # sale_id, ?caller)));
       };
       case (#not_started) {
         if (state.get_time() >= current_sale_state.start_date and state.get_time() < current_sale_state.end_date) {
           current_sale_state.status := #open;
         };
       };
-      case (_) return #err(#trappable(Types.errors(?state.canistergeekLogger, #auction_ended, "bid_nft_origyn - sale is not open " # request.sale_id, ?caller)));
+      case (_) return #err(#trappable(Types.errors(?state.canistergeekLogger, #auction_ended, "bid_nft_origyn - sale is not open " # sale_id, ?caller)));
     };
 
     switch (current_sale_state.allow_list) {
@@ -3531,23 +3564,23 @@ module {
     debug if (debug_channel.bid) D.print(" owner is " # debug_show (owner));
 
     //make sure token ids match
-    if (current_sale.token_id != request.escrow_receipt.token_id) return #err(#trappable(Types.errors(?state.canistergeekLogger, #token_id_mismatch, "bid_nft_origyn - token id of sale does not match escrow receipt " # request.escrow_receipt.token_id, ?caller)));
+    if (current_sale.token_id != request.escrow_record.token_id) return #err(#trappable(Types.errors(?state.canistergeekLogger, #token_id_mismatch, "bid_nft_origyn - token id of sale does not match escrow receipt " # request.escrow_record.token_id, ?caller)));
 
     //make sure assets match
-    debug if (debug_channel.bid) D.print("checking asset sale type " # debug_show ((_get_token_from_sales_status(current_sale), request.escrow_receipt.token)));
-    if (Types.token_eq(_get_token_from_sales_status(current_sale), request.escrow_receipt.token) == false) return #err(#trappable(Types.errors(?state.canistergeekLogger, #asset_mismatch, "bid_nft_origyn - asset in sale and escrow receipt do not match " # debug_show (request.escrow_receipt.token) # debug_show (_get_token_from_sales_status(current_sale)), ?caller)));
+    debug if (debug_channel.bid) D.print("checking asset sale type " # debug_show ((_get_token_from_sales_status(current_sale), request.escrow_record.token)));
+    if (Types.token_eq(_get_token_from_sales_status(current_sale), request.escrow_record.token) == false) return #err(#trappable(Types.errors(?state.canistergeekLogger, #asset_mismatch, "bid_nft_origyn - asset in sale and escrow receipt do not match " # debug_show (request.escrow_record.token) # debug_show (_get_token_from_sales_status(current_sale)), ?caller)));
 
     //make sure owners match
-    if (Types.account_eq(owner, request.escrow_receipt.seller) == false) return #err(#trappable(Types.errors(?state.canistergeekLogger, #receipt_data_mismatch, "bid_nft_origyn - owner and seller do not match " # debug_show (request.escrow_receipt.token) # debug_show (_get_token_from_sales_status(current_sale)), ?caller)));
+    if (Types.account_eq(owner, request.escrow_record.seller) == false) return #err(#trappable(Types.errors(?state.canistergeekLogger, #receipt_data_mismatch, "bid_nft_origyn - owner and seller do not match " # debug_show (request.escrow_record.token) # debug_show (_get_token_from_sales_status(current_sale)), ?caller)));
 
     //make sure buyers match
-    if (Types.account_eq(#principal(caller), request.escrow_receipt.buyer) == false) return #err(#trappable(Types.errors(?state.canistergeekLogger, #receipt_data_mismatch, "bid_nft_origyn - caller and buyer do not match " # debug_show (request.escrow_receipt.token) # debug_show (_get_token_from_sales_status(current_sale)), ?caller)));
+    if (Types.account_eq(#principal(caller), request.escrow_record.buyer) == false) return #err(#trappable(Types.errors(?state.canistergeekLogger, #receipt_data_mismatch, "bid_nft_origyn - caller and buyer do not match " # debug_show (request.escrow_record.token) # debug_show (_get_token_from_sales_status(current_sale)), ?caller)));
 
-    debug if (debug_channel.bid) D.print(" about to verify escrow " # debug_show (request.escrow_receipt));
+    debug if (debug_channel.bid) D.print(" about to verify escrow " # debug_show (request.escrow_record));
 
     //make sure the receipt is valid
     debug if (debug_channel.bid) D.print("verifying Escrow");
-    var verified = switch (Verify.verify_escrow_receipt(state, request.escrow_receipt, null, ?request.sale_id)) {
+    var verified = switch (Verify.verify_escrow_receipt(state, request.escrow_record, null, ?sale_id)) {
       case (#err(err)) {
         //we could not verify the escrow, so we're going to try to claim it here as if escrow_nft_origyn was called first.
         //this adds an additional await to each item not already claimed, so it could get expensive in batch scenarios.
@@ -3556,49 +3589,49 @@ module {
           //not a canister call... trying to recognize escrow
 
           debug if (debug_channel.bid) D.print("Not a canister call, trying escrow");
-          state.canistergeekLogger.logMessage("bid_nft_origyn Not a canister call, trying recognize escrow " #debug_show ((request.escrow_receipt, request.sale_id)), #Option(null), null);
+          state.canistergeekLogger.logMessage("bid_nft_origyn Not a canister call, trying recognize escrow " #debug_show ((request.escrow_record, sale_id)), #Option(null), null);
           switch (
             Star.toResult(
               await* recognize_escrow_nft_origyn(
                 state,
                 {
                   deposit = {
-                    request.escrow_receipt with
-                    sale_id = ?request.sale_id;
+                    request.escrow_record with
+                    sale_id = ?sale_id;
                     trx_id = null;
                   };
                   lock_to_date = null;
-                  token_id = request.escrow_receipt.token_id;
+                  token_id = request.escrow_record.token_id;
                 },
                 caller,
               )
             )
           ) {
             case (#ok(val)) {
-              state.canistergeekLogger.logMessage("bid_nft_origyn recognize escrow succeeded " #debug_show ((request.escrow_receipt, request.sale_id)), #Option(null), null);
+              state.canistergeekLogger.logMessage("bid_nft_origyn recognize escrow succeeded " #debug_show ((request.escrow_record, sale_id)), #Option(null), null);
 
               debug if (debug_channel.bid) D.print("recognizing escrow was successful, recaling bid");
               return await* bid_nft_origyn(state, request, caller, true);
             };
             case (#err(err)) {
-              state.canistergeekLogger.logMessage("bid_nft_origyn recognize escrow failed " #debug_show ((request.escrow_receipt, request.sale_id, err.flag_point)), #Option(null), null);
+              state.canistergeekLogger.logMessage("bid_nft_origyn recognize escrow failed " #debug_show ((request.escrow_record, sale_id, err.flag_point)), #Option(null), null);
               if (debug_channel.bid) D.print("recognition of escrow failed, attempting recognition of deposit");
             };
           };
 
-          state.canistergeekLogger.logMessage("bid_nft_origyn attempting escrow from deposit " #debug_show ((request.escrow_receipt, request.sale_id)), #Option(null), null);
+          state.canistergeekLogger.logMessage("bid_nft_origyn attempting escrow from deposit " #debug_show ((request.escrow_record, sale_id)), #Option(null), null);
 
           switch (
             await* escrow_nft_origyn(
               state,
               {
                 deposit = {
-                  request.escrow_receipt with
-                  sale_id = ?request.sale_id;
+                  request.escrow_record with
+                  sale_id = ?sale_id;
                   trx_id = null;
                 };
                 lock_to_date = null;
-                token_id = request.escrow_receipt.token_id;
+                token_id = request.escrow_record.token_id;
               },
               caller,
             )
@@ -3617,7 +3650,7 @@ module {
     //we can continue with trappable because the awaits above are returned.
     debug if (debug_channel.bid) D.print("verified the escorw " # debug_show (verified.found_asset));
 
-    if (verified.found_asset.escrow.amount < request.escrow_receipt.amount) return #err(#trappable(Types.errors(?state.canistergeekLogger, #withdraw_too_large, "bid_nft_origyn - escrow - amount more than in escrow verified: " # Nat.toText(verified.found_asset.escrow.amount) # " request: " # Nat.toText(request.escrow_receipt.amount), ?caller)));
+    if (verified.found_asset.escrow.amount < request.escrow_record.amount) return #err(#trappable(Types.errors(?state.canistergeekLogger, #withdraw_too_large, "bid_nft_origyn - escrow - amount more than in escrow verified: " # Nat.toText(verified.found_asset.escrow.amount) # " request: " # Nat.toText(request.escrow_record.amount), ?caller)));
 
     //make sure auction is still running
     let current_time = state.get_time();
@@ -3627,7 +3660,7 @@ module {
     switch (current_sale_state.status) {
       case (#closed) {
         //we will close later after we try to refund a valid bid
-        ignore refund_failed_bid(state, verified, request.escrow_receipt);
+        ignore refund_failed_bid(state, verified, request.escrow_record);
         //last_withdraw_result := ?refund_id;
 
         //debug if(debug_channel.bid) D.print(debug_show(refund_id));
@@ -3650,7 +3683,7 @@ module {
     };
 
     //make sure amount is high enough
-    if (request.escrow_receipt.amount < required_bid) {
+    if (request.escrow_record.amount < required_bid) {
       //if the bid is too low we should refund their escrow
       debug if (debug_channel.bid) D.print("refunding not high enough bid " # debug_show (verified.found_asset.escrow.amount));
       let service : Types.Service = actor ((Principal.toText(state.canister())));
@@ -3672,7 +3705,7 @@ module {
     let buy_now = switch (buy_now_price) {
       case (null) false;
       case (?val) {
-        if (val <= request.escrow_receipt.amount) {
+        if (val <= request.escrow_record.amount) {
           true;
         } else {
           false;
@@ -3697,17 +3730,17 @@ module {
         if (val.result.kyc == #Fail or val.result.aml == #Fail) {
           debug if (debug_channel.bid) D.print("faild...returning bid" # debug_show (val));
 
-          ignore refund_failed_bid(state, verified, request.escrow_receipt);
+          ignore refund_failed_bid(state, verified, request.escrow_record);
           //last_withdraw_result := ?refund_id;
 
           return #err(#awaited(Types.errors(?state.canistergeekLogger, #kyc_fail, "bid_nft_origyn kyc or aml failed " # debug_show (val), ?caller)));
         };
         let kycamount = Option.get(val.result.amount, 0);
 
-        if ((kycamount > 0) and (request.escrow_receipt.amount > kycamount)) {
-          ignore refund_failed_bid(state, verified, request.escrow_receipt);
+        if ((kycamount > 0) and (request.escrow_record.amount > kycamount)) {
+          ignore refund_failed_bid(state, verified, request.escrow_record);
 
-          return #err(#awaited(Types.errors(?state.canistergeekLogger, #kyc_fail, "bid_nft_origyn kyc or aml amount too large " # debug_show ((val, kycamount, request.escrow_receipt)), ?caller)));
+          return #err(#awaited(Types.errors(?state.canistergeekLogger, #kyc_fail, "bid_nft_origyn kyc or aml amount too large " # debug_show ((val, kycamount, request.escrow_record)), ?caller)));
         };
 
         if (val.did_async) {
@@ -3716,14 +3749,14 @@ module {
 
       };
       case (#err(err)) {
-        ignore refund_failed_bid(state, verified, request.escrow_receipt);
+        ignore refund_failed_bid(state, verified, request.escrow_record);
 
         return #err(#awaited(Types.errors(?state.canistergeekLogger, err.error, "bid_nft_origyn auto try kyc failed " # err.flag_point, ?caller)));
       };
     };
 
     if (bRevalidate) {
-      verified := switch (Verify.verify_escrow_receipt(state, request.escrow_receipt, null, ?request.sale_id)) {
+      verified := switch (Verify.verify_escrow_record(state, request.escrow_record, null)) {
         case (#err(err)) {
           //we could not verify the escrow, so we're going to try to claim it here as if escrow_nft_origyn was called first.
           //this adds an additional await to each item not already claimed, so it could get expensive in batch scenarios.
@@ -3734,19 +3767,39 @@ module {
       };
     };
 
-    // TODO GWOJDA : lock state.fee_deposit_balances from new buyer
+    switch (fee_accounts) {
+      case (?_fee_accounts) {
+        switch (
+          _lock_fee_accounts_according_to_fee_schema(
+            state,
+            metadata,
+            current_sale_state.token,
+            #account({ owner = caller; sub_account = null }),
+            sale_id,
+            fee_schema,
+            _fee_accounts,
+          )
+        ) {
+          case (#ok()) {};
+          case (#err(err)) {
+            return #err(#awaited(Types.errors(?state.canistergeekLogger, err.error, "bid_nft_origyn _lock_fee_accounts_according_to_fee_schema error " # err.flag_point, ?caller)));
+          };
+        };
+
+      };
+      case (null) {};
+    };
 
     debug if (debug_channel.bid) D.print("have buy now" # debug_show (buy_now, buy_now_price, current_sale_state.current_bid_amount));
 
     let new_trx = Metadata.add_transaction_record<system>(
       state,
       {
-        token_id = request.escrow_receipt.token_id;
+        token_id = request.escrow_record.token_id;
         index = 0;
         txn_type = #auction_bid({
-          request.escrow_receipt with
-          broker_id = request.broker_id;
-          sale_id = request.sale_id;
+          request.escrow_record with
+          sale_id = sale_id;
           extensible = #Option(null);
         });
         timestamp = state.get_time();
@@ -3765,8 +3818,8 @@ module {
         //update the sale
 
         let newMinBid = switch (min_increase) {
-          case (#percentage(apercentage)) Int.abs(Float.toInt(Float.fromInt(request.escrow_receipt.amount) * apercentage)) + request.escrow_receipt.amount;
-          case (#amount(aamount)) request.escrow_receipt.amount + aamount;
+          case (#percentage(apercentage)) Int.abs(Float.toInt(Float.fromInt(request.escrow_record.amount) * apercentage)) + request.escrow_record.amount;
+          case (#amount(aamount)) request.escrow_record.amount + aamount;
         };
 
         debug if (debug_channel.bid) D.print("have a min bid" # debug_show (newMinBid));
@@ -3776,24 +3829,42 @@ module {
 
             //update state
             debug if (debug_channel.bid) D.print("updating the state" # debug_show (request));
-            current_sale_state.current_bid_amount := request.escrow_receipt.amount;
+            current_sale_state.current_bid_amount := request.escrow_record.amount;
             if (dutch == false) {
               current_sale_state.min_next_bid := newMinBid;
             };
-            current_sale_state.current_escrow := ?request.escrow_receipt;
-            current_sale_state.current_broker_id := request.broker_id;
+            current_sale_state.current_escrow := ?request.escrow_record;
+            current_sale_state.current_config := config_map;
             ignore Map.put<Principal, Int>(current_sale_state.participants, phash, caller, state.get_time());
           };
           case (?val) {
+            switch (
+              _unlock_fee_accounts_according_to_fee_schema(
+                state,
+                metadata,
+                {
+                  token = current_sale_state.token;
+                  sale_id = sale_id;
+                  fee_accounts = MigrationTypes.Current.load_fee_accounts_bid_feature(current_sale_state.current_config);
+                  fee_schema = ?fee_schema;
+                  owner = #account({ owner = caller; sub_account = null });
+                },
+              )
+            ) {
+              case (#ok()) {};
+              case (#err(e)) {
+                debug if (debug_channel.bid) D.print("Error unlocking last bidder token. Cron job will free those token automaticly after sale ended. // feature WIP");
+              };
+            };
 
+            current_sale_state.current_config := config_map;
             //update state
             debug if (debug_channel.bid) D.print("Before" # debug_show (val.amount) # debug_show (val));
-            current_sale_state.current_bid_amount := request.escrow_receipt.amount;
+            current_sale_state.current_bid_amount := request.escrow_record.amount;
             if (dutch == false) {
               current_sale_state.min_next_bid := newMinBid;
             };
-            current_sale_state.current_escrow := ?request.escrow_receipt;
-            current_sale_state.current_broker_id := request.broker_id;
+            current_sale_state.current_escrow := ?request.escrow_record;
             ignore Map.put<Principal, Int>(current_sale_state.participants, phash, caller, state.get_time());
             debug if (debug_channel.bid) D.print("After" # debug_show (val.amount) # debug_show (val));
             //refund the escrow
@@ -3810,8 +3881,6 @@ module {
               )
             );
 
-            // TODO GWOJDA : unlock state.fee_deposit_balances from previous buyer
-
             //last_withdraw_result := ?refund_id;
             debug if (debug_channel.bid) D.print("done");
             //debug if(debug_channel.bid) D.print(debug_show(refund_id));
@@ -3825,7 +3894,7 @@ module {
 
           let service : Types.Service = actor ((Principal.toText(state.canister())));
 
-          let result = await service.sale_nft_origyn(#end_sale(request.escrow_receipt.token_id));
+          let result = await service.sale_nft_origyn(#end_sale(request.escrow_record.token_id));
 
           switch (result) {
             case (#ok(val)) {
@@ -3878,4 +3947,183 @@ module {
       };
     };
   };
+
+  private func _lock_fee_accounts_according_to_fee_schema(
+    state : StateAccess,
+    metadata : CandyTypes.CandyShared,
+    token : MigrationTypes.Current.TokenSpec,
+    account : MigrationTypes.Current.Account,
+    sale_id : Text,
+    fee_schema : Text,
+    fee_accounts : MigrationTypes.Current.FeeAccountsParams,
+  ) : Result.Result<(), Types.OrigynError> {
+    let royalties : [CandyTypes.CandyShared] = switch (Properties.getClassPropertyShared(metadata, Types.metadata.__system)) {
+      case (null) { [] };
+      case (?val) {
+        royalty_to_array(val.value, fee_schema);
+      };
+    };
+    debug if (debug_channel.market) D.print("royalties = " # debug_show (royalties));
+
+    for (royalty in royalties.vals()) {
+      let loaded_royalty = switch (Royalties._load_royalty(fee_schema, royalty)) {
+        case (#ok(val)) {
+          switch (val) {
+            case (#fixed(v)) { v };
+            // case (#dynamic(v)) {v;}; TODO not available now
+            case (_) {
+              debug if (debug_channel.market) D.print("but __system_fixed_royalty is not set -> error");
+              return #err(Types.errors(?state.canistergeekLogger, #malformed_metadata, "market_transfer_nft_origyn fee_accounts need fixed fee_schema. Not compatible yet others royalties schema.", null));
+            };
+          };
+        };
+        case (#err(err)) { return #err(err) };
+      };
+
+      let (token_spec, specific_token_set) = switch (loaded_royalty.token) {
+        case (?val) {
+          if (val == token) { (val, false) } else { (val, true) };
+        };
+        case (_) { (token, false) };
+      };
+
+      let tmp_locked_fees = Buffer.Buffer<(MigrationTypes.Current.TokenSpec, Nat)>(5);
+      var found = false;
+      let royalties_names : [Text] = Royalties.royalties_names;
+      // let account : MigrationTypes.Current.Account = #account({
+      //   owner = caller;
+      //   sub_account = null;
+      // });
+
+      // check if fund are provisioned by #fee_deposit
+      for (royalties_name in fee_accounts.vals()) {
+        switch (Array.find<Text>(royalties_names, func(val) { return val == royalties_name })) {
+          case (?val) {};
+          case (null) {
+            debug if (debug_channel.market) D.print("bad royalty name = " # debug_show (royalties_name) # " and should be one of " # debug_show (royalties_names));
+            return #err(Types.errors(?state.canistergeekLogger, #improper_interface, "market_transfer_nft_origyn bad royalty name = " # debug_show (royalties_name) # " and should be one of " # debug_show (royalties_names), null));
+          };
+        };
+
+        if (royalties_name == loaded_royalty.tag) {
+          let fees : Nat = Int.abs(Float.toInt(Float.ceil(loaded_royalty.fixedXDR)));
+
+          debug if (debug_channel.market) D.print("royalties_name = " # debug_show (royalties_name) # " fees " # debug_show (fees));
+          switch (
+            FeeAccount.lock_token_fee_balance(
+              state,
+              {
+                account = account;
+                token = token_spec;
+                token_to_lock = fees;
+                sale_id = sale_id;
+              },
+            )
+          ) {
+            case (#ok(val)) {
+              tmp_locked_fees.add((token_spec, fees));
+            };
+            case (#err(err)) {
+              for ((_token_spec, fees) in tmp_locked_fees.vals()) {
+                let _ = FeeAccount.unlock_token_fee_balance(
+                  state,
+                  {
+                    account = account;
+                    token = _token_spec;
+                    sale_id = sale_id;
+                    update_balance = false;
+                  },
+                );
+              };
+              return #err(Types.errors(?state.canistergeekLogger, #low_fee_balance, "market_transfer_nft_origyn low_fee_balance", null));
+            };
+          };
+          found := true;
+        };
+      };
+
+      if (specific_token_set == true and found == false) {
+        debug if (debug_channel.market) D.print("Specific token set for this royalty : " # debug_show (loaded_royalty.tag) # " but no fee_account setted to pay this royalty.");
+        return #err(Types.errors(?state.canistergeekLogger, #improper_interface, "market_transfer_nft_origyn specific token set for this royalty : " # debug_show (loaded_royalty.tag) # " but no fee_account setted to pay this royalty.", null));
+      };
+    };
+
+    return #ok(());
+  };
+
+  private func _unlock_fee_accounts_according_to_fee_schema(
+    state : StateAccess,
+    metadata : CandyTypes.CandyShared,
+    request : {
+      token : Types.TokenSpec;
+      sale_id : Text;
+      fee_accounts : ?MigrationTypes.Current.FeeAccountsParams;
+      fee_schema : ?Text;
+      owner : MigrationTypes.Current.Account;
+    },
+  ) : Result.Result<(), Types.OrigynError> {
+    debug if (debug_channel.market) D.print("checking fee_accounts parameters");
+    switch (request.fee_accounts) {
+      case (?fee_accounts) {
+        debug if (debug_channel.market) D.print("fee_accounts is set, unlock token");
+        let fee_schema : Text = Option.get<Text>(request.fee_schema, "");
+
+        let royalties : [CandyTypes.CandyShared] = switch (Properties.getClassPropertyShared(metadata, Types.metadata.__system)) {
+          case (null) { [] };
+          case (?val) {
+            royalty_to_array(val.value, fee_schema);
+          };
+        };
+        debug if (debug_channel.market) D.print("royalties = " # debug_show (royalties));
+
+        for (royalty in royalties.vals()) {
+          let loaded_royalty = switch (Royalties._load_royalty(fee_schema, royalty)) {
+            case (#ok(val)) {
+              switch (val) {
+                case (#fixed(v)) { v };
+                // case (#dynamic(v)) {v;}; TODO not available now
+              };
+            };
+            case (#err(err)) { return #err(err) };
+          };
+
+          let token_spec = switch (loaded_royalty.token) {
+            case (?val) { if (val == request.token) { val } else { val } };
+            case (_) { request.token };
+          };
+
+          let royalties_names : [Text] = Royalties.royalties_names;
+          let account : MigrationTypes.Current.Account = request.owner;
+
+          for (royalties_name in fee_accounts.vals()) {
+            if (royalties_name == loaded_royalty.tag) {
+              switch (
+                FeeAccount.unlock_token_fee_balance(
+                  state,
+                  {
+                    account = account;
+                    token = token_spec;
+                    sale_id = request.sale_id;
+                    update_balance = false;
+                  },
+                )
+              ) {
+                case (#ok(val)) {
+                  debug if (debug_channel.market) D.print("Successfully unlocked token");
+                };
+                case (#err(val)) {
+                  // TODO Not critical so no error reported. In futur we will add a garbage collector for this case.
+                  debug if (debug_channel.market) D.print("Failed to unlock token for sale_id : " # debug_show (request.sale_id));
+                };
+              };
+            };
+          };
+        };
+      };
+      case (null) {};
+    };
+
+    return #ok();
+  };
+
 };
