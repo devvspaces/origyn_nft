@@ -7,6 +7,7 @@ import Result "mo:base/Result";
 import Text "mo:base/Text";
 import Time "mo:base/Time";
 import TrieMap "mo:base/TrieMap";
+import Blob "mo:base/Blob";
 
 import EXT "mo:ext/Core";
 
@@ -15,6 +16,8 @@ import ICRC7 "ICRC7";
 import Market "market";
 import Metadata "metadata";
 import MigrationTypes "./migrations/types";
+import ICRC2 "../external_canisters/ICRC2";
+import Royalties "market/royalties";
 import NFTUtils "utils";
 import Types "types";
 
@@ -241,36 +244,65 @@ module {
     * @returns {ICRC7.TransferResult} - A ICRC7 result object indicating the success or failure of the transfer operation.
     */
   public func transferICRC7(state : StateAccess, from : ICRC7.Account, to : ICRC7.Account, tokenAsNat : Nat, caller : Principal) : async* ICRC7.TransferResultItem {
-    //uses market_transfer_nft_origyn where we look for an escrow from one user to the other and use the full escrow for the transfer
-    //if the escrow doesn't exist then we should fail
-    //nyi: determine if this is a marketable NFT and take proper action
-    //marketable NFT may not be transfered between owner wallets execpt through share_nft_origyn
     let token_id = NFTUtils.get_nat_as_token_id(tokenAsNat);
 
-    let escrows = switch (Market.find_escrow_reciept(state, #account({ owner = to.owner; sub_account = to.subaccount }), #account({ owner = from.owner; sub_account = from.subaccount }), token_id)) {
-      case (#ok(val)) { val };
+    let metadata = switch (Metadata.get_metadata_for_token(state, token_id, caller, ?state.canister(), state.state.collection_data.owner)) {
       case (#err(err)) {
         return {
           token_id = tokenAsNat;
-          transfer_result = #Err(#GenericError({ message = "escrow required for ICRC7 transfer - failure of ICRC7 transfer " # err.flag_point; error_code = 2 }));
+          transfer_result = #Err(
+            #GenericError({
+              message = "fail to get origyn internal metadata ";
+              error_code = 2;
+            })
+          );
         };
       };
+      case (#ok(val)) { val };
     };
 
-    if (Map.size(escrows) == 0) {
+    let #ok(#fee_deposit_info(feeDepositAccount)) = Market.fee_deposit_info_nft_origyn(state, ? #account({ owner = from.owner; sub_account = from.subaccount }), caller) else {
+      D.print("fail to get origyn internal sellerFeeDepositAccount");
       return {
         token_id = tokenAsNat;
-        transfer_result = #Err(#GenericError({ message = "escrow required for ICRC7 transfer - failure of ICRC7 transfer escrow not found"; error_code = 2 }));
+        transfer_result = #Err(
+          #GenericError({
+            message = "fail to get origyn internal sellerFeeDepositAccount ";
+            error_code = 3;
+          })
+        );
       };
     };
 
-    //dip721 is not discerning. If it finds a first asset it will use that for the transfer
-    let first_asset = Iter.toArray(Map.entries(escrows))[0];
+    let fee_deposit_amount : Nat = Royalties.get_total_amount_fixed_royalties(Royalties.royalties_names, metadata);
 
-    if (first_asset.1.sale_id != null) {
-      return {
-        token_id = tokenAsNat;
-        transfer_result = #Err(#GenericError({ message = "escrow required for ICRC7 transfer - failure of ICRC7 transfer due to sale_id in escrow reciept" # debug_show (first_asset); error_code = 3 }));
+    let ogy_ledger : ICRC2.Self = actor (NFTUtils.OGY_LEDGER_CANISTER_ID);
+
+    let add_fund_to_fees_wallet = await ogy_ledger.icrc2_transfer_from({
+      to = {
+        owner = feeDepositAccount.account.principal;
+        subaccount = ?feeDepositAccount.account.sub_account;
+      };
+      fee = ?200_000;
+      spender_subaccount = null;
+      from = from;
+      memo = null;
+      created_at_time = null;
+      amount = fee_deposit_amount;
+    });
+
+    let amount_sent = switch (add_fund_to_fees_wallet) {
+      case (#Ok(data)) { data };
+      case (#Err(err)) {
+        return {
+          token_id = tokenAsNat;
+          transfer_result = #Err(
+            #GenericError({
+              message = "failure of ICRC2 transferFrom";
+              error_code = 4;
+            })
+          );
+        };
       };
     };
 
@@ -279,8 +311,32 @@ module {
       {
         token_id = token_id;
         sales_config = {
-          escrow_receipt = ?first_asset.1;
-          pricing = #instant(null);
+          escrow_receipt = ?{
+            seller = #account({
+              owner = from.owner;
+              sub_account = from.subaccount;
+            });
+            buyer = #account({
+              owner = to.owner;
+              sub_account = to.subaccount;
+            });
+            token_id = token_id;
+            token = #ic({
+              canister = Principal.fromText(NFTUtils.OGY_LEDGER_CANISTER_ID);
+              standard = #Ledger;
+              decimals = 8;
+              symbol = "OGY";
+              fee = ?200_000;
+              id = null;
+            });
+            amount = 0;
+          };
+          pricing = #instant(
+            ?[
+              #fee_accounts(Royalties.royalties_names),
+              #fee_schema(Types.metadata.__system_fixed_royalty),
+            ]
+          );
           broker_id = null;
         };
       },

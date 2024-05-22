@@ -65,10 +65,7 @@ module {
     fee_accounts_with_owner : [(MigrationTypes.Current.FeeName, MigrationTypes.Current.Account)];
   };
 
-  let account_handler = MigrationTypes.Current.account_handler;
-  let token_handler = MigrationTypes.Current.token_handler;
-
-  public let royalties_names : [Text] = [
+  public let royalties_names : [MigrationTypes.Current.FeeName] = [
     "com.origyn.royalty.broker",
     "com.origyn.royalty.node",
     "com.origyn.royalty.originator",
@@ -76,10 +73,75 @@ module {
     "com.origyn.royalty.network",
   ];
 
+  public func get_total_amount_fixed_royalties(fee_accounts : [MigrationTypes.Current.FeeName], metadata : CandyTypes.CandyShared) : Nat {
+    var total = 0;
+
+    let royalty = switch (Properties.getClassPropertyShared(metadata, Types.metadata.__system)) {
+      case (null) { [] };
+      case (?val) {
+        royalty_to_array(val.value, Types.metadata.__system_fixed_royalty);
+      };
+    };
+
+    label royaltyLoop for (this_item in royalty.vals()) {
+      let loaded_royalty = switch (_load_royalty(Types.metadata.__system_fixed_royalty, this_item)) {
+        case (#ok(val)) { val };
+        case (#err(_)) {
+          return 0;
+        };
+      };
+
+      let tag = switch (loaded_royalty) {
+        case (#fixed(val)) { val.tag };
+        case (#dynamic(val)) { val.tag };
+      };
+
+      switch (Array.find<MigrationTypes.Current.FeeName>(fee_accounts, func(fee_name) { return fee_name == tag })) {
+        case (null) {
+          continue royaltyLoop;
+        };
+        case (_) {};
+      };
+
+      switch (loaded_royalty) {
+        case (#fixed(val)) {
+          total := total + Int.abs(Float.toInt(Float.ceil(val.fixedXDR)));
+        };
+        case (_) {};
+      };
+    };
+    return total;
+  };
+
   private func dev_fund() : { owner : Principal; sub_account : ?Blob } {
     {
       owner = Principal.fromText("a3lu7-uiaaa-aaaaj-aadnq-cai");
       sub_account = ?Blob.fromArray([90, 139, 65, 137, 126, 28, 225, 88, 245, 212, 115, 206, 119, 123, 54, 216, 86, 30, 91, 21, 25, 35, 79, 182, 234, 229, 219, 103, 248, 132, 25, 79]);
+    };
+  };
+
+  /**
+    * Converts the properties and collection of a Candy NFT to an array.
+    *
+    * @param {CandyTypes.CandyShared} properties - The properties of the Candy NFT.
+    * @param {Text} collection - The collection of the Candy NFT.
+    *
+    * @returns {Array} - An array of Candy NFT properties.
+    */
+  public func royalty_to_array(properties : CandyTypes.CandyShared, collection : Text) : [CandyTypes.CandyShared] {
+    debug if (debug_channel.royalties) D.print("In royalty to array" # debug_show ((properties, collection)));
+    switch (Properties.getClassPropertyShared(properties, collection)) {
+      case (null) [];
+      case (?list) {
+        debug if (debug_channel.royalties) D.print("found list" # debug_show (list));
+        switch (list.value) {
+          case (#Array(the_array)) {
+            debug if (debug_channel.royalties) D.print("found array");
+            the_array;
+          };
+          case (_) [];
+        };
+      };
     };
   };
 
@@ -310,7 +372,7 @@ module {
 
               let fees_account_info : Types.SubAccountInfo = NFTUtils.get_fee_deposit_account_info(_escrow.buyer, state.canister());
 
-              let id = Metadata.add_transaction_record(
+              let id = Metadata.add_transaction_record<system>(
                 state,
                 {
                   token_id = request.escrow.token_id;

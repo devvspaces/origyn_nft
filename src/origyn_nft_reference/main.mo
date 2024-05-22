@@ -3250,7 +3250,6 @@ shared (deployer) actor class Nft_Canister() = this {
   };
 
   public shared (msg) func icrc7_transfer(requests : [ICRC7.TransferArgs]) : async ICRC7.TransferResult {
-
     if (requests.size() != 1) {
       return D.trap("origyn_nft does not support batch transactions through ICRC7. use market_transfer_batch_nft_origyn");
     };

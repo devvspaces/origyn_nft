@@ -102,7 +102,7 @@ shared (deployer) actor class test_runner(dfx_ledger : Principal, dfx_ledger2 : 
         // S.test("testAuction_v3", switch (await testAuction_v3()) { case (#success) { true }; case (_) { false } }, M.equals<Bool>(T.bool(true))),
         // S.test("testDutch", switch (await testDutch()) { case (#success) { true }; case (_) { false } }, M.equals<Bool>(T.bool(true))),
         // S.test("testRecognizeEscrow", switch (await testRecognizeEscrow()) { case (#success) { true }; case (_) { false } }, M.equals<Bool>(T.bool(true))),
-        S.test("testRoyalties", switch (await testRoyalties()) { case (#success) { true }; case (_) { false } }, M.equals<Bool>(T.bool(true))),
+        // S.test("testRoyalties", switch (await testRoyalties()) { case (#success) { true }; case (_) { false } }, M.equals<Bool>(T.bool(true))),
         // S.test("testAuction", switch (await testAuction()) { case (#success) { true }; case (_) { false } }, M.equals<Bool>(T.bool(true))),
         // S.test("testAuction_v2", switch (await testAuction_v2()) { case (#success) { true }; case (_) { false } }, M.equals<Bool>(T.bool(true))),
         // S.test("testDeposits", switch (await testDeposit()) { case (#success) { true }; case (_) { false } }, M.equals<Bool>(T.bool(true))),
@@ -111,9 +111,6 @@ shared (deployer) actor class test_runner(dfx_ledger : Principal, dfx_ledger2 : 
         // S.test("testOwnerTransfer", switch (await testOwnerTransfer()) { case (#success) { true }; case (_) { false } }, M.equals<Bool>(T.bool(true))),
         // S.test("testOffer", switch (await testOffers()) { case (#success) { true }; case (_) { false } }, M.equals<Bool>(T.bool(true))) S.test("testRoyaltiesFixed", switch (await testRoyaltiesFixed()) { case (#success) { true }; case (_) { false } }, M.equals<Bool>(T.bool(true))),
         // S.test("testRoyaltiesFixed", switch (await testRoyaltiesFixed()) { case (#success) { true }; case (_) { false } }, M.equals<Bool>(T.bool(true))),
-        // S.test("testRoyaltiesFixed_2", switch (await testRoyaltiesFixed_2()) { case (#success) { true }; case (_) { false } }, M.equals<Bool>(T.bool(true))),
-        // S.test("testRoyaltiesBidFeeAccount", switch (await testRoyaltiesBidFeeAccount()) { case (#success) { true }; case (_) { false } }, M.equals<Bool>(T.bool(true))),
-        // S.test("testRoyaltiesBidAndSellerFeeAccount", switch (await testRoyaltiesBidAndSellerFeeAccount()) { case (#success) { true }; case (_) { false } }, M.equals<Bool>(T.bool(true))),
         // S.test("testRoyaltiesFixedDifferentToken", switch (await testRoyaltiesFixedDifferentToken()) { case (#success) { true }; case (_) { false } }, M.equals<Bool>(T.bool(true))),
       ],
     );

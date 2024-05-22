@@ -855,7 +855,7 @@ module {
     let royalty = switch (Properties.getClassPropertyShared(metadata, Types.metadata.__system)) {
       case (null) { [] };
       case (?val) {
-        royalty_to_array(val.value, _fee_schema);
+        Royalties.royalty_to_array(val.value, _fee_schema);
       };
     };
 
@@ -1322,31 +1322,6 @@ module {
     return #awaited(#distribute_sale(future));
   };
 
-  /**
-    * Converts the properties and collection of a Candy NFT to an array.
-    *
-    * @param {CandyTypes.CandyShared} properties - The properties of the Candy NFT.
-    * @param {Text} collection - The collection of the Candy NFT.
-    *
-    * @returns {Array} - An array of Candy NFT properties.
-    */
-  public func royalty_to_array(properties : CandyTypes.CandyShared, collection : Text) : [CandyTypes.CandyShared] {
-    debug if (debug_channel.royalties) D.print("In royalty to array" # debug_show ((properties, collection)));
-    switch (Properties.getClassPropertyShared(properties, collection)) {
-      case (null) [];
-      case (?list) {
-        debug if (debug_channel.royalties) D.print("found list" # debug_show (list));
-        switch (list.value) {
-          case (#Array(the_array)) {
-            debug if (debug_channel.royalties) D.print("found array");
-            the_array;
-          };
-          case (_) [];
-        };
-      };
-    };
-  };
-
   private func async_market_transfer_unlock_fee_account_callback(
     state : StateAccess,
     metadata : CandyTypes.CandyShared,
@@ -1642,24 +1617,6 @@ module {
               return #err(Types.errors(?state.canistergeekLogger, err.error, "market_transfer_nft_origyn auto try escrow failed revalidate  " # err.flag_point, ?caller));
             };
             case (#ok(res)) res;
-          };
-        };
-
-        let royalty = switch (Properties.getClassPropertyShared(metadata, Types.metadata.__system)) {
-          case (null) { [] };
-          case (?val) {
-            debug if (debug_channel.market) D.print("found metadata" # debug_show (val.value));
-            royalty_to_array(val.value, _fee_schema);
-          };
-        };
-
-        // make sur royalties definition didnt changed and no error can occured after transfering nft and funds.
-        for (this_item in royalty.vals()) {
-          let loaded_royalty = switch (Royalties._load_royalty(_fee_schema, this_item)) {
-            case (#ok(val)) { val };
-            case (#err(err)) {
-              return #err(Types.errors(?state.canistergeekLogger, #malformed_metadata, "end_sale_nft_origyn - error _load_royalty ", ?caller));
-            };
           };
         };
 
@@ -2028,17 +1985,11 @@ module {
 
         Map.set(state.state.nft_metadata, Map.thash, escrow.token_id, metadata);
 
-        let _fee_schema : Text = if (this_is_minted == false) {
-          Types.metadata.__system_primary_royalty;
-        } else {
-          Types.metadata.__system_secondary_royalty;
-        };
-
         let royalty = switch (Properties.getClassPropertyShared(metadata, Types.metadata.__system)) {
           case (null) { [] };
           case (?val) {
             debug if (debug_channel.market) D.print("found metadata" # debug_show (val.value));
-            royalty_to_array(val.value, _fee_schema);
+            Royalties.royalty_to_array(val.value, _fee_schema);
           };
         };
 
@@ -2652,7 +2603,7 @@ module {
     let royalty = switch (Properties.getClassPropertyShared(metadata, Types.metadata.__system)) {
       case (null) { [] };
       case (?val) {
-        royalty_to_array(val.value, _fee_schema);
+        Royalties.royalty_to_array(val.value, _fee_schema);
       };
     };
 
@@ -4322,7 +4273,7 @@ module {
     let royalties : [CandyTypes.CandyShared] = switch (Properties.getClassPropertyShared(metadata, Types.metadata.__system)) {
       case (null) { [] };
       case (?val) {
-        royalty_to_array(val.value, fee_schema);
+        Royalties.royalty_to_array(val.value, fee_schema);
       };
     };
     debug if (debug_channel.market) D.print("royalties = " # debug_show (royalties));
@@ -4433,7 +4384,7 @@ module {
         let royalties : [CandyTypes.CandyShared] = switch (Properties.getClassPropertyShared(metadata, Types.metadata.__system)) {
           case (null) { [] };
           case (?val) {
-            royalty_to_array(val.value, fee_schema);
+            Royalties.royalty_to_array(val.value, fee_schema);
           };
         };
         debug if (debug_channel.market) D.print("royalties = " # debug_show (royalties));
