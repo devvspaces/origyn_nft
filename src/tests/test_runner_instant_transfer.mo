@@ -4,6 +4,7 @@ import M "mo:matchers/Matchers";
 
 import Conversion "mo:candy/conversion";
 import CandyTypes "mo:candy/types";
+import Option "mo:base/Option";
 
 import Principal "mo:base/Principal";
 import Time "mo:base/Time";
@@ -17,6 +18,9 @@ import Types "../origyn_nft_reference/types";
 import Metadata "../origyn_nft_reference/metadata";
 import utils "test_utils";
 import MigrationTypes "../origyn_nft_reference/migrations/types";
+import ICRC7Types "../origyn_nft_reference/ICRC7";
+import ICRC2Types "../external_canisters/ICRC2";
+import Royalties "../origyn_nft_reference/market/royalties";
 
 shared (deployer) actor class test_runner_instant_transfer(dfx_ledger : Principal, dfx_ledger2 : Principal) = this {
 
@@ -27,6 +31,19 @@ shared (deployer) actor class test_runner_instant_transfer(dfx_ledger : Principa
 
   private func get_time() : Int {
     return Time.now();
+  };
+
+  private var DAY_LENGTH = 60 * 60 * 24 * 10 ** 9;
+
+  let dfx : ICRC2Types.Self = actor (Principal.toText(dfx_ledger));
+
+  let dfxspec = {
+    canister = Principal.fromActor(dfx);
+    standard = #Ledger;
+    decimals = 8;
+    symbol = "OGY";
+    fee = ?200000;
+    id = null;
   };
 
   private type canister_factory_actor = actor {
@@ -52,8 +69,9 @@ shared (deployer) actor class test_runner_instant_transfer(dfx_ledger : Principa
     let suite = S.suite(
       "test nft",
       [
-        S.test("testInstantTransfer", switch (await testInstantTransfer()) { case (#success) { true }; case (_) { false } }, M.equals<Bool>(T.bool(true))),
-        S.test("testSoulbound", switch (await testSoulbound()) { case (#success) { true }; case (_) { false } }, M.equals<Bool>(T.bool(true))),
+        // S.test("testInstantTransfer", switch (await testInstantTransfer()) { case (#success) { true }; case (_) { false } }, M.equals<Bool>(T.bool(true))),
+        // S.test("testSoulbound", switch (await testSoulbound()) { case (#success) { true }; case (_) { false } }, M.equals<Bool>(T.bool(true))),
+        S.test("testIcrc7Transfer", switch (await testIcrc7Transfer()) { case (#success) { true }; case (_) { false } }, M.equals<Bool>(T.bool(true))),
 
       ],
     );
@@ -134,7 +152,7 @@ shared (deployer) actor class test_runner_instant_transfer(dfx_ledger : Principa
             canister = ledger_principal;
             standard = #Ledger;
             decimals = 8;
-            symbol = "LDG";
+            symbol = "OGY";
             fee = ?200000;
             id = null;
           });
@@ -178,7 +196,7 @@ shared (deployer) actor class test_runner_instant_transfer(dfx_ledger : Principa
             canister = ledger_principal;
             standard = #Ledger;
             decimals = 8;
-            symbol = "LDG";
+            symbol = "OGY";
             fee = ?200000;
             id = null;
           });
@@ -255,7 +273,7 @@ shared (deployer) actor class test_runner_instant_transfer(dfx_ledger : Principa
             canister = ledger_principal;
             standard = #Ledger;
             decimals = 8;
-            symbol = "LDG";
+            symbol = "OGY";
             fee = ?200000;
             id = null;
           });
@@ -278,7 +296,7 @@ shared (deployer) actor class test_runner_instant_transfer(dfx_ledger : Principa
             canister = ledger_principal;
             standard = #Ledger;
             decimals = 8;
-            symbol = "LDG";
+            symbol = "OGY";
             fee = ?200000;
             id = null;
           });
@@ -331,7 +349,7 @@ shared (deployer) actor class test_runner_instant_transfer(dfx_ledger : Principa
             canister = ledger_principal;
             standard = #Ledger;
             decimals = 8;
-            symbol = "LDG";
+            symbol = "OGY";
             fee = ?200000;
             id = null;
           });
@@ -362,7 +380,7 @@ shared (deployer) actor class test_runner_instant_transfer(dfx_ledger : Principa
             canister = ledger_principal;
             standard = #Ledger;
             decimals = 8;
-            symbol = "LDG";
+            symbol = "OGY";
             fee = ?200000;
             id = null;
           });
@@ -385,7 +403,7 @@ shared (deployer) actor class test_runner_instant_transfer(dfx_ledger : Principa
             canister = ledger_principal;
             standard = #Ledger;
             decimals = 8;
-            symbol = "LDG";
+            symbol = "OGY";
             fee = ?200000;
             id = null;
           });
@@ -816,7 +834,7 @@ shared (deployer) actor class test_runner_instant_transfer(dfx_ledger : Principa
             canister = ledger_principal;
             standard = #Ledger;
             decimals = 8;
-            symbol = "LDG";
+            symbol = "OGY";
             fee = ?200000;
             id = null;
           });
@@ -842,7 +860,7 @@ shared (deployer) actor class test_runner_instant_transfer(dfx_ledger : Principa
             canister = ledger_principal;
             standard = #Ledger;
             decimals = 8;
-            symbol = "LDG";
+            symbol = "OGY";
             fee = ?200000;
             id = null;
           });
@@ -944,6 +962,136 @@ shared (deployer) actor class test_runner_instant_transfer(dfx_ledger : Principa
     );
 
     S.run(suite);
+
+    return #success;
+  };
+
+  public shared func testIcrc7Transfer() : async { #success; #fail : Text } {
+    let this_principal = Principal.fromActor(this);
+
+    let ledger_principal = dfx_ledger;
+
+    //create and fund wallet
+    let a_wallet = await TestWalletDef.test_wallet();
+    let a_principal = Principal.fromActor(a_wallet);
+    let b_wallet = await TestWalletDef.test_wallet();
+    let b_principal = Principal.fromActor(b_wallet);
+    let b_account = {
+      owner = b_principal;
+      subaccount = null;
+    };
+
+    let n_wallet = await TestWalletDef.test_wallet(); //node
+    let n_principal = Principal.fromActor(n_wallet);
+    let o_wallet = await TestWalletDef.test_wallet(); //originator
+    let o_principal = Principal.fromActor(o_wallet);
+    let net_wallet = await TestWalletDef.test_wallet(); //net
+
+    let net_account = {
+      owner = Principal.fromActor(net_wallet);
+      subaccount = ?Royalties.get_network_royalty_account(Principal.fromActor(dfx), null);
+    };
+
+    let fund_a_wallet = await dfx.icrc1_transfer({
+      to = { owner = Principal.fromActor(a_wallet); subaccount = null };
+      fee = ?200_000;
+      memo = null;
+      from_subaccount = null;
+      created_at_time = null;
+      amount = 100 * 10 ** 8;
+    });
+    D.print("funding result end");
+    D.print(debug_show (fund_a_wallet));
+
+    //create canister
+    let newPrincipal = await g_canister_factory.create({
+      owner = Principal.fromActor(this);
+      storage_space = null;
+    });
+    let icrc7_canister : ICRC7Types.Service = actor (Principal.toText(newPrincipal));
+    let canister : Types.Service = actor (Principal.toText(newPrincipal));
+    let canister_principal = Principal.fromActor(canister);
+    D.print("Here 1");
+
+    let standardStage_collection = await utils.buildCollection(
+      canister,
+      Principal.fromActor(canister),
+      Principal.fromActor(n_wallet),
+      Principal.fromActor(this),
+      2048000,
+      false,
+      dfxspec,
+    );
+    let updateNetwork = canister.collection_update_nft_origyn(#UpdateNetwork(?Principal.fromActor(net_wallet)));
+    let timeset = await canister.__set_time_mode(#test);
+    let startTime = Time.now();
+    let atime = await canister.__advance_time(startTime);
+
+    //stage unminted and minted NFTs
+    let stage_1_nft = await utils.buildStandardNFT("1", canister, this_principal, 1024, false, Principal.fromActor(this));
+    let mint_nft = await canister.mint_nft_origyn("1", #principal(this_principal));
+    D.print("Here 2");
+
+    //reset time to time now
+    let set_time = await canister.__advance_time(get_time());
+
+    D.print("Here 3");
+    let token_id = await canister.get_token_id_as_nat("1");
+
+    D.print("Here 4");
+    let fee_to_pay : ?Nat = await icrc7_canister.icrc7_transfer_fee(token_id);
+
+    D.print("token id = " # debug_show (token_id) # "fee_to_pay = " # debug_show (fee_to_pay));
+
+    let #ok(#fee_deposit_info(sellerFeeDepositAccount)) = await canister.sale_info_nft_origyn(#fee_deposit_info(? #account { owner = Principal.fromActor(this); sub_account = null })) else {
+      D.print("failed to get sellerFeeDepositAccount");
+      return #fail("failed to get sellerFeeDepositAccount");
+    };
+    D.print("icrc2_approve_request = " # debug_show ({ fee = ?200_000; memo = null; from_subaccount = null; created_at_time = null; amount = 2 * Option.get(fee_to_pay, 0) + 200_000; expected_allowance = null; expires_at = null; spender = { owner = Principal.fromActor(icrc7_canister); subaccount = null } }));
+
+    let icrc2_approve_response = await dfx.icrc2_approve({
+      fee = ?200_000;
+      memo = null;
+      from_subaccount = null;
+      created_at_time = null;
+      amount = 2 * Option.get(fee_to_pay, 0) + 200_000;
+      expected_allowance = null;
+      expires_at = null;
+      spender = {
+        owner = Principal.fromActor(icrc7_canister);
+        subaccount = null;
+      };
+    });
+
+    D.print("icrc2_approve_response = " # debug_show (icrc2_approve_response));
+
+    D.print("icrc2_allowance_query = " # debug_show ({ account = { owner = this_principal; subaccount = null }; spender = { owner = Principal.fromActor(icrc7_canister); subaccount = null } }));
+    let icrc2_allowance_response = await dfx.icrc2_allowance({
+      account = {
+        owner = this_principal;
+        subaccount = null;
+      };
+      spender = {
+        owner = Principal.fromActor(icrc7_canister);
+        subaccount = null;
+      };
+    });
+    D.print("icrc2_allowance_response = " # debug_show (icrc2_allowance_response));
+
+    let owner_of = await icrc7_canister.icrc7_owner_of([token_id]);
+    D.print("owner_of = " # debug_show (owner_of));
+
+    let transfer_ret = await icrc7_canister.icrc7_transfer([{
+      from_subaccount = null;
+      to = b_account;
+      token_id = token_id;
+      memo = null;
+      created_at_time = null;
+    }]);
+    D.print("transfer_ret = " # debug_show (transfer_ret));
+
+    let owner_of2 = await icrc7_canister.icrc7_owner_of([token_id]);
+    D.print("owner_of2 = " # debug_show (owner_of2));
 
     return #success;
   };

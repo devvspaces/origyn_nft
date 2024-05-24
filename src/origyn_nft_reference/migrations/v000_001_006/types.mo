@@ -228,6 +228,13 @@ module {
     };
   };
 
+  public func compare_account(account1 : Account, account2 : Account) : Bool {
+    let a = account_to_owner_subaccount(account1);
+    let b = account_to_owner_subaccount(account2);
+
+    return a == b;
+  };
+
   public type TransactionID = v0_1_5.TransactionID;
 
   public type AuctionConfig = {

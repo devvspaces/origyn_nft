@@ -11,7 +11,7 @@ echo $ADMIN_ACCOUNTID
 
 
 dfx canister create test_runner_instant_transfer
-dfx canister create dfxledger
+dfx canister create dfxledger --specified-id j5naj-nqaaa-aaaal-ajc7q-cai
 dfx canister create dfxledger2
 dfx canister create test_canister_factory
 dfx canister create test_storage_factory
@@ -19,19 +19,19 @@ dfx canister create test_runner
 dfx canister create test_runner_nft_2
 
 DFX_LEDGER_CANISTER_ID=$(dfx canister id dfxledger)
-DFX_LEDGER_ACCOUNT_ID=$(python3 principal_to_accountid.py $DFX_LEDGER_CANISTER_ID)
+# DFX_LEDGER_ACCOUNT_ID=$(python3 principal_to_accountid.py $DFX_LEDGER_CANISTER_ID)
 
 DFX_LEDGER_CANISTER2_ID=$(dfx canister id dfxledger2)
-DFX_LEDGER_ACCOUNT2_ID=$(python3 principal_to_accountid.py $DFX_LEDGER_CANISTER2_ID)
+# DFX_LEDGER_ACCOUNT2_ID=$(python3 principal_to_accountid.py $DFX_LEDGER_CANISTER2_ID)
 
 TEST_RUNNER_CANISTER_ID=$(dfx canister id test_runner)
-TEST_RUNNER_ACCOUNT_ID=$(python3 principal_to_accountid.py $TEST_RUNNER_CANISTER_ID)
+# TEST_RUNNER_ACCOUNT_ID=$(python3 principal_to_accountid.py $TEST_RUNNER_CANISTER_ID)
 
 TEST_RUNNER_NFT_CANISTER_2_ID=$(dfx canister id test_runner_nft_2)
-TEST_RUNNER__NFT_ACCOUNT_2_ID=$(python3 principal_to_accountid.py $TEST_RUNNER_NFT_CANISTER_2_ID)
+# TEST_RUNNER__NFT_ACCOUNT_2_ID=$(python3 principal_to_accountid.py $TEST_RUNNER_NFT_CANISTER_2_ID)
 
 TEST_RUNNER_INSTANT_CANISTER_ID=$(dfx canister id test_runner_instant_transfer)
-TEST_RUNNER_INSTANT_ACCOUNT_ID=$(python3 principal_to_accountid.py $TEST_RUNNER_NFT_CANISTER_2_ID)
+# TEST_RUNNER_INSTANT_ACCOUNT_ID=$(python3 principal_to_accountid.py $TEST_RUNNER_NFT_CANISTER_2_ID)
 
 TEST_CANISTER_FACTORY_ID=$(dfx canister id test_canister_factory)
 TEST_STORAGE_FACTORY_ID=$(dfx canister id test_storage_factory)
@@ -40,14 +40,8 @@ dfx build test_runner_instant_transfer
 dfx build test_runner
 dfx build test_canister_factory
 dfx build test_storage_factory
-dfx build dfxledger
+dfx build dfxledger 
 dfx build dfxledger2
-#dfx build test_runner_nft
-#dfx build test_runner_nft_2
-#dfx build test_runner_instant_transfer
-#dfx build test_runner_data
-#dfx build test_runner_utils
-
 
 gzip ./.dfx/local/canisters/test_runner/test_runner.wasm -f
 gzip ./.dfx/local/canisters/test_canister_factory/test_canister_factory.wasm -f
@@ -74,9 +68,84 @@ dfx canister install test_runner --mode=reinstall --wasm ./.dfx/local/canisters/
 
 #dfx canister install test_runner_instant_transfer --mode=reinstall --argument "(principal  \"$DFX_LEDGER_CANISTER_ID\", principal  \"$DFX_LEDGER_CANISTER2_ID\")"
 
-dfx canister install dfxledger --mode=reinstall --argument "(record { minting_account = \"$ADMIN_ACCOUNTID\"; initial_values = vec { record { \"$TEST_RUNNER_ACCOUNT_ID\"; record { e8s = 18446744073709551615: nat64 } } }; max_message_size_bytes = null; transaction_window = null; archive_options = opt record { trigger_threshold = 2000: nat64; num_blocks_to_archive = 1000: nat64; node_max_memory_size_bytes = null; max_message_size_bytes = null; controller_id = principal \"$TEST_RUNNER_CANISTER_ID\"  }; send_whitelist = vec {};standard_whitelist = vec {};transfer_fee = opt (record {e8s = 200_000}); token_symbol = null; token_name = null;admin = principal \"$TEST_RUNNER_CANISTER_ID\"})"
-
-dfx canister install dfxledger2 --mode=reinstall --argument "(record { minting_account = \"$ADMIN_ACCOUNTID\"; initial_values = vec { record { \"$TEST_RUNNER_ACCOUNT_ID\"; record { e8s = 18446744073709551615: nat64 } } }; max_message_size_bytes = null; transaction_window = null; archive_options = opt record { trigger_threshold = 2000: nat64; num_blocks_to_archive = 1000: nat64; node_max_memory_size_bytes = null; max_message_size_bytes = null; controller_id = principal \"$TEST_RUNNER_CANISTER_ID\"  }; send_whitelist = vec {};standard_whitelist = vec {};transfer_fee = opt (record {e8s = 200_000}); token_symbol = null; token_name = null;admin = principal \"$TEST_RUNNER_CANISTER_ID\"})"
+dfx canister install dfxledger  --mode=reinstall --argument '(
+  variant {
+    Init = record {
+      decimals = null;
+      token_symbol = "LDG";
+      transfer_fee = 200_000 : nat;
+      metadata = vec {};
+      minting_account = record {
+        owner = principal "'$ADMIN_PRINCIPAL'"; 
+        subaccount = null;
+      };
+      initial_balances = vec {
+        record {
+          record {
+            owner = principal "'$TEST_RUNNER_CANISTER_ID'";
+            subaccount = null;
+          };
+          18_446_744_073_709_551_615 : nat;
+        };
+      };
+      maximum_number_of_accounts = null;
+      accounts_overflow_trim_quantity = null;
+      fee_collector_account = null;
+      archive_options = record {
+        num_blocks_to_archive = 1_000 : nat64;
+        max_transactions_per_response = null;
+        trigger_threshold = 2_000 : nat64;
+        more_controller_ids = null;
+        max_message_size_bytes = null;
+        cycles_for_archive_creation = null;
+        node_max_memory_size_bytes = null;
+        controller_id = principal "'$TEST_RUNNER_CANISTER_ID'";
+      };
+      max_memo_length = null;
+      token_name = "tmp1";
+      feature_flags = null;
+    }
+  },
+)'
+dfx canister install dfxledger2 --mode=reinstall --argument '(
+  variant {
+    Init = record {
+      decimals = null;
+      token_symbol = "LDY";
+      transfer_fee = 200_000 : nat;
+      metadata = vec {};
+      minting_account = record {
+        owner = principal "'$ADMIN_PRINCIPAL'"; 
+        subaccount = null;
+      };
+      initial_balances = vec {
+        record {
+          record {
+            owner = principal "'$TEST_RUNNER_CANISTER_ID'";
+            subaccount = null;
+          };
+          18_446_744_073_709_551_615 : nat;
+        };
+      };
+      maximum_number_of_accounts = null;
+      accounts_overflow_trim_quantity = null;
+      fee_collector_account = null;
+      archive_options = record {
+        num_blocks_to_archive = 1_000 : nat64;
+        max_transactions_per_response = null;
+        trigger_threshold = 2_000 : nat64;
+        more_controller_ids = null;
+        max_message_size_bytes = null;
+        cycles_for_archive_creation = null;
+        node_max_memory_size_bytes = null;
+        controller_id = principal "'$TEST_RUNNER_CANISTER_ID'";
+      };
+      max_memo_length = null;
+      token_name = "tmp2";
+      feature_flags = null;
+    }
+  },
+)'
 
 
 TEST_RUNNER_ID=$(dfx canister id test_runner)

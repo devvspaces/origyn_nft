@@ -40,6 +40,7 @@ import CandyTypesOld "mo:candy_0_1_12/types";
 import DIP721 "DIP721";
 import Governance "governance";
 import Market "market";
+import Royalties "market/royalties";
 import Metadata "metadata";
 import MigrationTypes "./migrations/types";
 import Migrations "./migrations";
@@ -2144,7 +2145,7 @@ shared (deployer) actor class Nft_Canister() = this {
     * @returns {Nat} The converted token ID as a Nat.
     * @throws Will throw an error if the canister is in maintenance mode.
     */
-  public query (msg) func get_token_id_as_nat_origyn(token_id : Text) : async Nat {
+  public query (msg) func get_token_id_as_nat(token_id : Text) : async Nat {
 
     debug if (debug_channel.function_announce) D.print("in get_token_id_as_nat_origyn");
     return NFTUtils.get_token_id_as_nat(token_id);
@@ -2994,6 +2995,18 @@ shared (deployer) actor class Nft_Canister() = this {
     aBuf.add(("icrc7:logo", #Text(logo)));
 
     return Buffer.toArray(aBuf);
+  };
+
+  public query (msg) func icrc7_transfer_fee(token_ids : Nat) : async ?Nat {
+    let state = get_state();
+    let token_id = NFTUtils.get_nat_as_token_id(token_ids);
+
+    let metadata = switch (Metadata.get_metadata_for_token(state, token_id, msg.caller, ?state.canister(), state.state.collection_data.owner)) {
+      case (#err(err)) { return null };
+      case (#ok(val)) { val };
+    };
+
+    return ?Royalties.get_total_amount_fixed_royalties(Royalties.royalties_names, metadata);
   };
 
   public query (msg) func icrc7_name() : async Text {

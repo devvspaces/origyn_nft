@@ -217,6 +217,7 @@ module {
     icrc7_balance_of : shared query ([Account]) -> async [Nat];
 
     icrc7_transfer : shared ([TransferArgs]) -> async [?TransferResult];
+    icrc7_transfer_fee : shared (Nat) -> async ?Nat;
 
     icrc37_collection_metadata : shared query () -> async [(Text, Value)];
     icrc37_max_approvals_per_token_or_collection : shared query () -> async ?Nat;

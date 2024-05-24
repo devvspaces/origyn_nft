@@ -43,7 +43,7 @@ import Royalties "market/royalties";
 module {
 
   let debug_channel = {
-    verify_escrow = false;
+    verify_escrow = true;
     verify_sale = false;
     ensure = false;
     invoice = false;
@@ -51,7 +51,7 @@ module {
     market = false;
     royalties = false;
     offers = false;
-    escrow = false;
+    escrow = true;
     withdraw_escrow = false;
     withdraw_sale = false;
     withdraw_reject = false;
@@ -3232,7 +3232,9 @@ module {
       };
 
       //cant escrow for an owner that doesn't own the token
-      if (owner != request.deposit.seller) return #err(#trappable(Types.errors(?state.canistergeekLogger, #escrow_owner_not_the_owner, "escrow_nft_origyn cannot create escrow for item someone does not own", ?caller)));
+      debug if (debug_channel.escrow) D.print(debug_show ("owner " # debug_show (owner) # " request.deposit.seller = " # debug_show (request.deposit.seller)));
+      debug if (debug_channel.escrow) D.print(debug_show ("owner account_to_owner_subaccount " # debug_show (MigrationTypes.Current.account_to_owner_subaccount(owner)) # " MigrationTypes.Current.account_to_owner_subaccount(request.deposit.seller)  = " # debug_show (MigrationTypes.Current.account_to_owner_subaccount(request.deposit.seller))));
+      if (MigrationTypes.Current.compare_account(owner, request.deposit.seller) == false) return #err(#trappable(Types.errors(?state.canistergeekLogger, #escrow_owner_not_the_owner, "escrow_nft_origyn cannot create escrow for item someone does not own", ?caller)));
     };
 
     //move the deposit to an escrow account
@@ -3439,7 +3441,9 @@ module {
       };
 
       //cant escrow for an owner that doesn't own the token
-      if (owner != request.deposit.seller) return #err(#trappable(Types.errors(?state.canistergeekLogger, #escrow_owner_not_the_owner, "recognize_escrow_nft_origyn cannot create escrow for item someone does not own", ?caller)));
+      debug if (debug_channel.escrow) D.print(debug_show ("owner " # debug_show (owner) # " request.deposit.seller = " # debug_show (request.deposit.seller)));
+      debug if (debug_channel.escrow) D.print(debug_show ("owner account_to_owner_subaccount " # debug_show (MigrationTypes.Current.account_to_owner_subaccount(owner)) # " MigrationTypes.Current.account_to_owner_subaccount(request.deposit.seller)  = " # debug_show (MigrationTypes.Current.account_to_owner_subaccount(request.deposit.seller))));
+      if (MigrationTypes.Current.compare_account(owner, request.deposit.seller) == false) return #err(#trappable(Types.errors(?state.canistergeekLogger, #escrow_owner_not_the_owner, "recognize_escrow_nft_origyn cannot create escrow for item someone does not own", ?caller)));
     };
 
     let search = NFTUtils.find_escrow_asset_map(state, { request.deposit with token_id = request.token_id });

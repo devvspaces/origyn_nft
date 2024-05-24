@@ -75,6 +75,7 @@ module {
 
   public func get_total_amount_fixed_royalties(fee_accounts : [MigrationTypes.Current.FeeName], metadata : CandyTypes.CandyShared) : Nat {
     var total = 0;
+    debug if (debug_channel.royalties) D.print("get_total_amount_fixed_royalties");
 
     let royalty = switch (Properties.getClassPropertyShared(metadata, Types.metadata.__system)) {
       case (null) { [] };
@@ -83,10 +84,13 @@ module {
       };
     };
 
+    debug if (debug_channel.royalties) D.print("royalty " # debug_show (royalty));
+
     label royaltyLoop for (this_item in royalty.vals()) {
       let loaded_royalty = switch (_load_royalty(Types.metadata.__system_fixed_royalty, this_item)) {
         case (#ok(val)) { val };
         case (#err(_)) {
+          debug if (debug_channel.royalties) D.print("err");
           return 0;
         };
       };
@@ -105,11 +109,14 @@ module {
 
       switch (loaded_royalty) {
         case (#fixed(val)) {
+          debug if (debug_channel.royalties) D.print("load fixed royalty " # debug_show (val));
           total := total + Int.abs(Float.toInt(Float.ceil(val.fixedXDR)));
         };
         case (_) {};
       };
     };
+
+    debug if (debug_channel.royalties) D.print("total " # debug_show (total));
     return total;
   };
 

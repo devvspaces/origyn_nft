@@ -164,13 +164,13 @@
     },
     "dfxledger": {
       "type": "custom",
-      "candid": "src/tests/ledger_dfx_v2.did",
-      "wasm": "src/tests/ledger-icrc1-dfinity-sync.wasm.gz"
+      "candid": "src/external_canisters/icp_ledger.did",
+      "wasm": "src/tests/icrc_ledger_canister.wasm.gz"
     },
     "dfxledger2": {
       "type": "custom",
-      "candid": "src/tests/ledger_dfx_v2.did",
-      "wasm": "src/tests/ledger-icrc1-dfinity-sync.wasm.gz"
+      "candid": "src/external_canisters/icp_ledger.did",
+      "wasm": "src/tests/icrc_ledger_canister.wasm.gz"
     }
   },
   "defaults": {
