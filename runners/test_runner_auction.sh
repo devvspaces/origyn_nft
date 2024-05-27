@@ -56,8 +56,84 @@ dfx canister install test_runner --mode=reinstall --wasm ./.dfx/local/canisters/
 
 dfx canister install test_runner_nft --wasm ./.dfx/local/canisters/test_runner_nft/test_runner_nft.wasm.gz --mode=reinstall --argument "(principal  \"$DFX_LEDGER_CANISTER_ID\", principal  \"$DFX_LEDGER_CANISTER2_ID\")"
 
-dfx canister  install dfxledger --mode=reinstall --argument "(record { minting_account = \"$ADMIN_ACCOUNTID\"; initial_values = vec { record { \"$TEST_RUNNER_NFT_ACCOUNT_ID\"; record { e8s = 18446744073709551615: nat64 } } }; max_message_size_bytes = null; transaction_window = null; archive_options = opt record { trigger_threshold = 2000: nat64; num_blocks_to_archive = 1000: nat64; node_max_memory_size_bytes = null; max_message_size_bytes = null; controller_id = principal \"$TEST_RUNNER_CANISTER_ID\"  }; send_whitelist = vec {};standard_whitelist = vec {};transfer_fee = opt (record {e8s = 200_000}); token_symbol = null; token_name = null;admin = principal \"$TEST_RUNNER_CANISTER_ID\"})"
-dfx canister  install dfxledger2 --mode=reinstall --argument "(record { minting_account = \"$ADMIN_ACCOUNTID\"; initial_values = vec { record { \"$TEST_RUNNER_NFT_ACCOUNT_ID\"; record { e8s = 18446744073709551615: nat64 } } }; max_message_size_bytes = null; transaction_window = null; archive_options = opt record { trigger_threshold = 2000: nat64; num_blocks_to_archive = 1000: nat64; node_max_memory_size_bytes = null; max_message_size_bytes = null; controller_id = principal \"$TEST_RUNNER_CANISTER_ID\"  }; send_whitelist = vec {};standard_whitelist = vec {};transfer_fee = opt (record {e8s = 200_000}); token_symbol = null; token_name = null;admin = principal \"$TEST_RUNNER_CANISTER_ID\"})"
+dfx canister install dfxledger  --mode=reinstall --argument '(
+  variant {
+    Init = record {
+      decimals = null;
+      token_symbol = "LDG";
+      transfer_fee = 200_000 : nat;
+      metadata = vec {};
+      minting_account = record {
+        owner = principal "'$ADMIN_PRINCIPAL'"; 
+        subaccount = null;
+      };
+      initial_balances = vec {
+        record {
+          record {
+            owner = principal "'$TEST_RUNNER_CANISTER_ID'";
+            subaccount = null;
+          };
+          18_446_744_073_709_551_615 : nat;
+        };
+      };
+      maximum_number_of_accounts = null;
+      accounts_overflow_trim_quantity = null;
+      fee_collector_account = null;
+      archive_options = record {
+        num_blocks_to_archive = 1_000 : nat64;
+        max_transactions_per_response = null;
+        trigger_threshold = 2_000 : nat64;
+        more_controller_ids = null;
+        max_message_size_bytes = null;
+        cycles_for_archive_creation = null;
+        node_max_memory_size_bytes = null;
+        controller_id = principal "'$TEST_RUNNER_CANISTER_ID'";
+      };
+      max_memo_length = null;
+      token_name = "tmp1";
+      feature_flags = null;
+    }
+  },
+)'
+dfx canister install dfxledger2 --mode=reinstall --argument '(
+  variant {
+    Init = record {
+      decimals = null;
+      token_symbol = "LDY";
+      transfer_fee = 200_000 : nat;
+      metadata = vec {};
+      minting_account = record {
+        owner = principal "'$ADMIN_PRINCIPAL'"; 
+        subaccount = null;
+      };
+      initial_balances = vec {
+        record {
+          record {
+            owner = principal "'$TEST_RUNNER_CANISTER_ID'";
+            subaccount = null;
+          };
+          18_446_744_073_709_551_615 : nat;
+        };
+      };
+      maximum_number_of_accounts = null;
+      accounts_overflow_trim_quantity = null;
+      fee_collector_account = null;
+      archive_options = record {
+        num_blocks_to_archive = 1_000 : nat64;
+        max_transactions_per_response = null;
+        trigger_threshold = 2_000 : nat64;
+        more_controller_ids = null;
+        max_message_size_bytes = null;
+        cycles_for_archive_creation = null;
+        node_max_memory_size_bytes = null;
+        controller_id = principal "'$TEST_RUNNER_CANISTER_ID'";
+      };
+      max_memo_length = null;
+      token_name = "tmp2";
+      feature_flags = null;
+    }
+  },
+)'
 
 
 dfx canister call test_runner test

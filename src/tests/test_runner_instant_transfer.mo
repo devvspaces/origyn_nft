@@ -69,10 +69,9 @@ shared (deployer) actor class test_runner_instant_transfer(dfx_ledger : Principa
     let suite = S.suite(
       "test nft",
       [
-        // S.test("testInstantTransfer", switch (await testInstantTransfer()) { case (#success) { true }; case (_) { false } }, M.equals<Bool>(T.bool(true))),
-        // S.test("testSoulbound", switch (await testSoulbound()) { case (#success) { true }; case (_) { false } }, M.equals<Bool>(T.bool(true))),
+        S.test("testInstantTransfer", switch (await testInstantTransfer()) { case (#success) { true }; case (_) { false } }, M.equals<Bool>(T.bool(true))),
+        S.test("testSoulbound", switch (await testSoulbound()) { case (#success) { true }; case (_) { false } }, M.equals<Bool>(T.bool(true))),
         S.test("testIcrc7Transfer", switch (await testIcrc7Transfer()) { case (#success) { true }; case (_) { false } }, M.equals<Bool>(T.bool(true))),
-
       ],
     );
     S.run(suite);

@@ -43,15 +43,15 @@ import Royalties "market/royalties";
 module {
 
   let debug_channel = {
-    verify_escrow = true;
+    verify_escrow = false;
     verify_sale = false;
     ensure = false;
     invoice = false;
-    end_sale = true;
-    market = true;
+    end_sale = false;
+    market = false;
     royalties = false;
     offers = false;
-    escrow = true;
+    escrow = false;
     withdraw_escrow = false;
     withdraw_sale = false;
     withdraw_reject = false;
