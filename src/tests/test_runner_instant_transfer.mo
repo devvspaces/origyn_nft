@@ -1081,7 +1081,7 @@ shared (deployer) actor class test_runner_instant_transfer(dfx_ledger : Principa
     let owner_of = await icrc7_canister.icrc7_owner_of([token_id]);
     D.print("owner_of = " # debug_show (owner_of));
 
-    let transfer_ret = await icrc7_canister.icrc7_transfer([{
+    let transfer_ret : ICRC7Types.TransferResult = await icrc7_canister.icrc7_transfer([{
       from_subaccount = null;
       to = b_account;
       token_id = token_id;

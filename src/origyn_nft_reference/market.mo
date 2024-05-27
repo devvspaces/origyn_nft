@@ -48,7 +48,7 @@ module {
     ensure = false;
     invoice = false;
     end_sale = true;
-    market = false;
+    market = true;
     royalties = false;
     offers = false;
     escrow = true;
@@ -1842,6 +1842,7 @@ module {
         var b_freshmint = false;
 
         let txn_record = if (this_is_minted == false) {
+          debug if (debug_channel.market) D.print("this_is_minted == false");
           //execute mint should add mint transaction
           b_freshmint := true;
           let rec = switch (Mint.execute_mint(state, request.token_id, escrow.buyer, ?escrow, caller)) {
@@ -1869,7 +1870,7 @@ module {
             };
           };
         } else {
-
+          debug if (debug_channel.market) D.print("updating nft owner : " # debug_show (escrow.buyer));
           metadata := switch (Metadata.set_nft_owner(state, request.token_id, escrow.buyer, caller)) {
             case (#err(err)) {
               //ownership change failed, but we already have tokens...what to do...leave in flight and let governance fix
@@ -2059,7 +2060,7 @@ module {
           };
         };
 
-        if (escrow.amount > remaning_fee) {
+        if (escrow.amount >= remaning_fee) {
           var remaining = remaning_fee;
 
           debug if (debug_channel.royalties) D.print("calling process royalty" # debug_show ((total, remaining)));
@@ -3517,56 +3518,52 @@ module {
 
     //put the escrow
 
-    let new_trx = if (balance > 0) {
-      debug if (debug_channel.escrow) D.print("putting the escrow");
-      let escrow_result = PutBalance.put_escrow_balance(
+    debug if (debug_channel.escrow) D.print("putting the escrow");
+    let escrow_result = PutBalance.put_escrow_balance(
+      state,
+      {
+        request.deposit with
+        amount = balance;
+        token_id = request.token_id;
+        trx_id = 0;
+        lock_to_date = request.lock_to_date;
+        account_hash = account_hash;
+        balances = null;
+      },
+      true,
+    );
+
+    debug if (debug_channel.escrow) D.print(debug_show (escrow_result));
+
+    debug if (debug_channel.escrow) D.print("adding loaded from balance transaction" # debug_show (balance));
+    //add deposit transaction
+    let new_trx = switch (
+      Metadata.add_transaction_record<system>(
         state,
         {
-          request.deposit with
-          amount = balance;
           token_id = request.token_id;
-          trx_id = 0;
-          lock_to_date = request.lock_to_date;
-          account_hash = account_hash;
-          balances = null;
-        },
-        true,
-      );
-
-      debug if (debug_channel.escrow) D.print(debug_show (escrow_result));
-
-      debug if (debug_channel.escrow) D.print("adding loaded from balance transaction" # debug_show (balance));
-      //add deposit transaction
-      switch (
-        Metadata.add_transaction_record<system>(
-          state,
-          {
+          index = 0;
+          txn_type = #escrow_deposit {
+            buyer = request.deposit.buyer;
+            seller = request.deposit.seller;
+            token = request.deposit.token;
+            amount = balance;
             token_id = request.token_id;
-            index = 0;
-            txn_type = #escrow_deposit {
-              buyer = request.deposit.buyer;
-              seller = request.deposit.seller;
-              token = request.deposit.token;
-              amount = balance;
-              token_id = request.token_id;
-              trx_id = #extensible(#Text("loaded from balance"));
-              extensible = #Option(null);
-            };
-            timestamp = state.get_time();
-          },
-          caller,
-        )
-      ) {
-        case (#err(err)) {
-          debug if (debug_channel.escrow) D.print("in a bad error");
-          debug if (debug_channel.escrow) D.print(debug_show (err));
-          //nyi: this is really bad and will mess up certificatioin later so we should really throw
-          return #err(#awaited(Types.errors(?state.canistergeekLogger, #nyi, "recognize_escrow_nft_origyn - extensible token nyi - " # debug_show (request), ?caller)));
-        };
-        case (#ok(new_trx)) new_trx;
+            trx_id = #extensible(#Text("loaded from balance"));
+            extensible = #Option(null);
+          };
+          timestamp = state.get_time();
+        },
+        caller,
+      )
+    ) {
+      case (#err(err)) {
+        debug if (debug_channel.escrow) D.print("in a bad error");
+        debug if (debug_channel.escrow) D.print(debug_show (err));
+        //nyi: this is really bad and will mess up certificatioin later so we should really throw
+        return #err(#awaited(Types.errors(?state.canistergeekLogger, #nyi, "recognize_escrow_nft_origyn - extensible token nyi - " # debug_show (request), ?caller)));
       };
-    } else {
-      return #err(#awaited(Types.errors(?state.canistergeekLogger, #no_escrow_found, "recognize_escrow_nft_origyn - balance doesn't exist in account- " # debug_show (request), ?caller)));
+      case (#ok(new_trx)) new_trx;
     };
 
     //todo: if the amount found was not large enough, should we try to refund?

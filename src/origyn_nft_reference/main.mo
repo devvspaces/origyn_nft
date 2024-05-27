@@ -73,6 +73,7 @@ shared (deployer) actor class Nft_Canister() = this {
     streaming = false;
     manage_storage = false;
     calcs = true;
+    icrc7 = true;
   };
 
   let CandyTypes = MigrationTypes.Current.CandyTypes;
@@ -3187,6 +3188,8 @@ shared (deployer) actor class Nft_Canister() = this {
             Metadata.get_nft_owner(metadata)
           ) {
             case (#err(err)) {
+              debug if (debug_channel.icrc7) D.print("icrc7_owner_of : err " # debug_show (err));
+
               aBuf.add(null);
             };
             case (#ok(val)) {
@@ -3208,6 +3211,8 @@ shared (deployer) actor class Nft_Canister() = this {
                   );
                 };
                 case (_) {
+                  debug if (debug_channel.icrc7) D.print("icrc7_owner_of : not account or principal ");
+
                   aBuf.add(null);
                 };
               };
@@ -3215,6 +3220,8 @@ shared (deployer) actor class Nft_Canister() = this {
           };
         };
         case (_) {
+          debug if (debug_channel.icrc7) D.print("icrc7_owner_of : no metadata ");
+
           aBuf.add(null);
         };
       };
@@ -3275,7 +3282,9 @@ shared (deployer) actor class Nft_Canister() = this {
     // Existing escrow acts as approval
     let result = await* Owner.transferICRC7(get_state(), { owner = msg.caller; subaccount = request.from_subaccount }, request.to, request.token_id, msg.caller);
 
-    return [result];
+    debug if (debug_channel.icrc7) D.print("transferICRC7 : result " # debug_show (result));
+
+    return [?result];
   };
 
   public shared func icrc7_approve(request : ICRC7.ApprovalArgs) : async ICRC7.ApprovalResult {

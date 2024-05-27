@@ -1136,7 +1136,34 @@ module {
       case (#Class(val)) { #ok(#extensible(#Class(val))) };
       case (#Array(items)) {
         if (items.size() > 0) {
-          #ok(#account({ owner = switch (items[0]) { case (#Principal(val)) { val }; case (_) { return #err(Types.errors(null, #improper_interface, "candy_to_account -  improper interface, not a principal at 0 ", null)) } }; sub_account = if (items.size() > 1) { switch (items[1]) { case (#Blob(val)) { ?val }; case (_) { return #err(Types.errors(null, #improper_interface, "candy_to_account -  improper interface, not a blob at 1 ", null)) } } } else { null } }));
+          #ok(
+            #account({
+              owner = switch (items[0]) {
+                case (#Principal(val)) { val };
+                case (_) {
+                  return #err(Types.errors(null, #improper_interface, "candy_to_account -  improper interface, not a principal at 0 ", null));
+                };
+              };
+              sub_account = if (items.size() > 1) {
+                switch (items[1]) {
+                  case (#Option(?val)) {
+                    switch (val) {
+                      case (#Blob(bval)) { ?bval };
+                      case (_) {
+                        return #err(Types.errors(null, #improper_interface, "candy_to_account -  improper interface, not a ?blob at 1 ", null));
+                      };
+                    };
+                  };
+                  case (#Option(null)) { null };
+                  case (_) {
+                    return #err(Types.errors(null, #improper_interface, "candy_to_account -  improper interface, not an Option at 1 ", null));
+                  };
+                };
+              } else {
+                null;
+              };
+            })
+          );
         } else {
           return #err(Types.errors(null, #improper_interface, "candy_to_account -  improper interface, not enough items " # debug_show (items), null));
         };
@@ -1213,7 +1240,32 @@ module {
       };
     };
 
-    var temp_metadata : CandyTypes.CandyShared = switch (Properties.updatePropertiesShared(Conversions.candySharedToProperties(fresh_metadata), [{ name = Types.metadata.owner; mode = #Set(switch (new_owner) { case (#principal(buyer)) { #Principal(buyer) }; case (#account_id(buyer)) { #Text(buyer) }; case (#extensible(buyer)) { buyer }; case (#account(buyer)) { #Array([#Principal(buyer.owner), #Option(switch (buyer.sub_account) { case (null) { null }; case (?val) { ? #Blob(val) } })]) } }) }])) {
+    var temp_metadata : CandyTypes.CandyShared = switch (
+      Properties.updatePropertiesShared(
+        Conversions.candySharedToProperties(fresh_metadata),
+        [{
+          name = Types.metadata.owner;
+          mode = #Set(
+            switch (new_owner) {
+              case (#principal(buyer)) { #Principal(buyer) };
+              case (#account_id(buyer)) { #Text(buyer) };
+              case (#extensible(buyer)) { buyer };
+              case (#account(buyer)) {
+                #Array([
+                  #Principal(buyer.owner),
+                  #Option(
+                    switch (buyer.sub_account) {
+                      case (null) { null };
+                      case (?val) { ? #Blob(val) };
+                    }
+                  ),
+                ]);
+              };
+            }
+          );
+        }],
+      )
+    ) {
       case (#ok(props)) {
         #Class(props);
       };

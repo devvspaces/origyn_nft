@@ -38,7 +38,7 @@ module {
     token_id : Nat;
     transfer_result : { #Ok : Nat; #Err : TransferError };
   };
-  public type TransferResult = [TransferResultItem];
+  public type TransferResult = [?TransferResultItem];
 
   public type ApprovalArgs = {
     from_subaccount : ?Blob;
@@ -216,7 +216,7 @@ module {
     icrc7_tokens_of : shared query (Account, ?Nat, ?Nat) -> async [Nat];
     icrc7_balance_of : shared query ([Account]) -> async [Nat];
 
-    icrc7_transfer : shared ([TransferArgs]) -> async [?TransferResult];
+    icrc7_transfer : shared ([TransferArgs]) -> async TransferResult;
     icrc7_transfer_fee : shared (Nat) -> async ?Nat;
 
     icrc37_collection_metadata : shared query () -> async [(Text, Value)];

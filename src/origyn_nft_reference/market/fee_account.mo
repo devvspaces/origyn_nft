@@ -104,7 +104,7 @@ module {
 
         debug if (debug_channel.market) D.print("lock_token_fee_balance: total_balance = " # debug_show (token.total_balance) # " all_locked_value = " # debug_show (all_locked_value) # " token_to_lock " # debug_show (request.token_to_lock));
 
-        if (token.total_balance - all_locked_value : Nat > request.token_to_lock) {
+        if (token.total_balance - all_locked_value : Nat >= request.token_to_lock) {
           var previous_locked_value : Nat = Option.get<Nat>(Map.get<Text, Nat>(token.locks, Map.thash, request.sale_id), 0);
           let new_token_lock_value = previous_locked_value + request.token_to_lock;
 

@@ -10,6 +10,7 @@ import TrieMap "mo:base/TrieMap";
 import Blob "mo:base/Blob";
 
 import EXT "mo:ext/Core";
+import Star "mo:star/star";
 
 import DIP721 "DIP721";
 import ICRC7 "ICRC7";
@@ -302,6 +303,48 @@ module {
 
     debug if (debug_channel.icrc7) D.print("transferICRC7 : add_fund_to_fees_wallet " # debug_show (add_fund_to_fees_wallet));
 
+    let fee_deposit_request : Types.FeeDepositRequest = {
+      account = #account({ owner = from.owner; sub_account = from.subaccount });
+      token = NFTUtils.get_ogy_ledger();
+    };
+
+    let fee_deposit_ret = Star.toResult<Types.ManageSaleResponse, Types.OrigynError>(await* Market.deposit_fee_nft_origyn(state, fee_deposit_request, caller));
+    D.print("fee_deposit_ret = " # debug_show (fee_deposit_ret));
+    // no fund has been sent to fees wallet, balance = 0
+    switch (fee_deposit_ret) {
+      case (#ok(val)) {
+        switch (val) {
+          case (#fee_deposit(info)) {};
+          case (_) {
+            debug if (debug_channel.icrc7) D.print("transferICRC7 : fee_deposit request failed : Should have returned a #fee_deposit");
+            return {
+              token_id = tokenAsNat;
+              transfer_result = #Err(
+                #GenericError({
+                  message = "transferICRC7 : fee_deposit request failed : Should have returned a #fee_deposit ";
+                  error_code = 3;
+                })
+              );
+            };
+
+          };
+        };
+      };
+      case (_) {
+        debug if (debug_channel.icrc7) D.print("transferICRC7 : fee_deposit request failed : Should have returned a #fee_deposit");
+        return {
+          token_id = tokenAsNat;
+          transfer_result = #Err(
+            #GenericError({
+              message = "transferICRC7 : fee_deposit request failed : Should have returned a #fee_deposit ";
+              error_code = 3;
+            })
+          );
+        };
+
+      };
+    };
+
     let amount_sent = switch (add_fund_to_fees_wallet) {
       case (#Ok(data)) { data };
       case (#Err(err)) {
@@ -309,7 +352,7 @@ module {
           token_id = tokenAsNat;
           transfer_result = #Err(
             #GenericError({
-              message = "failure of ICRC2 transferFrom";
+              message = " failure of ICRC2 transferFrom ";
               error_code = 4;
             })
           );
@@ -318,7 +361,7 @@ module {
     };
 
     debug if (debug_channel.icrc7) D.print("transferICRC7 : amount_sent " # debug_show (amount_sent));
-    debug if (debug_channel.icrc7) D.print("transferICRC7 : market_transfer_nft_origyn_async query " # debug_show ({ token_id = token_id; sales_config = { escrow_receipt = ?{ seller = #account({ owner = from.owner; sub_account = from.subaccount }); buyer = #account({ owner = to.owner; sub_account = to.subaccount }); token_id = token_id; token = #ic({ canister = Principal.fromText(NFTUtils.OGY_LEDGER_CANISTER_ID); standard = #Ledger; decimals = 8; symbol = "OGY"; fee = ?200_000; id = null }); amount = 0 }; pricing = #instant(?[#fee_accounts(Royalties.royalties_names), #fee_schema(Types.metadata.__system_fixed_royalty)]); broker_id = null } }));
+    debug if (debug_channel.icrc7) D.print("transferICRC7 : market_transfer_nft_origyn_async query " # debug_show ({ token_id = token_id; sales_config = { escrow_receipt = ?{ seller = #account({ owner = from.owner; sub_account = from.subaccount }); buyer = #account({ owner = to.owner; sub_account = to.subaccount }); token_id = token_id; token = #ic({ canister = Principal.fromText(NFTUtils.OGY_LEDGER_CANISTER_ID); standard = #Ledger; decimals = 8; symbol = "OGY "; fee = ?200_000; id = null }); amount = 0 }; pricing = #instant(?[#fee_accounts(Royalties.royalties_names), #fee_schema(Types.metadata.__system_fixed_royalty)]); broker_id = null } }));
 
     let result = await* Market.market_transfer_nft_origyn_async(
       state,
@@ -339,7 +382,7 @@ module {
               canister = Principal.fromText(NFTUtils.OGY_LEDGER_CANISTER_ID);
               standard = #Ledger;
               decimals = 8;
-              symbol = "OGY";
+              symbol = "OGY ";
               fee = ?200_000;
               id = null;
             });
@@ -403,7 +446,7 @@ module {
       ) == false
     ) {
 
-      return #err(#Other("unauthorized caller must be the from address" # debug_show (request)));
+      return #err(#Other("unauthorized caller must be the from address " # debug_show (request)));
 
     };
 
@@ -421,7 +464,7 @@ module {
                 #account_id(data);
               };
               /* case(_){
-                                    return #err(#Other("accountID extensible not implemented in EXT transfer from"));
+                                    return #err(#Other("accountID extensible not implemented in EXT transfer from "));
                                 }; */
             },
             switch (request.from) {
@@ -432,7 +475,7 @@ module {
                 #account_id(data);
               };
               /* case(_){
-                                    return #err(#Other("accountID extensible not implemented in EXT transfer from"));
+                                    return #err(#Other("accountID extensible not implemented in EXT transfer from "));
                                 }; */
             },
             data,
@@ -440,7 +483,7 @@ module {
         ) {
           case (#ok(val)) { val };
           case (#err(err)) {
-            return #err(#Other("escrow required for EXT transfer - failure of EXT tranfer - have receiver visit https://prptl.io/-/" # Principal.toText(state.canister()) # "/-/" # data # "/-/vault?make-offer=true to make an offer" # err.flag_point));
+            return #err(#Other(" escrow required for EXT transfer - failure of EXT tranfer - have receiver visit https : //prptl.io/-/" # Principal.toText(state.canister()) # "/-/" # data # "/-/vault?make-offer=true to make an offer" # err.flag_point));
           };
         };
 
