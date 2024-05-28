@@ -47,9 +47,9 @@ module {
     verify_sale = false;
     ensure = false;
     invoice = false;
-    end_sale = false;
+    end_sale = true;
     market = false;
-    royalties = false;
+    royalties = true;
     offers = false;
     escrow = false;
     withdraw_escrow = false;
@@ -1189,12 +1189,12 @@ module {
           };
         };
 
-        debug if (debug_channel.market) D.print("winning_escrow.amount is " # debug_show (winning_escrow.amount));
-        debug if (debug_channel.market) D.print("remaning_fee is " # debug_show (remaning_fee));
+        debug if (debug_channel.royalties) D.print("winning_escrow.amount is " # debug_show (winning_escrow.amount));
+        debug if (debug_channel.royalties) D.print("remaning_fee is " # debug_show (remaning_fee));
 
         //let royaltyList = Buffer.Buffer<(Types.Account, Nat)>(royalty.size() + 1);
         if (winning_escrow.amount >= remaning_fee) {
-          var remaining = remaning_fee;
+          var remaining = Nat.sub(winning_escrow.amount, fee_);
           //if the fee is bigger than the amount we aren't going to pay anything
           //this should really be prevented elsewhere
 
@@ -1222,6 +1222,7 @@ module {
 
           remaining := royalty_result.0;
 
+          debug if (debug_channel.royalties) D.print("royalties paid is " # debug_show (remaining));
           //D.print("putting Sales balance");
           //D.print(debug_show(winning_escrow));
 
@@ -2046,7 +2047,7 @@ module {
               debug if (debug_channel.market) D.print("royalty matched in provided _fee_accounts. will use this account to pay royalties instead of winning escrow");
             };
             case (null) {
-              //this fees will be paid by winning_escrow directly
+              //this fees will be paid by escrow directly
               let total_royalty = switch (loaded_royalty) {
                 case (#fixed(val)) {
                   Int.abs(Float.toInt(Float.ceil(val.fixedXDR)));
@@ -2061,7 +2062,7 @@ module {
         };
 
         if (escrow.amount >= remaning_fee) {
-          var remaining = remaning_fee;
+          var remaining = Nat.sub(escrow.amount, fee_);
 
           debug if (debug_channel.royalties) D.print("calling process royalty" # debug_show ((total, remaining)));
 
