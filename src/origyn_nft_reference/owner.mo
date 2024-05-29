@@ -1,3 +1,4 @@
+import Array "mo:base/Array";
 import Buffer "mo:base/Buffer";
 import D "mo:base/Debug";
 import Iter "mo:base/Iter";
@@ -279,9 +280,27 @@ module {
       };
     };
 
-    debug if (debug_channel.icrc7) D.print("transferICRC7 : feeDepositAccount " # debug_show (feeDepositAccount));
+    let ?collection = Map.get(state.state.nft_metadata, Map.thash, "") else {
+      state.canistergeekLogger.logMessage("transferICRC7 cannot find collection metatdata. this should not happene" # debug_show (tokenAsNat), #Bool(false), null);
+      D.trap("transferICRC7 cannot find collection metatdata. this should not happen");
+    };
 
-    let fee_deposit_amount : Nat = Royalties.get_total_amount_fixed_royalties(Royalties.royalties_names, metadata);
+    let override = switch (Metadata.get_nft_bool_property(collection, Types.metadata.broker_royalty_dev_fund_override)) {
+      case (#ok(val)) val;
+      case (_) {
+        state.canistergeekLogger.logMessage("_build_royalties_broker_account overriding error candy type" # debug_show (collection) # debug_show (tokenAsNat), #Bool(false), null);
+        false;
+      };
+    };
+
+    debug if (debug_channel.icrc7) D.print("transferICRC7 : feeDepositAccount " # debug_show (feeDepositAccount));
+    let _royalties_names = if (override) {
+      Array.filter<Text>(Royalties.royalties_names, func x = x != "com.origyn.royalty.broker");
+    } else {
+      Royalties.royalties_names;
+    };
+
+    let fee_deposit_amount : Nat = Royalties.get_total_amount_fixed_royalties(_royalties_names, metadata);
 
     let ogy_ledger : ICRC2.Self = actor (NFTUtils.OGY_LEDGER_CANISTER_ID);
 

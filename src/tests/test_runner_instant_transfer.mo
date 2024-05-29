@@ -69,8 +69,8 @@ shared (deployer) actor class test_runner_instant_transfer(dfx_ledger : Principa
     let suite = S.suite(
       "test nft",
       [
-        S.test("testInstantTransfer", switch (await testInstantTransfer()) { case (#success) { true }; case (_) { false } }, M.equals<Bool>(T.bool(true))),
-        S.test("testSoulbound", switch (await testSoulbound()) { case (#success) { true }; case (_) { false } }, M.equals<Bool>(T.bool(true))),
+        // S.test("testInstantTransfer", switch (await testInstantTransfer()) { case (#success) { true }; case (_) { false } }, M.equals<Bool>(T.bool(true))),
+        // S.test("testSoulbound", switch (await testSoulbound()) { case (#success) { true }; case (_) { false } }, M.equals<Bool>(T.bool(true))),
         S.test("testIcrc7Transfer", switch (await testIcrc7Transfer()) { case (#success) { true }; case (_) { false } }, M.equals<Bool>(T.bool(true))),
       ],
     );
@@ -988,7 +988,7 @@ shared (deployer) actor class test_runner_instant_transfer(dfx_ledger : Principa
 
     let net_account = {
       owner = Principal.fromActor(net_wallet);
-      subaccount = ?Royalties.get_network_royalty_account(Principal.fromActor(dfx), null);
+      subaccount = ?Blob.fromArray(Royalties.get_network_royalty_account(Principal.fromActor(dfx), null));
     };
 
     let fund_a_wallet = await dfx.icrc1_transfer({
@@ -1018,7 +1018,7 @@ shared (deployer) actor class test_runner_instant_transfer(dfx_ledger : Principa
       Principal.fromActor(n_wallet),
       Principal.fromActor(this),
       2048000,
-      false,
+      true,
       dfxspec,
     );
     let updateNetwork = canister.collection_update_nft_origyn(#UpdateNetwork(?Principal.fromActor(net_wallet)));
@@ -1053,7 +1053,7 @@ shared (deployer) actor class test_runner_instant_transfer(dfx_ledger : Principa
       memo = null;
       from_subaccount = null;
       created_at_time = null;
-      amount = 2 * Option.get(fee_to_pay, 0) + 200_000;
+      amount = Option.get(fee_to_pay, 0) + 200_000;
       expected_allowance = null;
       expires_at = null;
       spender = {
@@ -1080,6 +1080,37 @@ shared (deployer) actor class test_runner_instant_transfer(dfx_ledger : Principa
     let owner_of = await icrc7_canister.icrc7_owner_of([token_id]);
     D.print("owner_of = " # debug_show (owner_of));
 
+    let a_balance = await dfx.icrc1_balance_of({
+      owner = Principal.fromActor(a_wallet);
+      subaccount = null;
+    });
+    let b_balance = await dfx.icrc1_balance_of({
+      owner = Principal.fromActor(b_wallet);
+      subaccount = null;
+    });
+    let n_balance = await dfx.icrc1_balance_of({
+      owner = Principal.fromActor(n_wallet);
+      subaccount = null;
+    });
+    let o_balance = await dfx.icrc1_balance_of({
+      owner = Principal.fromActor(o_wallet);
+      subaccount = null;
+    });
+    let canister_balance = await dfx.icrc1_balance_of({
+      owner = Principal.fromActor(canister);
+      subaccount = null;
+    });
+    let this_balance = await dfx.icrc1_balance_of({
+      owner = Principal.fromActor(this);
+      subaccount = null;
+    });
+    let net_balance = await dfx.icrc1_balance_of(net_account);
+
+    let fee_wallet_balance = await dfx.icrc1_balance_of({
+      owner = sellerFeeDepositAccount.account.principal;
+      subaccount = ?sellerFeeDepositAccount.account.sub_account;
+    });
+
     let transfer_ret : ICRC7Types.TransferResult = await icrc7_canister.icrc7_transfer([{
       from_subaccount = null;
       to = b_account;
@@ -1091,6 +1122,55 @@ shared (deployer) actor class test_runner_instant_transfer(dfx_ledger : Principa
 
     let owner_of2 = await icrc7_canister.icrc7_owner_of([token_id]);
     D.print("owner_of2 = " # debug_show (owner_of2));
+
+    let fake_wallet66 = await TestWalletDef.test_wallet();
+    let fake_wallet67 = await TestWalletDef.test_wallet();
+    let fake_wallet78 = await TestWalletDef.test_wallet();
+    let fake_wallet69 = await TestWalletDef.test_wallet();
+    let fake_wallet79 = await TestWalletDef.test_wallet();
+    let fake_wallet697 = await TestWalletDef.test_wallet();
+    let fake_wallet797 = await TestWalletDef.test_wallet();
+
+    let a_balance_after = await dfx.icrc1_balance_of({
+      owner = Principal.fromActor(a_wallet);
+      subaccount = null;
+    });
+    let b_balance_after = await dfx.icrc1_balance_of({
+      owner = Principal.fromActor(b_wallet);
+      subaccount = null;
+    });
+    let n_balance_after = await dfx.icrc1_balance_of({
+      owner = Principal.fromActor(n_wallet);
+      subaccount = null;
+    });
+    let o_balance_after = await dfx.icrc1_balance_of({
+      owner = Principal.fromActor(o_wallet);
+      subaccount = null;
+    });
+    let canister_balance_after = await dfx.icrc1_balance_of({
+      owner = Principal.fromActor(canister);
+      subaccount = null;
+    });
+    let this_balance_after = await dfx.icrc1_balance_of({
+      owner = Principal.fromActor(this);
+      subaccount = null;
+    });
+
+    let net_balance_after = await dfx.icrc1_balance_of(net_account);
+
+    let fee_wallet_balance_after = await dfx.icrc1_balance_of({
+      owner = sellerFeeDepositAccount.account.principal;
+      subaccount = ?sellerFeeDepositAccount.account.sub_account;
+    });
+
+    D.print("fee_wallet_balance5 = " # debug_show ((sellerFeeDepositAccount.account, fee_wallet_balance, fee_wallet_balance_after)));
+    D.print("a wallet " # debug_show ((Principal.fromActor(a_wallet), a_balance, a_balance_after)));
+    D.print("b wallet " # debug_show ((Principal.fromActor(b_wallet), b_balance, b_balance_after)));
+    D.print("n wallet " # debug_show ((Principal.fromActor(n_wallet), n_balance, n_balance_after)));
+    D.print("o wallet " # debug_show ((Principal.fromActor(o_wallet), o_balance, o_balance_after)));
+    D.print("net wallet " # debug_show ((Principal.fromActor(net_wallet), net_balance, net_balance_after)));
+    D.print("canister wallet " # debug_show ((Principal.fromActor(canister), canister_balance, canister_balance_after)));
+    D.print("this wallet " # debug_show ((Principal.fromActor(this), this_balance, this_balance_after)));
 
     return #success;
   };

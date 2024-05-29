@@ -69,8 +69,8 @@ module {
     "com.origyn.royalty.broker",
     "com.origyn.royalty.node",
     "com.origyn.royalty.originator",
-    "com.origyn.royalty.custom",
     "com.origyn.royalty.network",
+    "com.origyn.royalty.custom",
   ];
 
   public func get_total_amount_fixed_royalties(fee_accounts : [MigrationTypes.Current.FeeName], metadata : CandyTypes.CandyShared) : Nat {

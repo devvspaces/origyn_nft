@@ -1660,6 +1660,7 @@ module {
               return #err(Types.errors(?state.canistergeekLogger, #malformed_metadata, "market_transfer_nft_origyn fee_accounts need fixed fee_schema. Not compatible yet others royalties schema.", ?caller));
             };
 
+            let broker_set = false;
             switch (
               _lock_fee_accounts_according_to_fee_schema(
                 state,
@@ -1667,6 +1668,7 @@ module {
                 escrow.token,
                 owner,
                 internal_sale_id,
+                broker_set,
                 _fee_schema,
                 fee_accounts,
               )
@@ -2389,6 +2391,12 @@ module {
               };
             };
 
+            let broker_set = if (request.sales_config.broker_id == null) {
+              false;
+            } else {
+              true;
+            };
+
             switch (
               _lock_fee_accounts_according_to_fee_schema(
                 state,
@@ -2396,6 +2404,7 @@ module {
                 ret.token,
                 #account({ owner = caller; sub_account = null }),
                 sale_id,
+                broker_set,
                 fee_schema,
                 fee_accounts,
               )
@@ -3506,7 +3515,7 @@ module {
 
     switch (old_balance) {
       case (?old_balance) {
-        if (balance >= old_balance.amount and balance > 0) {
+        if (balance <= old_balance.amount and balance > 0) {
           //should result in a no-op as we already recognized a blanace with higher amount...put it back
           let ?asset_list = search.asset_list else return #err(#awaited(Types.errors(?state.canistergeekLogger, #unreachable, "retrieve escrow reached state that should be unreachable", ?caller)));
           ignore Map.put(asset_list, token_handler, old_balance.token, old_balance);
@@ -3519,56 +3528,52 @@ module {
 
     //put the escrow
 
-    let new_trx = if (balance > 0) {
-      debug if (debug_channel.escrow) D.print("putting the escrow");
-      let escrow_result = PutBalance.put_escrow_balance(
+    debug if (debug_channel.escrow) D.print("putting the escrow");
+    let escrow_result = PutBalance.put_escrow_balance(
+      state,
+      {
+        request.deposit with
+        amount = balance;
+        token_id = request.token_id;
+        trx_id = 0;
+        lock_to_date = request.lock_to_date;
+        account_hash = account_hash;
+        balances = null;
+      },
+      true,
+    );
+
+    debug if (debug_channel.escrow) D.print(debug_show (escrow_result));
+
+    debug if (debug_channel.escrow) D.print("adding loaded from balance transaction" # debug_show (balance));
+    //add deposit transaction
+    let new_trx = switch (
+      Metadata.add_transaction_record<system>(
         state,
         {
-          request.deposit with
-          amount = balance;
           token_id = request.token_id;
-          trx_id = 0;
-          lock_to_date = request.lock_to_date;
-          account_hash = account_hash;
-          balances = null;
-        },
-        true,
-      );
-
-      debug if (debug_channel.escrow) D.print(debug_show (escrow_result));
-
-      debug if (debug_channel.escrow) D.print("adding loaded from balance transaction" # debug_show (balance));
-      //add deposit transaction
-      switch (
-        Metadata.add_transaction_record<system>(
-          state,
-          {
+          index = 0;
+          txn_type = #escrow_deposit {
+            buyer = request.deposit.buyer;
+            seller = request.deposit.seller;
+            token = request.deposit.token;
+            amount = balance;
             token_id = request.token_id;
-            index = 0;
-            txn_type = #escrow_deposit {
-              buyer = request.deposit.buyer;
-              seller = request.deposit.seller;
-              token = request.deposit.token;
-              amount = balance;
-              token_id = request.token_id;
-              trx_id = #extensible(#Text("loaded from balance"));
-              extensible = #Option(null);
-            };
-            timestamp = state.get_time();
-          },
-          caller,
-        )
-      ) {
-        case (#err(err)) {
-          debug if (debug_channel.escrow) D.print("in a bad error");
-          debug if (debug_channel.escrow) D.print(debug_show (err));
-          //nyi: this is really bad and will mess up certificatioin later so we should really throw
-          return #err(#awaited(Types.errors(?state.canistergeekLogger, #nyi, "recognize_escrow_nft_origyn - extensible token nyi - " # debug_show (request), ?caller)));
-        };
-        case (#ok(new_trx)) new_trx;
+            trx_id = #extensible(#Text("loaded from balance"));
+            extensible = #Option(null);
+          };
+          timestamp = state.get_time();
+        },
+        caller,
+      )
+    ) {
+      case (#err(err)) {
+        debug if (debug_channel.escrow) D.print("in a bad error");
+        debug if (debug_channel.escrow) D.print(debug_show (err));
+        //nyi: this is really bad and will mess up certificatioin later so we should really throw
+        return #err(#awaited(Types.errors(?state.canistergeekLogger, #nyi, "recognize_escrow_nft_origyn - extensible token nyi - " # debug_show (request), ?caller)));
       };
-    } else {
-      return #err(#awaited(Types.errors(?state.canistergeekLogger, #no_escrow_found, "recognize_escrow_nft_origyn - balance doesn't exist in account- " # debug_show (request), ?caller)));
+      case (#ok(new_trx)) new_trx;
     };
 
     //todo: if the amount found was not large enough, should we try to refund?
@@ -3621,6 +3626,8 @@ module {
 
         return #err(#awaited(Types.errors(?state.canistergeekLogger, #escrow_not_large_enough, "escrow refunded because result was less than what was in the account" # debug_show (refund_result), ?caller)));
       };
+
+      return #err(#awaited(Types.errors(?state.canistergeekLogger, #escrow_not_large_enough, "real balance (" #debug_show (balance) # ") was less than request deposit amount (" #debug_show (request.deposit.amount) # ")", ?caller)));
     };
 
     return #awaited(#recognize_escrow({ receipt = { request.deposit with
@@ -4088,6 +4095,7 @@ module {
 
     switch (fee_accounts) {
       case (?_fee_accounts) {
+        let broker_set = if (broker == null) { false } else { true };
         switch (
           _lock_fee_accounts_according_to_fee_schema(
             state,
@@ -4095,6 +4103,7 @@ module {
             current_sale_state.token,
             #account({ owner = caller; sub_account = null }),
             sale_id,
+            broker_set,
             fee_schema,
             _fee_accounts,
           )
@@ -4273,6 +4282,7 @@ module {
     token : MigrationTypes.Current.TokenSpec,
     account : MigrationTypes.Current.Account,
     sale_id : Text,
+    broker_set : Bool,
     fee_schema : Text,
     fee_accounts : MigrationTypes.Current.FeeAccountsParams,
   ) : Result.Result<(), Types.OrigynError> {
@@ -4323,47 +4333,51 @@ module {
             return #err(Types.errors(?state.canistergeekLogger, #improper_interface, "market_transfer_nft_origyn bad royalty name = " # debug_show (royalties_name) # " and should be one of " # debug_show (royalties_names), null));
           };
         };
+        debug if (debug_channel.market) D.print("loaded_royalty.tag = " # debug_show (loaded_royalty.tag) # " royalties_name = " # debug_show (royalties_name) # " broker_set " # debug_show (broker_set));
+        if ((broker_set == true or (broker_set == false and loaded_royalty.tag != "com.origyn.royalty.broker"))) {
+          if (royalties_name == loaded_royalty.tag) {
+            let fees : Nat = Int.abs(Float.toInt(Float.ceil(loaded_royalty.fixedXDR)));
 
-        if (royalties_name == loaded_royalty.tag) {
-          let fees : Nat = Int.abs(Float.toInt(Float.ceil(loaded_royalty.fixedXDR)));
-
-          debug if (debug_channel.market) D.print("royalties_name = " # debug_show (royalties_name) # " fees " # debug_show (fees));
-          switch (
-            FeeAccount.lock_token_fee_balance(
-              state,
-              {
-                account = account;
-                token = token_spec;
-                token_to_lock = fees;
-                sale_id = sale_id;
-              },
-            )
-          ) {
-            case (#ok(val)) {
-              tmp_locked_fees.add((token_spec, fees));
-            };
-            case (#err(err)) {
-              for ((_token_spec, fees) in tmp_locked_fees.vals()) {
-                let _ = FeeAccount.unlock_token_fee_balance(
-                  state,
-                  {
-                    account = account;
-                    token = _token_spec;
-                    sale_id = sale_id;
-                    update_balance = false;
-                  },
-                );
+            debug if (debug_channel.market) D.print("royalties_name = " # debug_show (royalties_name) # " fees " # debug_show (fees));
+            switch (
+              FeeAccount.lock_token_fee_balance(
+                state,
+                {
+                  account = account;
+                  token = token_spec;
+                  token_to_lock = fees;
+                  sale_id = sale_id;
+                },
+              )
+            ) {
+              case (#ok(val)) {
+                tmp_locked_fees.add((token_spec, fees));
               };
-              return #err(Types.errors(?state.canistergeekLogger, #low_fee_balance, "market_transfer_nft_origyn low_fee_balance", null));
+              case (#err(err)) {
+                for ((_token_spec, fees) in tmp_locked_fees.vals()) {
+                  let _ = FeeAccount.unlock_token_fee_balance(
+                    state,
+                    {
+                      account = account;
+                      token = _token_spec;
+                      sale_id = sale_id;
+                      update_balance = false;
+                    },
+                  );
+                };
+                return #err(Types.errors(?state.canistergeekLogger, #low_fee_balance, "market_transfer_nft_origyn low_fee_balance", null));
+              };
             };
+            found := true;
           };
-          found := true;
         };
       };
 
-      if (specific_token_set == true and found == false) {
-        debug if (debug_channel.market) D.print("Specific token set for this royalty : " # debug_show (loaded_royalty.tag) # " but no fee_account setted to pay this royalty.");
-        return #err(Types.errors(?state.canistergeekLogger, #improper_interface, "market_transfer_nft_origyn specific token set for this royalty : " # debug_show (loaded_royalty.tag) # " but no fee_account setted to pay this royalty.", null));
+      if ((broker_set == true or (broker_set == false and loaded_royalty.tag != "com.origyn.royalty.broker"))) {
+        if (specific_token_set == true and found == false) {
+          debug if (debug_channel.market) D.print("Specific token set for this royalty : " # debug_show (loaded_royalty.tag) # " but no fee_account setted to pay this royalty.");
+          return #err(Types.errors(?state.canistergeekLogger, #improper_interface, "market_transfer_nft_origyn specific token set for this royalty : " # debug_show (loaded_royalty.tag) # " but no fee_account setted to pay this royalty.", null));
+        };
       };
     };
 

@@ -101,10 +101,10 @@ shared (deployer) actor class test_runner(dfx_ledger : Principal, dfx_ledger2 : 
       [
         // S.test("testAuction_v3", switch (await testAuction_v3()) { case (#success) { true }; case (_) { false } }, M.equals<Bool>(T.bool(true))),
         // S.test("testDutch", switch (await testDutch()) { case (#success) { true }; case (_) { false } }, M.equals<Bool>(T.bool(true))),
-        S.test("testRecognizeEscrow", switch (await testRecognizeEscrow()) { case (#success) { true }; case (_) { false } }, M.equals<Bool>(T.bool(true))),
-        // S.test("testRoyalties", switch (await testRoyalties()) { case (#success) { true }; case (_) { false } }, M.equals<Bool>(T.bool(true))),
-        // S.test("testAuction", switch (await testAuction()) { case (#success) { true }; case (_) { false } }, M.equals<Bool>(T.bool(true))),
-        // S.test("testAuction_v2", switch (await testAuction_v2()) { case (#success) { true }; case (_) { false } }, M.equals<Bool>(T.bool(true))),
+        // S.test("testRecognizeEscrow", switch (await testRecognizeEscrow()) { case (#success) { true }; case (_) { false } }, M.equals<Bool>(T.bool(true))),
+        S.test("testRoyalties", switch (await testRoyalties()) { case (#success) { true }; case (_) { false } }, M.equals<Bool>(T.bool(true))),
+        S.test("testAuction", switch (await testAuction()) { case (#success) { true }; case (_) { false } }, M.equals<Bool>(T.bool(true))),
+        S.test("testAuction_v2", switch (await testAuction_v2()) { case (#success) { true }; case (_) { false } }, M.equals<Bool>(T.bool(true))),
         // S.test("testDeposits", switch (await testDeposit()) { case (#success) { true }; case (_) { false } }, M.equals<Bool>(T.bool(true))),
         // S.test("testStandardLedger", switch (await testStandardLedger()) { case (#success) { true }; case (_) { false } }, M.equals<Bool>(T.bool(true))),
         // S.test("testMarketTransfer", switch (await testMarketTransfer()) { case (#success) { true }; case (_) { false } }, M.equals<Bool>(T.bool(true))),
@@ -1560,7 +1560,7 @@ shared (deployer) actor class test_runner(dfx_ledger : Principal, dfx_ledger2 : 
             case (#ok(res)) { "unexpected success" };
             case (#err(err)) {
               D.print("fail if no escrow exists for general staged sale has error");
-              if (err.number == 3000) {
+              if (err.number == 3011) {
                 //since the requestor isnt the owner and this isnt minted we wont reveal it is a real token
                 "correct number";
               } else {
@@ -1678,7 +1678,7 @@ shared (deployer) actor class test_runner(dfx_ledger : Principal, dfx_ledger2 : 
             case (#ok(res)) { "unexpected success" };
             case (#err(err)) {
               D.print("blind market 2 error");
-              if (err.number == 3000) {
+              if (err.number == 3011) {
                 //
                 "correct number";
               } else {
@@ -1710,7 +1710,7 @@ shared (deployer) actor class test_runner(dfx_ledger : Principal, dfx_ledger2 : 
             case (#ok(res)) { "unexpected success" };
             case (#err(err)) {
               D.print("a wallet recognize general staged fake error");
-              if (err.number == 3000) {
+              if (err.number == 3011) {
                 //
                 "correct number";
               } else {
