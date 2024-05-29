@@ -1572,30 +1572,6 @@ module {
           };
         };
 
-        let _fee_schema : Text = if (this_is_minted == false) {
-          Types.metadata.__system_primary_royalty;
-        } else {
-          Types.metadata.__system_secondary_royalty;
-        };
-
-        let royalty = switch (Properties.getClassPropertyShared(metadata, Types.metadata.__system)) {
-          case (null) { [] };
-          case (?val) {
-            debug if (debug_channel.market) D.print("found metadata" # debug_show (val.value));
-            royalty_to_array(val.value, _fee_schema);
-          };
-        };
-
-        // make sur royalties definition didnt changed and no error can occured after transfering nft and funds.
-        for (this_item in royalty.vals()) {
-          let loaded_royalty = switch (Royalties._load_royalty(_fee_schema, this_item)) {
-            case (#ok(val)) { val };
-            case (#err(err)) {
-              return #err(Types.errors(?state.canistergeekLogger, #malformed_metadata, "end_sale_nft_origyn - error _load_royalty ", ?caller));
-            };
-          };
-        };
-
         //reentrancy risk so we remove the credit from the escrow
         debug if (debug_channel.market) D.print("updating the asset list");
         debug if (debug_channel.market) D.print(debug_show (Map.size(verified.found_asset_list)));
@@ -1799,6 +1775,30 @@ module {
         };
 
         Map.set(state.state.nft_metadata, Map.thash, escrow.token_id, metadata);
+
+        let _fee_schema : Text = if (this_is_minted == false) {
+          Types.metadata.__system_primary_royalty;
+        } else {
+          Types.metadata.__system_secondary_royalty;
+        };
+
+        let royalty = switch (Properties.getClassPropertyShared(metadata, Types.metadata.__system)) {
+          case (null) { [] };
+          case (?val) {
+            debug if (debug_channel.market) D.print("found metadata" # debug_show (val.value));
+            royalty_to_array(val.value, _fee_schema);
+          };
+        };
+
+        // make sur royalties definition didnt changed and no error can occured after transfering nft and funds.
+        for (this_item in royalty.vals()) {
+          let loaded_royalty = switch (Royalties._load_royalty(_fee_schema, this_item)) {
+            case (#ok(val)) { val };
+            case (#err(err)) {
+              return #err(Types.errors(?state.canistergeekLogger, #malformed_metadata, "end_sale_nft_origyn - error _load_royalty ", ?caller));
+            };
+          };
+        };
 
         //escrow already invalidated
         //calculate royalties

@@ -2083,6 +2083,7 @@ shared (deployer) actor class test_runner(dfx_ledger : Principal, dfx_ledger2 : 
 
     });
 
+    D.print("primary_sale ");
     D.print(debug_show (primary_sale));
 
     //create fake wallet for time duration
