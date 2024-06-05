@@ -14,11 +14,13 @@ types = { path = "../libraries/types" }
 utils = { path = '../libraries/utils' }
 serde_yaml = { workspace = true }
 icrc_ledger_canister = { path = "../external_canisters/icrc_ledger/api" }
+origyn_nft_reference = { path = "../external_canisters/origyn_nft_reference/api" }
 canister_logger = { path = '../libraries/canister_logger' }
 canister_state_macros = { path = '../libraries/canister_state_macros' }
 canister_time = { path = '../libraries/canister_time' }
 canister_tracing_macros = { path = '../libraries/canister_tracing_macros' }
 http_request = { path = '../libraries/http_request' }
+ledger_utils = { path = "../libraries/ledger_utils" }
 ic-cdk-macros = { workspace = true }
 ic-cdk-timers = { workspace = true }
 ic-stable-structures = { workspace = true }

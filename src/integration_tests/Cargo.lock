@@ -882,7 +882,9 @@ dependencies = [
  "icrc-ledger-types",
  "icrc_ledger_canister",
  "lazy_static",
+ "ledger_utils",
  "num-bigint",
+ "origyn_nft_reference",
  "pocket-ic",
  "rand",
  "serde",
@@ -930,6 +932,21 @@ name = "leb128"
 version = "0.2.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "884e2677b40cc8c339eaefcb701c32ef1fd2493d71118dc0ca4b6a736c93bd67"
+
+[[package]]
+name = "ledger_utils"
+version = "0.1.0"
+dependencies = [
+ "candid",
+ "ic-ledger-types",
+ "icrc-ledger-types",
+ "icrc_ledger_canister_c2c_client",
+ "serde",
+ "serde_cbor",
+ "sha2",
+ "sha256",
+ "types",
+]
 
 [[package]]
 name = "libc"
@@ -1059,6 +1076,18 @@ name = "openssl-probe"
 version = "0.1.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ff011a302c396a5197692431fc1948019154afc178baf7d8e37367442a4601cf"
+
+[[package]]
+name = "origyn_nft_reference"
+version = "0.1.0"
+dependencies = [
+ "candid",
+ "candid_gen",
+ "ic-cdk 0.14.0",
+ "icrc-ledger-types",
+ "serde",
+ "serde_bytes",
+]
 
 [[package]]
 name = "overload"
@@ -1593,6 +1622,13 @@ dependencies = [
  "cfg-if",
  "cpufeatures",
  "digest",
+]
+
+[[package]]
+name = "sha256"
+version = "0.1.0"
+dependencies = [
+ "sha2",
 ]
 
 [[package]]

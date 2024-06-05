@@ -5,18 +5,20 @@ use types::CanisterWasm;
 
 lazy_static! {
   // external canisters
-  pub static ref OGY_LEGACY_LEDGER: CanisterWasm = get_external_canister_wasm("ogy_legacy_ledger");
+  pub static ref ORIGYN_NFT: CanisterWasm = get_external_canister_wasm("origyn_nft_reference");
+  pub static ref OGY_LEDGER: CanisterWasm = get_external_canister_wasm("icrc_ledger");
+  pub static ref LDG_LEDGER: CanisterWasm = get_external_canister_wasm("icrc_ledger");
 }
 
 fn get_internal_canister_wasm(canister: &str) -> Vec<u8> {
   read_file_from_relative_bin(
-    &format!(
-      "../canisters/{canister}/target/wasm32-unknown-unknown/release/{canister}_canister.wasm.gz"
-    )
+    &format!("../../.dfx/local/canisters/{canister}/{canister}.wasm.gz")
   ).unwrap()
 }
 fn get_external_canister_wasm(canister: &str) -> Vec<u8> {
-  read_file_from_relative_bin(&format!("../wasms/{canister}_canister.wasm.gz")).unwrap()
+  read_file_from_relative_bin(
+    &format!("../../external_canisters/{canister}/wasm/{canister}_canister.wasm.gz")
+  ).unwrap()
 }
 
 fn read_file_from_relative_bin(file_path: &str) -> Result<Vec<u8>, std::io::Error> {
