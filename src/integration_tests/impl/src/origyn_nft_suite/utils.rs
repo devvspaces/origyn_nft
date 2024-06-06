@@ -2003,18 +2003,18 @@ fn standardCollection(
   }
 }
 
-// fn standardFileChunk(
-//   token_id: String,
-//   library_id: String,
-//   text: String,
-//   filedata: CandyShared,
-//   chunk: Nat
-// ) -> StageChunkArg {
-//   StageChunkArg {
-//     token_id: token_id,
-//     library_id: library_id,
-//     filedata: Box::new(filedata),
-//     chunk: chunk,
-//     content: Blob.fromText(text),
-//   }
-// }
+fn standardFileChunk(
+  token_id: String,
+  library_id: String,
+  text: String,
+  filedata: CandyShared,
+  chunk: Nat
+) -> StageChunkArg {
+  StageChunkArg {
+    token_id: token_id,
+    library_id: library_id,
+    filedata: Box::new(filedata),
+    chunk: chunk,
+    content: ByteBuf::from(text.as_bytes()),
+  }
+}
