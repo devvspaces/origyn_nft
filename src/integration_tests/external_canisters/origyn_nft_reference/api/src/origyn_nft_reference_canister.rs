@@ -764,6 +764,25 @@ pub enum Dip721TokensListMetadata {
   Err(NftError),
 }
 #[derive(CandidType, Deserialize)]
+pub enum VecItem1 {
+  Nat64Content(u64),
+  Nat32Content(u32),
+  BoolContent(bool),
+  Nat8Content(u8),
+  Int64Content(i64),
+  IntContent(candid::Int),
+  NatContent(candid::Nat),
+  Nat16Content(u16),
+  Int32Content(i32),
+  Int8Content(i8),
+  FloatContent(f64),
+  Int16Content(i16),
+  BlobContent(serde_bytes::ByteBuf),
+  NestedContent(Box<Vec<GenericValue>>),
+  #[serde(rename = "Principal")] Principal_(Principal),
+  TextContent(String),
+}
+#[derive(CandidType, Deserialize)]
 pub enum GenericValue {
   Nat64Content(u64),
   Nat32Content(u32),

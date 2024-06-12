@@ -5,10 +5,10 @@ use utils::consts::{ E8S_FEE_OGY, E8S_PER_OGY };
 use crate::origyn_nft_suite::{ init::init, TestEnv };
 use crate::utils::random_principal;
 
-#[tokio::test]
-async fn valid_transfer() {
+#[test]
+fn valid_transfer() {
   println!("create init");
-  let env = init().await;
+  let env = init();
   let TestEnv { mut pic, canister_ids, controller } = env;
 
   let nft_canister_id = canister_ids.origyn_nft;

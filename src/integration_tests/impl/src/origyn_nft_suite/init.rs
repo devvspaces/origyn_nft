@@ -18,21 +18,24 @@ use super::{ CanisterIds, TestEnv };
 
 pub static POCKET_IC_BIN: &str = "/usr/local/bin/pocket-ic";
 
-pub async fn init() -> TestEnv {
+pub fn init() -> TestEnv {
   validate_pocketic_installation();
   println!("install validate");
 
   let mut pic: PocketIc = PocketIc::new();
   println!("pic set");
 
-  let controller = random_principal();
-  let originator = random_principal();
-  println!("controller: {:?}", controller);
-  println!("originator: {:?}", originator);
-  let canister_ids: CanisterIds = install_canisters(&mut pic, controller);
-  println!("canister_ids: {:?}", canister_ids);
+  // let mut pic: PocketIc = PocketIc::new();
+  // println!("pic set");
 
-  init_origyn_nft(Service(canister_ids.origyn_nft), originator).await;
+  let controller: Principal = random_principal();
+  let originator: Principal = random_principal();
+  let canister_ids: CanisterIds = install_canisters(&mut pic, controller);
+  println!("origyn_nft: {:?}", canister_ids.origyn_nft.to_string());
+  println!("ogy_ledger: {:?}", canister_ids.ogy_ledger.to_string());
+  println!("ldg_ledger: {:?}", canister_ids.ldg_ledger.to_string());
+
+  init_origyn_nft(&mut pic, Service(canister_ids.origyn_nft), originator);
   TestEnv {
     pic,
     canister_ids,
@@ -40,46 +43,53 @@ pub async fn init() -> TestEnv {
   }
 }
 
-async fn init_origyn_nft(canister: Service, originator: Principal) {
+fn init_origyn_nft(pic: &mut PocketIc, canister: Service, originator: Principal) {
   let standardStage = nft_utils::build_standard_nft(
+    pic,
     "1".to_string(),
-    canister.clone(),
-    canister.0.clone(),
+    canister.0,
+    canister.0,
     originator,
     Nat::from(1024 as u32),
     false
-  ).await;
+  );
 }
 
 fn install_canisters(pic: &mut PocketIc, controller: Principal) -> CanisterIds {
-  let origyn_nft_canister_id = create_canister(pic, controller);
-  let ogy_ledger_canister_id = create_canister(pic, controller);
-  let ldg_ledger_canister_id = create_canister(pic, controller);
+  let origyn_nft_canister_id: Principal = create_canister(pic, controller);
+  let ogy_ledger_canister_id: Principal = create_canister(pic, controller);
+  let ldg_ledger_canister_id: Principal = create_canister(pic, controller);
 
-  let origyn_nft_canister_wasm = wasms::ORIGYN_NFT.clone();
-  let ogy_ledger_canister_wasm = wasms::OGY_LEDGER.clone();
-  let ldg_ledger_canister_wasm = wasms::LDG_LEDGER.clone();
+  let origyn_nft_canister_wasm: Vec<u8> = wasms::ORIGYN_NFT.clone();
+  let ogy_ledger_canister_wasm: Vec<u8> = wasms::OGY_LEDGER.clone();
+  let ldg_ledger_canister_wasm: Vec<u8> = wasms::LDG_LEDGER.clone();
 
-  let ogy_legacy_minting_account_principal = controller;
+  let ogy_legacy_minting_account_principal: Principal = controller;
 
   install_canister(pic, controller, origyn_nft_canister_id, origyn_nft_canister_wasm, {});
 
-  let ogy_ledger_init_args = icrc_ledger_canister::init::InitArgs {
-    minting_account: Account {
-      owner: ogy_legacy_minting_account_principal,
-      subaccount: None,
-    },
-    initial_balances: vec![],
-    archive_options: icrc_ledger_canister::init::ArchiveOptions {
-      trigger_threshold: 2000,
-      num_blocks_to_archive: 1000,
-      controller_id: Principal::anonymous(),
-    },
-    metadata: vec![],
-    transfer_fee: Nat::from(E8S_FEE_OGY),
-    token_symbol: "OGY".to_string(),
-    token_name: "Origyn".to_string(),
-  };
+  let ogy_ledger_init_args: icrc_ledger_canister::init::LedgerArgument = icrc_ledger_canister::init::LedgerArgument::Init(
+    icrc_ledger_canister::init::InitArgs {
+      minting_account: Account::from(ogy_legacy_minting_account_principal),
+      initial_balances: vec![(
+        Account {
+          owner: Principal::from_text("bw4dl-smaaa-aaaaa-qaacq-cai").unwrap(),
+          subaccount: None,
+        },
+        Nat::from(18_446_744_073_709_551_615 as u64),
+      )],
+      archive_options: icrc_ledger_canister::init::ArchiveOptions {
+        trigger_threshold: 2000,
+        num_blocks_to_archive: 1000,
+        controller_id: controller,
+      },
+      metadata: vec![],
+      transfer_fee: Nat::from(0u64),
+      token_symbol: "OGY".into(),
+      token_name: "Origyn".into(),
+    }
+  );
+
   install_canister(
     pic,
     controller,
@@ -88,22 +98,24 @@ fn install_canisters(pic: &mut PocketIc, controller: Principal) -> CanisterIds {
     ogy_ledger_init_args
   );
 
-  let ldg_ledger_init_args = icrc_ledger_canister::init::InitArgs {
-    minting_account: Account {
-      owner: ogy_legacy_minting_account_principal,
-      subaccount: None,
-    },
-    initial_balances: vec![],
-    archive_options: icrc_ledger_canister::init::ArchiveOptions {
-      trigger_threshold: 2000,
-      num_blocks_to_archive: 1000,
-      controller_id: Principal::anonymous(),
-    },
-    metadata: vec![],
-    transfer_fee: Nat::from(E8S_FEE_OGY),
-    token_symbol: "LDG".to_string(),
-    token_name: "LedGer".to_string(),
-  };
+  let ldg_ledger_init_args: icrc_ledger_canister::init::LedgerArgument = icrc_ledger_canister::init::LedgerArgument::Init(
+    icrc_ledger_canister::init::InitArgs {
+      minting_account: Account {
+        owner: ogy_legacy_minting_account_principal,
+        subaccount: None,
+      },
+      initial_balances: vec![],
+      archive_options: icrc_ledger_canister::init::ArchiveOptions {
+        trigger_threshold: 2000,
+        num_blocks_to_archive: 1000,
+        controller_id: controller,
+      },
+      metadata: vec![],
+      transfer_fee: Nat::from(E8S_FEE_OGY),
+      token_symbol: "LDG".to_string(),
+      token_name: "LedGer".to_string(),
+    }
+  );
 
   install_canister(
     pic,

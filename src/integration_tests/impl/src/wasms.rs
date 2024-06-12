@@ -17,7 +17,7 @@ fn get_internal_canister_wasm(canister: &str) -> Vec<u8> {
 }
 fn get_external_canister_wasm(canister: &str) -> Vec<u8> {
   read_file_from_relative_bin(
-    &format!("../../external_canisters/{canister}/wasm/{canister}_canister.wasm.gz")
+    &format!("../external_canisters/{canister}/wasm/{canister}_canister.wasm.gz")
   ).unwrap()
 }
 

@@ -12,7 +12,7 @@
   "scripts": {
     "install": "mops i",
     "build": "npm run build:origyn_nft_reference",
-    "build:origyn_nft_reference": "dfx build --check origyn_nft_reference && cp ./.dfx/local/canisters/origyn_nft_reference/origyn_nft_reference.wasm.gz src/integration_tests/external_canisters/origyn_nft_reference/wasm && didc bind -t rs ./.dfx/local/canisters/origyn_nft_reference/origyn_nft_reference.did  > src/integration_tests/external_canisters/origyn_nft_reference/api/src/origyn_nft_reference_canister.rs",
+    "build:origyn_nft_reference": "dfx build --check origyn_nft_reference && cp ./.dfx/local/canisters/origyn_nft_reference/origyn_nft_reference.wasm.gz src/integration_tests/external_canisters/origyn_nft_reference/wasm/origyn_nft_reference_canister.wasm.gz",
     "integration_test": "cd src/integration_tests && cargo test"
   },
   "type": "module",
