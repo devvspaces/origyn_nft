@@ -2471,6 +2471,7 @@ candid::define_service!(pub NftCanister : {
   "whoami" : candid::func!(() -> (Principal) query);
 });
 
+#[derive(Clone, Debug)]
 pub struct Service(pub Principal);
 impl Service {
   pub async fn advance_time(&self, arg0: candid::Int) -> Result<(candid::Int,)> {

@@ -5,6 +5,8 @@ use ledger_utils::principal_to_legacy_account_id;
 use pocket_ic::PocketIc;
 use utils::consts::E8S_FEE_OGY;
 use icrc_ledger_types::{ icrc1::{ account::Account, transfer::NumTokens } };
+use crate::origyn_nft_suite::nft_utils;
+use origyn_nft_reference::origyn_nft_reference_canister::{ Service };
 
 use crate::{
   client::pocket::{ create_canister, install_canister },
@@ -14,16 +16,23 @@ use crate::{
 
 use super::{ CanisterIds, TestEnv };
 
-pub static POCKET_IC_BIN: &str = "./pocket-ic";
+pub static POCKET_IC_BIN: &str = "/usr/local/bin/pocket-ic";
 
-pub fn init() -> TestEnv {
+pub async fn init() -> TestEnv {
   validate_pocketic_installation();
+  println!("install validate");
 
-  let mut pic = PocketIc::new();
+  let mut pic: PocketIc = PocketIc::new();
+  println!("pic set");
 
   let controller = random_principal();
-  let canister_ids = install_canisters(&mut pic, controller);
-  init_origyn_nft(&mut pic, controller, canister_ids.origyn_nft);
+  let originator = random_principal();
+  println!("controller: {:?}", controller);
+  println!("originator: {:?}", originator);
+  let canister_ids: CanisterIds = install_canisters(&mut pic, controller);
+  println!("canister_ids: {:?}", canister_ids);
+
+  init_origyn_nft(Service(canister_ids.origyn_nft), originator).await;
   TestEnv {
     pic,
     canister_ids,
@@ -31,7 +40,16 @@ pub fn init() -> TestEnv {
   }
 }
 
-fn init_origyn_nft(pic: &mut PocketIc, controller: Principal, origyn_nft_canister_id: Principal) {}
+async fn init_origyn_nft(canister: Service, originator: Principal) {
+  let standardStage = nft_utils::build_standard_nft(
+    "1".to_string(),
+    canister.clone(),
+    canister.0.clone(),
+    originator,
+    Nat::from(1024 as u32),
+    false
+  ).await;
+}
 
 fn install_canisters(pic: &mut PocketIc, controller: Principal) -> CanisterIds {
   let origyn_nft_canister_id = create_canister(pic, controller);

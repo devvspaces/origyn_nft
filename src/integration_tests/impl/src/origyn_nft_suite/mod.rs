@@ -4,7 +4,7 @@ use types::CanisterId;
 
 mod init;
 mod tests;
-mod utils;
+mod nft_utils;
 
 pub struct TestEnv {
   pub pic: PocketIc,
