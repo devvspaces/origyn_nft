@@ -10,7 +10,7 @@ use origyn_nft_reference::origyn_nft_reference_canister::{
 };
 use candid::{ Nat, Principal };
 use serde_bytes::ByteBuf;
-use ic_cdk::api::call::CallResult as OrigynResult;
+use ic_cdk::{ api::call::CallResult as OrigynResult, print };
 use pocket_ic::PocketIc;
 use types::CanisterId;
 
@@ -144,122 +144,98 @@ pub fn build_standard_nft(
   app: Principal,
   originator: Principal,
   file_size: Nat,
-  is_soulbound: bool
+  is_soulbound: bool,
+  controller: Principal,
+  net_principal: Principal
 ) -> BuildStandardNftReturns {
   let stage = crate::client::origyn_nft_reference::client::stage_nft_origyn(
     pic,
     canister_id,
+    Some(net_principal),
     standard_nft(token_id.clone(), canister_id, app, file_size, is_soulbound, originator)
   );
+  println!("stage: {:?}", stage);
 
-  let filestage: OrigynResult<
-    (StageLibraryResult,)
-  > = crate::client::origyn_nft_reference::client::stage_library_nft_origyn(
-    pic,
-    canister_id,
-    standardFileChunk(
-      token_id.clone(),
-      "page".to_string(),
-      "hello world".to_string(),
-      CandyShared::Option(None)
-    )
-  );
+  let filestage: StageLibraryResult =
+    crate::client::origyn_nft_reference::client::stage_library_nft_origyn(
+      pic,
+      canister_id,
+      Some(net_principal),
+      standardFileChunk(
+        token_id.clone(),
+        "page".to_string(),
+        "hello world".to_string(),
+        CandyShared::Option(None)
+      )
+    );
 
-  let previewstage: OrigynResult<
-    (StageLibraryResult,)
-  > = crate::client::origyn_nft_reference::client::stage_library_nft_origyn(
-    pic,
-    canister_id,
-    standardFileChunk(
-      token_id.clone(),
-      "preview".to_string(),
-      "preview hello world".to_string(),
-      CandyShared::Option(None)
-    )
-  );
+  println!("filestage: {:?}", filestage);
 
-  let hiddenstage: OrigynResult<
-    (StageLibraryResult,)
-  > = crate::client::origyn_nft_reference::client::stage_library_nft_origyn(
-    pic,
-    canister_id,
-    standardFileChunk(
-      token_id.clone(),
-      "hidden".to_string(),
-      "hidden hello world".to_string(),
-      CandyShared::Option(None)
-    )
-  );
+  let previewstage: StageLibraryResult =
+    crate::client::origyn_nft_reference::client::stage_library_nft_origyn(
+      pic,
+      canister_id,
+      Some(net_principal),
+      standardFileChunk(
+        token_id.clone(),
+        "preview".to_string(),
+        "preview hello world".to_string(),
+        CandyShared::Option(None)
+      )
+    );
 
-  let immutablestage: OrigynResult<
-    (StageLibraryResult,)
-  > = crate::client::origyn_nft_reference::client::stage_library_nft_origyn(
-    pic,
-    canister_id,
-    standardFileChunk(
-      token_id.clone(),
-      "immutable_item".to_string(),
-      "immutable".to_string(),
-      CandyShared::Option(None)
-    )
-  );
+  println!("previewstage: {:?}", previewstage);
 
-  let ret_stage = if let Ok((origyn_text_result,)) = stage {
-    match origyn_text_result {
+  let hiddenstage: StageLibraryResult =
+    crate::client::origyn_nft_reference::client::stage_library_nft_origyn(
+      pic,
+      canister_id,
+      Some(net_principal),
+      standardFileChunk(
+        token_id.clone(),
+        "hidden".to_string(),
+        "hidden hello world".to_string(),
+        CandyShared::Option(None)
+      )
+    );
+
+  println!("hiddenstage: {:?}", hiddenstage);
+
+  let immutablestage: StageLibraryResult =
+    crate::client::origyn_nft_reference::client::stage_library_nft_origyn(
+      pic,
+      canister_id,
+      Some(net_principal),
+      standardFileChunk(
+        token_id.clone(),
+        "immutable_item".to_string(),
+        "immutable".to_string(),
+        CandyShared::Option(None)
+      )
+    );
+
+  println!("immutablestage: {:?}", immutablestage);
+
+  let ret_stage = {
+    match stage {
       OrigynTextResult::Ok(response) => { Ok(response) }
       OrigynTextResult::Err(error) => { Err(error) }
     }
-  } else {
-    Err(OrigynError {
-      text: "no stage library result".to_string(),
-      error: Errors::Nyi,
-      number: 0,
-      flag_point: "filestage".to_string(),
-    })
   };
 
-  let ret_filestage: Result<Principal, OrigynError> = if
-    let Ok((stage_library_result,)) = filestage
-  {
-    match stage_library_result {
-      StageLibraryResult::Ok(response) => { Ok(response.canister) }
-      StageLibraryResult::Err(error) => { Err(error) }
-    }
-  } else {
-    Err(OrigynError {
-      text: "no stage library result".to_string(),
-      error: Errors::Nyi,
-      number: 0,
-      flag_point: "filestage".to_string(),
-    })
+  let ret_filestage: Result<Principal, OrigynError> = match filestage {
+    StageLibraryResult::Ok(response) => { Ok(response.canister) }
+    StageLibraryResult::Err(error) => { Err(error) }
   };
 
-  let ret_previewstage = if let Ok((stage_library_result,)) = previewstage {
-    match stage_library_result {
-      StageLibraryResult::Ok(response) => { Ok(response.canister) }
-      StageLibraryResult::Err(error) => { Err(error) }
-    }
-  } else {
-    Err(OrigynError {
-      text: "no stage library result".to_string(),
-      error: Errors::Nyi,
-      number: 0,
-      flag_point: "filestage".to_string(),
-    })
+  let ret_previewstage = match previewstage {
+    StageLibraryResult::Ok(response) => { Ok(response.canister) }
+    StageLibraryResult::Err(error) => { Err(error) }
   };
 
-  let ret_hiddenstage = if let Ok((stage_library_result,)) = hiddenstage {
-    match stage_library_result {
-      StageLibraryResult::Ok(response) => { Ok(response.canister) }
-      StageLibraryResult::Err(error) => { Err(error) }
-    }
-  } else {
-    Err(OrigynError {
-      text: "no stage library result".to_string(),
-      error: Errors::Nyi,
-      number: 0,
-      flag_point: "filestage".to_string(),
-    })
+  let ret_hiddenstage = match hiddenstage {
+    StageLibraryResult::Ok(response) => { Ok(response.canister) }
+    StageLibraryResult::Err(error) => { Err(error) }
   };
 
   return BuildStandardNftReturns {

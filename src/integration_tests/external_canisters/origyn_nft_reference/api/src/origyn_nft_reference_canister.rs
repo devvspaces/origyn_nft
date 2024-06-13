@@ -11,13 +11,13 @@ pub enum NftCanisterSetTimeModeArg {
   #[serde(rename = "standard")]
   Standard,
 }
-#[derive(CandidType, Deserialize)]
+#[derive(CandidType, Deserialize, Debug)]
 pub struct PropertyShared {
   pub value: Box<CandyShared>,
   pub name: String,
   pub immutable: bool,
 }
-#[derive(CandidType, Deserialize)]
+#[derive(CandidType, Deserialize, Debug)]
 pub enum CandyShared {
   Int(candid::Int),
   Map(Vec<(Box<CandyShared>, Box<CandyShared>)>),
@@ -508,7 +508,7 @@ pub struct BalanceResponse {
   pub multi_canister: Option<Vec<Principal>>,
   pub escrow: Vec<EscrowRecord1>,
 }
-#[derive(CandidType, Deserialize)]
+#[derive(CandidType, Deserialize, Debug)]
 pub enum Errors {
   #[serde(rename = "nyi")]
   Nyi,
@@ -611,7 +611,7 @@ pub enum Errors {
   #[serde(rename = "sales_withdraw_payment_failed")]
   SalesWithdrawPaymentFailed,
 }
-#[derive(CandidType, Deserialize)]
+#[derive(CandidType, Deserialize, Debug)]
 pub struct OrigynError {
   pub text: String,
   pub error: Errors,
@@ -725,7 +725,7 @@ pub enum ManageCollectionCommand {
   UpdateLogo(Option<String>),
   UpdateName(Option<String>),
 }
-#[derive(CandidType, Deserialize)]
+#[derive(CandidType, Deserialize, Debug)]
 pub enum OrigynBoolResult {
   #[serde(rename = "ok")] Ok(bool),
   #[serde(rename = "err")] Err(OrigynError),
@@ -986,7 +986,7 @@ pub enum CanisterMetricsData {
 pub struct CanisterMetrics {
   pub data: CanisterMetricsData,
 }
-#[derive(CandidType, Deserialize)]
+#[derive(CandidType, Deserialize, Debug)]
 pub enum OrigynTextResult {
   #[serde(rename = "ok")] Ok(String),
   #[serde(rename = "err")] Err(OrigynError),
@@ -1226,12 +1226,12 @@ pub enum ManageStorageRequest {
   ),
   #[serde(rename = "configure_storage")] ConfigureStorage(ManageStorageRequestConfigureStorage),
 }
-#[derive(CandidType, Deserialize)]
+#[derive(CandidType, Deserialize, Debug)]
 pub enum ManageStorageResponse {
   #[serde(rename = "add_storage_canisters")] AddStorageCanisters(candid::Nat, candid::Nat),
   #[serde(rename = "configure_storage")] ConfigureStorage(candid::Nat, candid::Nat),
 }
-#[derive(CandidType, Deserialize)]
+#[derive(CandidType, Deserialize, Debug)]
 pub enum ManageStorageResult {
   #[serde(rename = "ok")] Ok(ManageStorageResponse),
   #[serde(rename = "err")] Err(OrigynError),
@@ -2085,16 +2085,16 @@ pub struct StageChunkArg {
   pub filedata: Box<CandyShared>,
   pub library_id: String,
 }
-#[derive(CandidType, Deserialize)]
+#[derive(CandidType, Deserialize, Debug)]
 pub struct StageLibraryResponse {
   pub canister: Principal,
 }
-#[derive(CandidType, Deserialize)]
+#[derive(CandidType, Deserialize, Debug)]
 pub enum StageLibraryResult {
   #[serde(rename = "ok")] Ok(StageLibraryResponse),
   #[serde(rename = "err")] Err(OrigynError),
 }
-#[derive(CandidType, Deserialize)]
+#[derive(CandidType, Deserialize, Debug)]
 pub struct NftCanisterStageNftOrigynArg {
   pub metadata: Box<CandyShared>,
 }

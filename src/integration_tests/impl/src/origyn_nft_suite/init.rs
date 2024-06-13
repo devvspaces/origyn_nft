@@ -6,7 +6,11 @@ use pocket_ic::PocketIc;
 use utils::consts::E8S_FEE_OGY;
 use icrc_ledger_types::{ icrc1::{ account::Account, transfer::NumTokens } };
 use crate::origyn_nft_suite::nft_utils;
-use origyn_nft_reference::origyn_nft_reference_canister::{ Service };
+use origyn_nft_reference::origyn_nft_reference_canister::{
+  CandyShared,
+  ManageStorageRequestConfigureStorage,
+};
+use types::CanisterId;
 
 use crate::{
   client::pocket::{ create_canister, install_canister },
@@ -30,12 +34,13 @@ pub fn init() -> TestEnv {
 
   let controller: Principal = random_principal();
   let originator: Principal = random_principal();
+  let net_principal: Principal = random_principal();
   let canister_ids: CanisterIds = install_canisters(&mut pic, controller);
   println!("origyn_nft: {:?}", canister_ids.origyn_nft.to_string());
   println!("ogy_ledger: {:?}", canister_ids.ogy_ledger.to_string());
   println!("ldg_ledger: {:?}", canister_ids.ldg_ledger.to_string());
 
-  init_origyn_nft(&mut pic, Service(canister_ids.origyn_nft), originator);
+  init_origyn_nft(&mut pic, canister_ids.origyn_nft, originator, controller, net_principal);
   TestEnv {
     pic,
     canister_ids,
@@ -43,15 +48,45 @@ pub fn init() -> TestEnv {
   }
 }
 
-fn init_origyn_nft(pic: &mut PocketIc, canister: Service, originator: Principal) {
+fn init_origyn_nft(
+  pic: &mut PocketIc,
+  canister: CanisterId,
+  originator: Principal,
+  controller: Principal,
+  net_principal: Principal
+) {
+  let manage_storage_return: origyn_nft_reference::origyn_nft_reference_canister::ManageStorageResult = crate::client::origyn_nft_reference::client::manage_storage_nft_origyn(
+    pic,
+    canister,
+    Some(controller),
+    crate::client::origyn_nft_reference::manage_storage_nft_origyn::Args::ConfigureStorage(
+      ManageStorageRequestConfigureStorage::Heap(Some(Nat::from(500000000 as u32)))
+    )
+  );
+
+  println!("manage_storage_return: {:?}", manage_storage_return);
+
+  let collection_update_return: origyn_nft_reference::origyn_nft_reference_canister::OrigynBoolResult = crate::client::origyn_nft_reference::client::collection_update_nft_origyn(
+    pic,
+    canister,
+    Some(controller),
+    crate::client::origyn_nft_reference::collection_update_nft_origyn::Args::UpdateOwner(
+      net_principal
+    )
+  );
+
+  println!("collection_update_return: {:?}", collection_update_return);
+
   let standardStage = nft_utils::build_standard_nft(
     pic,
     "1".to_string(),
-    canister.0,
-    canister.0,
+    canister,
+    canister,
     originator,
     Nat::from(1024 as u32),
-    false
+    false,
+    controller,
+    net_principal
   );
 }
 
