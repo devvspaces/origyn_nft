@@ -1,4 +1,4 @@
-use crate::{ generate_query_call, generate_update_call };
+use crate::{ generate_query_call, generate_update_call, generate_update_call_encoded_args };
 use origyn_nft_reference::origyn_nft_reference_canister::{
   NftCanisterStageNftOrigynArg,
   OrigynTextResult,
@@ -8,12 +8,15 @@ use origyn_nft_reference::origyn_nft_reference_canister::{
   ManageStorageResult,
   ManageStorageRequest,
   ManageCollectionCommand,
+  Account,
 };
+use candid::utils::ArgumentEncoder;
 
 generate_update_call!(stage_nft_origyn);
 generate_update_call!(stage_library_nft_origyn);
 generate_update_call!(manage_storage_nft_origyn);
 generate_update_call!(collection_update_nft_origyn);
+generate_update_call_encoded_args!(mint_nft_origyn);
 
 pub mod stage_nft_origyn {
   use super::*;
@@ -41,6 +44,13 @@ pub mod collection_update_nft_origyn {
 
   pub type Args = ManageCollectionCommand;
   pub type Response = OrigynBoolResult;
+}
+
+pub mod mint_nft_origyn {
+  use super::*;
+
+  pub type Args = (String, Account);
+  pub type Response = OrigynTextResult;
 }
 
 pub mod client {
@@ -143,6 +153,32 @@ pub mod client {
           Principal::anonymous(),
           canister_id,
           &args
+        )
+      }
+    }
+  }
+
+  pub fn mint_nft_origyn(
+    pic: &mut PocketIc,
+    canister_id: CanisterId,
+    sender: Option<Principal>,
+    args: mint_nft_origyn::Args
+  ) -> mint_nft_origyn::Response {
+    match sender {
+      Some(sender) => {
+        crate::client::origyn_nft_reference::mint_nft_origyn(
+          pic,
+          sender,
+          canister_id,
+          candid::encode_args(args).unwrap()
+        )
+      }
+      None => {
+        crate::client::origyn_nft_reference::mint_nft_origyn(
+          pic,
+          Principal::anonymous(),
+          canister_id,
+          candid::encode_args(args).unwrap()
         )
       }
     }

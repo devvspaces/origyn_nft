@@ -1,15 +1,9 @@
 use std::{ env, path::Path };
 use candid::{ Nat, Principal };
-use ic_ledger_types::Tokens;
-use ledger_utils::principal_to_legacy_account_id;
 use pocket_ic::PocketIc;
 use utils::consts::E8S_FEE_OGY;
-use icrc_ledger_types::{ icrc1::{ account::Account, transfer::NumTokens } };
-use crate::origyn_nft_suite::nft_utils;
-use origyn_nft_reference::origyn_nft_reference_canister::{
-  CandyShared,
-  ManageStorageRequestConfigureStorage,
-};
+use icrc_ledger_types::icrc1::account::Account;
+use origyn_nft_reference::origyn_nft_reference_canister::ManageStorageRequestConfigureStorage;
 use types::CanisterId;
 
 use crate::{
@@ -18,7 +12,7 @@ use crate::{
   wasms,
 };
 
-use super::{ CanisterIds, TestEnv };
+use super::{ CanisterIds, TestEnv, PrincipalIds };
 
 pub static POCKET_IC_BIN: &str = "/usr/local/bin/pocket-ic";
 
@@ -32,26 +26,32 @@ pub fn init() -> TestEnv {
   // let mut pic: PocketIc = PocketIc::new();
   // println!("pic set");
 
-  let controller: Principal = random_principal();
-  let originator: Principal = random_principal();
-  let net_principal: Principal = random_principal();
-  let canister_ids: CanisterIds = install_canisters(&mut pic, controller);
+  let principal_ids: PrincipalIds = PrincipalIds {
+    net_principal: random_principal(),
+    controller: random_principal(),
+    originator: random_principal(),
+  };
+  let canister_ids: CanisterIds = install_canisters(&mut pic, principal_ids.controller);
   println!("origyn_nft: {:?}", canister_ids.origyn_nft.to_string());
   println!("ogy_ledger: {:?}", canister_ids.ogy_ledger.to_string());
   println!("ldg_ledger: {:?}", canister_ids.ldg_ledger.to_string());
 
-  init_origyn_nft(&mut pic, canister_ids.origyn_nft, originator, controller, net_principal);
+  init_origyn_nft(
+    &mut pic,
+    canister_ids.origyn_nft,
+    principal_ids.controller,
+    principal_ids.net_principal
+  );
   TestEnv {
     pic,
     canister_ids,
-    controller,
+    principal_ids,
   }
 }
 
 fn init_origyn_nft(
   pic: &mut PocketIc,
   canister: CanisterId,
-  originator: Principal,
   controller: Principal,
   net_principal: Principal
 ) {
@@ -74,20 +74,7 @@ fn init_origyn_nft(
       net_principal
     )
   );
-
   println!("collection_update_return: {:?}", collection_update_return);
-
-  let standardStage = nft_utils::build_standard_nft(
-    pic,
-    "1".to_string(),
-    canister,
-    canister,
-    originator,
-    Nat::from(1024 as u32),
-    false,
-    controller,
-    net_principal
-  );
 }
 
 fn install_canisters(pic: &mut PocketIc, controller: Principal) -> CanisterIds {

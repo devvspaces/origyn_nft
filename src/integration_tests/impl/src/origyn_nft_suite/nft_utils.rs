@@ -1,6 +1,5 @@
 use origyn_nft_reference::origyn_nft_reference_canister::{
   CandyShared,
-  Errors,
   NftCanisterStageNftOrigynArg,
   OrigynError,
   OrigynTextResult,
@@ -10,7 +9,6 @@ use origyn_nft_reference::origyn_nft_reference_canister::{
 };
 use candid::{ Nat, Principal };
 use serde_bytes::ByteBuf;
-use ic_cdk::{ api::call::CallResult as OrigynResult, print };
 use pocket_ic::PocketIc;
 use types::CanisterId;
 
@@ -130,6 +128,7 @@ const metadata: MetadataStruct = MetadataStruct {
   __system_current_sale_id: "current_sale_id",
 };
 
+#[derive(Debug)]
 pub struct BuildStandardNftReturns {
   stage: Result<String, OrigynError>,
   filestage: Result<Principal, OrigynError>,
@@ -145,7 +144,6 @@ pub fn build_standard_nft(
   originator: Principal,
   file_size: Nat,
   is_soulbound: bool,
-  controller: Principal,
   net_principal: Principal
 ) -> BuildStandardNftReturns {
   let stage = crate::client::origyn_nft_reference::client::stage_nft_origyn(

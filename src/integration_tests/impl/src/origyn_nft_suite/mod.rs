@@ -9,7 +9,14 @@ mod nft_utils;
 pub struct TestEnv {
   pub pic: PocketIc,
   pub canister_ids: CanisterIds,
-  pub controller: Principal,
+  pub principal_ids: PrincipalIds,
+}
+
+#[derive(Debug)]
+pub struct PrincipalIds {
+  net_principal: Principal,
+  controller: Principal,
+  originator: Principal,
 }
 
 #[derive(Debug)]
