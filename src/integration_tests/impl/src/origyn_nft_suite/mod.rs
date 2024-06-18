@@ -12,14 +12,15 @@ pub struct TestEnv {
   pub principal_ids: PrincipalIds,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct PrincipalIds {
   net_principal: Principal,
   controller: Principal,
   originator: Principal,
+  nft_owner: Principal,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct CanisterIds {
   pub origyn_nft: CanisterId,
   pub ogy_ledger: CanisterId,

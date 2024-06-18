@@ -58,19 +58,6 @@ module {
   public let DAY_LENGTH = 86_400_000_000_000;
   public let YEAR_LENGTH = 31_536_000_000_000_000; //365 days...no leap year
 
-  // TODO GWOJDA - CHANGE LEDGER AFTER SNS
-  public let OGY_LEDGER_CANISTER_ID : Text = "j5naj-nqaaa-aaaal-ajc7q-cai";
-  public func get_ogy_ledger() : MigrationTypes.Current.TokenSpec {
-    return #ic({
-      canister = Principal.fromText(OGY_LEDGER_CANISTER_ID);
-      fee = ?200_000;
-      symbol = "OGY";
-      decimals = 8;
-      id = null;
-      standard = #Ledger;
-    });
-  };
-
   /**
     * Converts a Nat value to a token ID Text value.
     * @param {Nat} tokenNat - The Nat value to convert.

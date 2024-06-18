@@ -1523,7 +1523,7 @@ module {
                       lock_to_date = null;
                       token_id = escrow.token_id;
                     },
-                    caller,
+                    MigrationTypes.Current.account_to_principal(escrow.buyer),
                   )
                 )
               ) {

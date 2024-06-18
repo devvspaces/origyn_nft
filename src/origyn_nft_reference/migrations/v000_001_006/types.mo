@@ -1460,15 +1460,16 @@ module {
 
   };
 
+  public let OGY_LEDGER_CANISTER_ID = "lkwrt-vyaaa-aaaaq-aadhq-cai";
+
   public func OGY() : TokenSpec {
     #ic({
-      canister = Principal.fromText("jwcfb-hyaaa-aaaaj-aac4q-cai");
+      canister = Principal.fromText(OGY_LEDGER_CANISTER_ID);
       fee = ?200_000;
       symbol = "OGY";
       decimals = 8;
       id = null;
-      standard = #ICRC1; //use #Ledger instead
+      standard = #Ledger;
     });
   };
-
 };

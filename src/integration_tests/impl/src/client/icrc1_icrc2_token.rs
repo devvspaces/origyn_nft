@@ -1,5 +1,5 @@
 use crate::{ generate_query_call, generate_update_call };
-use candid::Nat;
+use candid::{ CandidType, Nat };
 use icrc_ledger_canister::*;
 use icrc_ledger_types::icrc2::approve::{ ApproveArgs, ApproveError };
 use icrc_ledger_types::icrc2::allowance::{ Allowance, AllowanceArgs };
@@ -7,14 +7,15 @@ use icrc_ledger_types::icrc2::transfer_from::{ TransferFromArgs, TransferFromErr
 use icrc_ledger_types::icrc1::account::{ Account, Subaccount };
 use icrc_ledger_types::icrc1::transfer::{ TransferArg, TransferError };
 use ic_ledger_types::BlockIndex;
+use serde::Deserialize;
 
 generate_query_call!(icrc1_balance_of);
 generate_query_call!(icrc1_total_supply);
-generate_query_call!(icrc2_approve);
 generate_query_call!(icrc2_allowance);
 // Updates
 generate_update_call!(icrc1_transfer);
 generate_update_call!(icrc2_transfer_from);
+generate_update_call!(icrc2_approve);
 
 pub mod icrc1_balance_of {
   use super::*;
@@ -34,20 +35,32 @@ pub mod icrc1_transfer {
   use super::*;
 
   pub type Args = TransferArg;
-  pub type Response = Result<Nat, TransferError>;
+  #[derive(CandidType, Deserialize)]
+  pub enum Response {
+    Ok(Nat),
+    Err(TransferError),
+  }
 }
 
 pub mod icrc2_transfer_from {
   use super::*;
   pub type Args = TransferFromArgs;
-  pub type Response = Result<BlockIndex, ApproveError>;
+  #[derive(CandidType, Deserialize)]
+  pub enum Response {
+    Ok(Nat),
+    Err(TransferFromError),
+  }
 }
 
 pub mod icrc2_approve {
   use super::*;
 
   pub type Args = ApproveArgs;
-  pub type Response = Result<BlockIndex, TransferFromError>;
+  #[derive(CandidType, Deserialize)]
+  pub enum Response {
+    Ok(Nat),
+    Err(ApproveError),
+  }
 }
 
 pub mod icrc2_allowance {
@@ -150,7 +163,6 @@ pub mod client {
     ledger_canister_id: CanisterId,
     spender: Principal,
     from: Option<Subaccount>,
-    recipient: impl Into<Account>,
     amount: NumTokens
   ) -> icrc2_approve::Response {
     icrc2_approve(

@@ -1127,7 +1127,7 @@ pub struct BlockType {
   pub block_type: String,
 }
 pub type Subaccount = serde_bytes::ByteBuf;
-#[derive(CandidType, Deserialize)]
+#[derive(CandidType, Deserialize, Debug)]
 pub struct Account3 {
   pub owner: Principal,
   pub subaccount: Option<Subaccount>,
@@ -1187,7 +1187,7 @@ pub struct TransferArgs {
   pub from_subaccount: Option<serde_bytes::ByteBuf>,
   pub created_at_time: Option<u64>,
 }
-#[derive(CandidType, Deserialize)]
+#[derive(CandidType, Deserialize, Debug)]
 pub enum TransferError {
   GenericError {
     message: String,
@@ -1203,12 +1203,12 @@ pub enum TransferError {
   },
   TooOld,
 }
-#[derive(CandidType, Deserialize)]
+#[derive(CandidType, Deserialize, Debug)]
 pub enum TransferResultItemTransferResult {
   Ok(candid::Nat),
   Err(TransferError),
 }
-#[derive(CandidType, Deserialize)]
+#[derive(CandidType, Deserialize, Debug)]
 pub struct TransferResultItem {
   pub token_id: candid::Nat,
   pub transfer_result: TransferResultItemTransferResult,

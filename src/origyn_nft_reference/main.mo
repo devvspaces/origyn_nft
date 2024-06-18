@@ -3020,11 +3020,13 @@ shared (deployer) actor class Nft_Canister() = this {
       };
     };
 
+    D.print("override " # debug_show (override));
     let _royalties_names = if (override) {
       Array.filter<Text>(Royalties.royalties_names, func x = x != "com.origyn.royalty.broker");
     } else {
       Royalties.royalties_names;
     };
+    D.print("_royalties_names " # debug_show (_royalties_names));
 
     return ?Royalties.get_total_amount_fixed_royalties(_royalties_names, metadata);
   };
