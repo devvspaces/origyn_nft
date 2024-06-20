@@ -14,11 +14,12 @@ fn init_nft_with_premint_nft(
   origyn_nft: Principal,
   originator: Principal,
   net_principal: Principal,
-  nft_owner: Principal
+  nft_owner: Principal,
+  nft_name: String
 ) -> bool {
   let standard_nft_return: crate::origyn_nft_suite::nft_utils::BuildStandardNftReturns = crate::origyn_nft_suite::nft_utils::build_standard_nft(
     pic,
-    "1".to_string(),
+    nft_name.clone(),
     origyn_nft.clone(),
     origyn_nft.clone(),
     originator.clone(),
@@ -31,7 +32,7 @@ fn init_nft_with_premint_nft(
     pic,
     origyn_nft.clone(),
     Some(net_principal.clone()),
-    ("1".to_string(), Account::Principal_(nft_owner.clone()))
+    (nft_name.clone(), Account::Principal_(nft_owner.clone()))
   );
 
   println!("mint_return: {:?}", mint_return);
@@ -308,7 +309,7 @@ fn init_nft_with_premint_nft(
 // }
 
 #[test]
-fn icrc7_transfer() {
+fn icrc7_transfer_one() {
   let mut env = init();
   let TestEnv {
     ref mut pic,
@@ -321,7 +322,8 @@ fn icrc7_transfer() {
     origyn_nft.clone(),
     originator.clone(),
     net_principal.clone(),
-    nft_owner.clone()
+    nft_owner.clone(),
+    "1".to_string()
   );
 
   let token_id_as_nat = crate::client::origyn_nft_reference::client::get_token_id_as_nat(
@@ -418,5 +420,133 @@ fn icrc7_transfer() {
       }
     }
     None => panic!("transfer fee not found"),
+  }
+}
+
+#[test]
+fn icrc7_transfer_multiple() {
+  let mut env = init();
+  let TestEnv {
+    ref mut pic,
+    canister_ids: CanisterIds { origyn_nft, ogy_ledger, ldg_ledger },
+    principal_ids: PrincipalIds { net_principal, controller, originator, nft_owner },
+  } = env;
+
+  let MAX_NFTS = 3;
+  let mut name_as_nat_array: Vec<Nat> = Vec::new();
+  // loop to create multiple nft
+  for i in 0..MAX_NFTS {
+    init_nft_with_premint_nft(
+      pic,
+      origyn_nft.clone(),
+      originator.clone(),
+      net_principal.clone(),
+      nft_owner.clone(),
+      i.to_string()
+    );
+
+    name_as_nat_array.push(
+      crate::client::origyn_nft_reference::client::get_token_id_as_nat(
+        pic,
+        origyn_nft.clone(),
+        net_principal.clone(),
+        i.to_string()
+      )
+    );
+  }
+  let mut all_fee = Nat::from(0 as u32);
+
+  for i in name_as_nat_array.clone() {
+    let transfer_fee: Option<Nat> = crate::client::origyn_nft_reference::client::icrc7_transfer_fee(
+      pic,
+      origyn_nft.clone(),
+      net_principal.clone(),
+      i.clone()
+    );
+
+    match transfer_fee {
+      Some(fee) => {
+        all_fee = all_fee + fee;
+      }
+      None => panic!("transfer fee not found"),
+    }
+  }
+
+  let balance = icrc1_icrc2_token::client::balance_of(pic, ogy_ledger.clone(), nft_owner.clone());
+
+  let approve_res: icrc1_icrc2_token::icrc2_approve::Response = icrc1_icrc2_token::client::approve(
+    pic,
+    nft_owner.clone(),
+    ogy_ledger.clone(),
+    origyn_nft.clone(),
+    None,
+    all_fee.clone() + Nat::from(E8S_FEE_OGY) * Nat::from(MAX_NFTS as u32)
+  );
+
+  match approve_res {
+    icrc1_icrc2_token::icrc2_approve::Response::Ok(_) => (),
+    icrc1_icrc2_token::icrc2_approve::Response::Err(err) => panic!("approve failed: {:?}", err),
+  }
+
+  let owner_of = crate::client::origyn_nft_reference::client::icrc7_owner_of(
+    pic,
+    origyn_nft.clone(),
+    net_principal.clone(),
+    name_as_nat_array.clone()
+  );
+
+  println!("owner_of: {:?}", owner_of);
+  for item in owner_of {
+    match item {
+      Some(val) => {
+        println!("val: {:?}", val.owner.to_string());
+        // should match nft_owner
+        assert!(val.owner.to_string() == nft_owner.to_string());
+      }
+      None => (),
+    }
+  }
+
+  let mut _args_as_vec = Vec::new();
+  for i in name_as_nat_array.clone() {
+    let args: origyn_nft_reference::origyn_nft_reference_canister::TransferArgs = origyn_nft_reference::origyn_nft_reference_canister::TransferArgs {
+      memo: None,
+      from_subaccount: None,
+      created_at_time: None,
+      to: Account3 { owner: controller, subaccount: None },
+      token_id: i.clone(),
+    };
+
+    _args_as_vec.push(args);
+  }
+
+  let response: origyn_nft_reference::origyn_nft_reference_canister::TransferResult = crate::client::origyn_nft_reference::client::icrc7_transfer(
+    pic,
+    origyn_nft.clone(),
+    nft_owner.clone(),
+    _args_as_vec
+  );
+
+  for item in response {
+    println!("item: {:?}", item);
+  }
+
+  let owner_of = crate::client::origyn_nft_reference::client::icrc7_owner_of(
+    pic,
+    origyn_nft.clone(),
+    net_principal.clone(),
+    name_as_nat_array.clone()
+  );
+
+  println!("owner_of: {:?}", owner_of);
+  for item in owner_of {
+    match item {
+      Some(val) => {
+        println!("val: {:?}", val.owner.to_string());
+        // should match controller
+        assert!(val.owner.to_string() == controller.to_string());
+      }
+      None => (),
+    }
   }
 }

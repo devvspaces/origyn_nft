@@ -47,9 +47,9 @@ module {
     verify_sale = false;
     ensure = false;
     invoice = false;
-    end_sale = true;
-    market = true;
-    royalties = true;
+    end_sale = false;
+    market = false;
+    royalties = false;
     offers = false;
     escrow = false;
     withdraw_escrow = false;
@@ -1646,12 +1646,6 @@ module {
         debug if (debug_channel.market) D.print(debug_show (Map.size(verified.found_asset_list)));
         debug if (debug_channel.market) D.print(debug_show (Iter.toArray(Map.entries(verified.found_asset_list))));
 
-        //reentrancy risk so set the owner to a black hole while transaction is in flight
-        metadata := switch (Metadata.set_nft_owner(state, request.token_id, #extensible(#Text("trx in flight")), caller)) {
-          case (#err(err)) return #err(Types.errors(?state.canistergeekLogger, err.error, "market_transfer_nft_origyn can't set inflight owner " # err.flag_point, ?caller));
-          case (#ok(new_metadata)) new_metadata;
-        };
-
         switch (fee_accounts) {
           case (?fee_accounts) {
             debug if (debug_channel.market) D.print("fee_accounts is set !");
@@ -1678,6 +1672,23 @@ module {
             };
           };
           case (null) {};
+        };
+
+        //reentrancy risk so set the owner to a black hole while transaction is in flight
+        metadata := switch (Metadata.set_nft_owner(state, request.token_id, #extensible(#Text("trx in flight")), caller)) {
+          case (#err(err)) return async_market_transfer_unlock_fee_account_callback(
+            state,
+            metadata,
+            {
+              token = escrow.token;
+              sale_id = internal_sale_id;
+              fee_accounts = fee_accounts;
+              fee_schema = ?_fee_schema;
+              owner = owner;
+            },
+            #err(Types.errors(?state.canistergeekLogger, err.error, "market_transfer_nft_origyn can't set inflight owner " # err.flag_point, ?caller)),
+          );
+          case (#ok(new_metadata)) new_metadata;
         };
 
         let (trx_id : ?Types.TransactionID, account_hash : ?Blob, fee : ?Nat) = switch (escrow.token) {

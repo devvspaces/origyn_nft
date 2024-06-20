@@ -38,7 +38,7 @@ import StableBTreeTypes "mo:stableBTree/types";
 module {
 
   let debug_channel = {
-    announce = true;
+    announce = false;
   };
 
   let account_handler = MigrationTypes.Current.account_handler;

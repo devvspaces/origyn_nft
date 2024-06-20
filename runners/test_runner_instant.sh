@@ -11,7 +11,7 @@ echo $ADMIN_ACCOUNTID
 
 
 dfx canister create test_runner_instant_transfer
-dfx canister create dfxledger --specified-id j5naj-nqaaa-aaaal-ajc7q-cai
+dfx canister create dfxledger --specified-id lkwrt-vyaaa-aaaaq-aadhq-cai
 dfx canister create dfxledger2
 dfx canister create test_canister_factory
 dfx canister create test_storage_factory

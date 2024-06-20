@@ -25,8 +25,8 @@ class Ledger_Interface() {
   //this file provides services around moving tokens around a standard ledger(ICP/OGY)
 
   let debug_channel = {
-    deposit = true;
-    sale = true;
+    deposit = false;
+    sale = false;
     transfer = false;
   };
 

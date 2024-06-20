@@ -72,8 +72,8 @@ shared (deployer) actor class Nft_Canister() = this {
     storage = false;
     streaming = false;
     manage_storage = false;
-    calcs = true;
-    icrc7 = true;
+    calcs = false;
+    icrc7 = false;
   };
 
   let CandyTypes = MigrationTypes.Current.CandyTypes;
@@ -3020,13 +3020,13 @@ shared (deployer) actor class Nft_Canister() = this {
       };
     };
 
-    D.print("override " # debug_show (override));
+    debug if (debug_channel.icrc7) D.print("override " # debug_show (override));
     let _royalties_names = if (override) {
       Array.filter<Text>(Royalties.royalties_names, func x = x != "com.origyn.royalty.broker");
     } else {
       Royalties.royalties_names;
     };
-    D.print("_royalties_names " # debug_show (_royalties_names));
+    debug if (debug_channel.icrc7) D.print("_royalties_names " # debug_show (_royalties_names));
 
     return ?Royalties.get_total_amount_fixed_royalties(_royalties_names, metadata);
   };
@@ -3291,21 +3291,54 @@ shared (deployer) actor class Nft_Canister() = this {
   };
 
   public shared (msg) func icrc7_transfer(requests : [ICRC7.TransferArgs]) : async ICRC7.TransferResult {
-    if (requests.size() != 1) {
-      return D.trap("origyn_nft does not support batch transactions through ICRC7. use market_transfer_batch_nft_origyn");
+    var _prepare_results = Buffer.Buffer<?ICRC7.TransferResultItem>(3);
+    var results = Buffer.Buffer<?ICRC7.TransferResultItem>(3);
+
+    for (request in requests.vals()) {
+      let result = await* Owner._prepare_transferICRC7(get_state(), { owner = msg.caller; subaccount = request.from_subaccount }, request.to, request.token_id, msg.caller);
+      _prepare_results.add(?result);
     };
-    let request = requests[0];
 
-    let log_data : Text = "To :" # debug_show (request.to) # " - Token : " # Nat.toText(request.token_id);
-    canistergeekLogger.logMessage("transferICRC7", #Text("transferICRC7"), ?msg.caller);
-    canistergeekMonitor.collectMetrics();
-    debug if (debug_channel.function_announce) D.print("in transferICRC7");
-    // Existing escrow acts as approval
-    let result = await* Owner.transferICRC7(get_state(), { owner = msg.caller; subaccount = request.from_subaccount }, request.to, request.token_id, msg.caller);
+    var i = 0;
+    for (request in requests.vals()) {
+      let result = _prepare_results.get(i);
 
-    debug if (debug_channel.icrc7) D.print("transferICRC7 : result " # debug_show (result));
+      switch (result) {
+        case (?_result) {
+          switch (_result.transfer_result) {
+            case (#Ok(data)) {
+              let result = await* Owner.transferICRC7(get_state(), { owner = msg.caller; subaccount = request.from_subaccount }, request.to, request.token_id, msg.caller);
+              results.add(?_result);
+            };
+            case (#Err(err)) {
+              results.add(
+                ?{
+                  token_id = _result.token_id;
+                  transfer_result = #Err(err);
+                }
+              );
+            };
+          };
+        };
+        case (null) {
+          results.add(
+            ?{
+              token_id = request.token_id;
+              transfer_result = #Err(#GenericError({ message = "transferICRC7 : _prepare transfer return null "; error_code = 1 }));
+            }
+          );
+        };
+      };
 
-    return [?result];
+      i := i + 1;
+    };
+
+    debug if (debug_channel.icrc7) {
+      for (result in results.vals()) {
+        D.print("transferICRC7 : result " # debug_show (result));
+      };
+    };
+    return Buffer.toArray<?ICRC7.TransferResultItem>(results);
   };
 
   public shared func icrc7_approve(request : ICRC7.ApprovalArgs) : async ICRC7.ApprovalResult {

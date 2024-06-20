@@ -36,11 +36,11 @@ import Verify "./verify_reciept";
 
 module {
   let debug_channel = {
-    withdraw_escrow = true;
-    withdraw_sale = true;
+    withdraw_escrow = false;
+    withdraw_sale = false;
     withdraw_reject = false;
     withdraw_deposit = false;
-    withdraw_fee_deposit = true;
+    withdraw_fee_deposit = false;
   };
 
   type StateAccess = Types.State;
