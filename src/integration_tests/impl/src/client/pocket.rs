@@ -93,7 +93,9 @@ pub fn execute_update_no_response<P: CandidType>(
   pic.update_call(canister_id, sender, method_name, Encode!(&payload).unwrap()).unwrap();
 }
 
-fn unwrap_response<R: CandidType + DeserializeOwned>(response: Result<WasmResult, UserError>) -> R {
+pub fn unwrap_response<R: CandidType + DeserializeOwned>(
+  response: Result<WasmResult, UserError>
+) -> R {
   match response.unwrap() {
     WasmResult::Reply(bytes) => { Decode!(&bytes, R).unwrap() }
     WasmResult::Reject(error) => { panic!("FATAL ERROR: {error}") }

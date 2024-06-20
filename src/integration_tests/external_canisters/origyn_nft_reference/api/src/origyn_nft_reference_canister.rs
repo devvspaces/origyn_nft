@@ -1127,7 +1127,7 @@ pub struct BlockType {
   pub block_type: String,
 }
 pub type Subaccount = serde_bytes::ByteBuf;
-#[derive(CandidType, Deserialize, Debug)]
+#[derive(CandidType, Deserialize, Clone, Debug)]
 pub struct Account3 {
   pub owner: Principal,
   pub subaccount: Option<Subaccount>,
@@ -1179,7 +1179,7 @@ pub struct SupportedStandard {
   pub url: String,
   pub name: String,
 }
-#[derive(CandidType, Deserialize)]
+#[derive(CandidType, Deserialize, Clone)]
 pub struct TransferArgs {
   pub to: Account3,
   pub token_id: candid::Nat,
