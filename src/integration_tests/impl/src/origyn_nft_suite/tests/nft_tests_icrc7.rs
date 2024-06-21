@@ -707,6 +707,178 @@ fn icrc7_transfer_multiple_same_call_simple() {
     }
   }
   println!("success_call: {:?}", success_call);
+  println!("failed_call: {:?}", failed_call);
+  println!("NUMBER_CONCURRENT_MESSAGES - 1: {:?}", NUMBER_CONCURRENT_MESSAGES - 1);
+  assert!(success_call == 1);
+  assert!(failed_call == NUMBER_CONCURRENT_MESSAGES - 1);
+}
+
+#[test]
+fn icrc7_transfer_multiple_same_call_complex() {
+  let mut env = init();
+  let TestEnv {
+    ref mut pic,
+    canister_ids: CanisterIds { origyn_nft, ogy_ledger, ldg_ledger },
+    principal_ids: PrincipalIds { net_principal, controller, originator, nft_owner },
+  } = env;
+
+  let MAX_NFTS = 1;
+  let NUMBER_CONCURRENT_MESSAGES = 10;
+  let mut name_as_nat_array: Vec<Nat> = Vec::new();
+  // loop to create multiple nft
+  for i in 0..MAX_NFTS {
+    init_nft_with_premint_nft(
+      pic,
+      origyn_nft.clone(),
+      originator.clone(),
+      net_principal.clone(),
+      nft_owner.clone(),
+      i.to_string()
+    );
+
+    name_as_nat_array.push(
+      crate::client::origyn_nft_reference::client::get_token_id_as_nat(
+        pic,
+        origyn_nft.clone(),
+        net_principal.clone(),
+        i.to_string()
+      )
+    );
+  }
+  let mut all_fee = Nat::from(0 as u32);
+
+  for i in name_as_nat_array.clone() {
+    let transfer_fee: Option<Nat> = crate::client::origyn_nft_reference::client::icrc7_transfer_fee(
+      pic,
+      origyn_nft.clone(),
+      net_principal.clone(),
+      i.clone()
+    );
+
+    match transfer_fee {
+      Some(fee) => {
+        all_fee = all_fee + fee;
+      }
+      None => panic!("transfer fee not found"),
+    }
+  }
+
+  let balance = icrc1_icrc2_token::client::balance_of(pic, ogy_ledger.clone(), nft_owner.clone());
+
+  let approve_res: icrc1_icrc2_token::icrc2_approve::Response = icrc1_icrc2_token::client::approve(
+    pic,
+    nft_owner.clone(),
+    ogy_ledger.clone(),
+    origyn_nft.clone(),
+    None,
+    (all_fee.clone() + Nat::from(E8S_FEE_OGY) * Nat::from(MAX_NFTS as u32)) *
+      Nat::from(NUMBER_CONCURRENT_MESSAGES as u32)
+  );
+
+  match approve_res {
+    icrc1_icrc2_token::icrc2_approve::Response::Ok(_) => (),
+    icrc1_icrc2_token::icrc2_approve::Response::Err(err) => panic!("approve failed: {:?}", err),
+  }
+
+  let owner_of = crate::client::origyn_nft_reference::client::icrc7_owner_of(
+    pic,
+    origyn_nft.clone(),
+    net_principal.clone(),
+    name_as_nat_array.clone()
+  );
+
+  println!("owner_of: {:?}", owner_of);
+  for item in owner_of {
+    match item {
+      Some(val) => {
+        println!("val: {:?}", val.owner.to_string());
+        // should match nft_owner
+        assert!(val.owner.to_string() == nft_owner.to_string());
+      }
+      None => (),
+    }
+  }
+
+  let mut _args_as_vec: Vec<origyn_nft_reference::origyn_nft_reference_canister::TransferArgs> =
+    Vec::new();
+  for i in name_as_nat_array.clone() {
+    let args: origyn_nft_reference::origyn_nft_reference_canister::TransferArgs = origyn_nft_reference::origyn_nft_reference_canister::TransferArgs {
+      memo: None,
+      from_subaccount: None,
+      created_at_time: None,
+      to: Account3 { owner: controller, subaccount: None },
+      token_id: i.clone(),
+    };
+
+    _args_as_vec.push(args);
+  }
+
+  let mut message_id_array = Vec::new();
+
+  for i in 0..NUMBER_CONCURRENT_MESSAGES {
+    let message_id = pic.submit_call(
+      origyn_nft.clone(),
+      nft_owner.clone(),
+      "icrc7_transfer",
+      Encode!(&_args_as_vec.clone()).unwrap()
+    );
+
+    match message_id {
+      Ok(id) => {
+        message_id_array.push(id);
+      }
+      Err(err) => {
+        panic!("error submitting call: {:?}", err);
+      }
+    }
+  }
+
+  let mut success_call = 0;
+  let mut failed_call = 0;
+
+  for message_id in message_id_array {
+    println!("run call with message_id : {:?}", message_id);
+
+    let responses_array: Result<pocket_ic::WasmResult, pocket_ic::UserError> = pic.await_call(
+      message_id
+    );
+
+    for i in responses_array {
+      for item in unwrap_response::<crate::client::origyn_nft_reference::icrc7_transfer::Response>(
+        Ok(i)
+      ) {
+        match item {
+          Some(val) => {
+            println!("val: {:?}", val);
+            match val.transfer_result {
+              origyn_nft_reference::origyn_nft_reference_canister::TransferResultItemTransferResult::Ok(
+                _,
+              ) => {
+                success_call = success_call + 1;
+              }
+              origyn_nft_reference::origyn_nft_reference_canister::TransferResultItemTransferResult::Err(
+                _,
+              ) => {
+                failed_call = failed_call + 1;
+              }
+            }
+          }
+          None => (),
+        }
+      }
+    }
+  }
+
+  let owner_of = crate::client::origyn_nft_reference::client::icrc7_owner_of(
+    pic,
+    origyn_nft.clone(),
+    net_principal.clone(),
+    name_as_nat_array.clone()
+  );
+
+  println!("owner_of: {:?}", owner_of);
+
+  println!("success_call: {:?}", success_call);
   assert!(success_call == 1);
   println!("failed_call: {:?}", failed_call);
   println!("NUMBER_CONCURRENT_MESSAGES - 1: {:?}", NUMBER_CONCURRENT_MESSAGES - 1);

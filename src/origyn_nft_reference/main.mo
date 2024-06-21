@@ -3299,7 +3299,7 @@ shared (deployer) actor class Nft_Canister() = this {
       _prepare_results.add(?result);
     };
 
-    var i = 0;
+    var i : Nat = 0;
     for (request in requests.vals()) {
       let result = _prepare_results.get(i);
 
@@ -3308,7 +3308,7 @@ shared (deployer) actor class Nft_Canister() = this {
           switch (_result.transfer_result) {
             case (#Ok(data)) {
               let result = await* Owner.transferICRC7(get_state(), { owner = msg.caller; subaccount = request.from_subaccount }, request.to, request.token_id, msg.caller);
-              results.add(?_result);
+              results.add(?result);
             };
             case (#Err(err)) {
               results.add(
@@ -3330,12 +3330,13 @@ shared (deployer) actor class Nft_Canister() = this {
         };
       };
 
-      i := i + 1;
+      i += 1;
     };
 
+    var j = 0;
     debug if (debug_channel.icrc7) {
       for (result in results.vals()) {
-        D.print("transferICRC7 : result " # debug_show (result));
+        j += 1;
       };
     };
     return Buffer.toArray<?ICRC7.TransferResultItem>(results);
