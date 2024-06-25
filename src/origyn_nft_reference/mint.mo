@@ -671,7 +671,7 @@ module {
       debug if (debug_channel) D.print("putting the chunk");
       if (chunk.chunk + 1 <= SB.size(file_chunks)) {
         if (state.state.use_stableBTree) {
-          /*
+          /**
                         D.print("token:" # tokenId # "/library:" # lib # "/index:none"  # "/chunk:" # Nat.toText(chunk.chunk));
                       let btreeKey = Text.hash("token:" # tokenId # "/library:" # lib # "/index:none" # "/chunk:" # Nat.toText(chunk.chunk));
                         D.print(debug_show(btreeKey));
@@ -698,7 +698,7 @@ module {
 
             // If flag use_stable is true we insert Blobs into stablebtree
             if (state.state.use_stableBTree) {
-              /*
+              /**
                               // D.print("#level 1");
                               // D.print("token:" # tokenId # "/library:" # lib # "/index:" # Nat.toText(this_index) # "/chunk:" # Nat.toText(chunk.chunk));
                               // D.print(debug_show(btreeKey));
@@ -713,7 +713,7 @@ module {
           } else {
             debug if (debug_channel) D.print("index wasnt chunk" # debug_show (this_index));
             if (state.state.use_stableBTree) {
-              /*
+              /**
                               D.print("#level 2");
                               D.print("token:" # tokenId # "/library:" # lib # "/index:" # Nat.toText(this_index) # "/chunk:" # Nat.toText(chunk.chunk));
                               let insertBtree = NFTUtils.getMemoryBySize(0, state.btreemap).insert(btreeKey, []);

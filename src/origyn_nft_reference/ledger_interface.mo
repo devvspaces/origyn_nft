@@ -32,7 +32,7 @@ class Ledger_Interface() {
 
   let Conversion = MigrationTypes.Current.Conversions;
 
-  /*
+  /**
 
    validate deposit was used before we implemented sub accounts. We are leaving it here as it is
    an example of how one could implement this using dip20 without implementing transferFrom

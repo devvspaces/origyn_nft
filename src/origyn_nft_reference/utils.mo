@@ -366,7 +366,7 @@ module {
     };
   };
 
-  /*
+  /**
     public func getMemoryBySize(size : Nat, memory : Types.Stable_Memory) : StableBTreeTypes.IBTreeMap<Nat32, [Nat8]>{
       if(size <= 1000){
         return memory._1;

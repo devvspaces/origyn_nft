@@ -79,7 +79,6 @@ module {
 
   // Searches the escrow reciepts to find if the buyer/seller/token_id tuple has a balance on file
   /**
-  * Searches the escrow receipts to find if the buyer/seller/token_id tuple has a balance on file.
   * @param {StateAccess} state - The state access object.
   * @param {Types.Account} buyer - The buyer's account.
   * @param {Types.Account} seller - The seller's account.
@@ -566,6 +565,21 @@ module {
     return #ok(#fee_deposit_info(NFTUtils.get_fee_deposit_account_info(account, state.canister())));
   };
 
+  /**
+  * callback function for end_sale_nft_origyn
+  * unlocks the fee account for the seller and bidder
+  *
+  * @param {StateAccess} state - StateAccess object for accessing the canister's state.
+  * @param {CandyTypes.CandyShared} metadata - CandyShared object containing the metadata for the sale.
+  * @param {Types.TokenSpec} request.token - TokenSpec object containing the token information for the sale.
+  * @param {Text} request.sale_id - Text object containing the sale ID for the sale.
+  * @param {?MigrationTypes.Current.FeeAccountsParams} request.seller_fee_accounts - Optional FeeAccountsParams object containing the seller fee accounts for the sale.
+  * @param {?MigrationTypes.Current.FeeAccountsParams} request.bidder_fee_accounts - Optional FeeAccountsParams object containing the bidder fee accounts for the sale.
+  * @param {?Text} request.fee_schema - Optional Text object containing the fee schema for the sale.
+  * @param {MigrationTypes.Current.Account} request.owner - Account object containing the owner of the sale.
+  * @param {Star.Star<Types.ManageSaleResponse, Types.OrigynError>} ret - Star.Star object containing the result of the callback.
+  * @returns {Star.Star<Types.ManageSaleResponse, Types.OrigynError>} - Star.Star object containing the result of the callback.
+  */
   private func end_sale_unlock_fee_account_callback(
     state : StateAccess,
     metadata : CandyTypes.CandyShared,
@@ -617,7 +631,14 @@ module {
     return ret;
   };
 
-  //ends a sale if it is past the date or a buy it now has occured
+  /**
+  * ends a sale if it is past the date or a buy it now has occured
+  *
+  * @param {StateAccess} state - StateAccess object for accessing the canister's state.
+  * @param {Text} token_id - Text object containing the token ID for the sale.
+  * @param {Principal} caller - Principal object containing the caller of the function.
+  * @returns {Star.Star<Types.ManageSaleResponse, Types.OrigynError>} - Star.Star object containing the result of the function.
+  */
   public func end_sale_nft_origyn(state : StateAccess, token_id : Text, caller : Principal) : async* Star.Star<Types.ManageSaleResponse, Types.OrigynError> {
     debug if (debug_channel.end_sale) D.print("in end_sale_nft_origyn");
 
@@ -1323,6 +1344,19 @@ module {
     return #awaited(#distribute_sale(future));
   };
 
+  /**
+  * callback for market_transfer_nft_origyn_async
+  * @param {StateAccess} state - StateAccess object for accessing the canister's state.
+  * @param {CandyTypes.CandyShared} object containing the metadata for the token
+  * @param {Types.TokenSpec} object containing the details of the transfer
+  * @param {Text} object containing the sale_id
+  * @param {?MigrationTypes.Current.FeeAccountsParams} object containing the fee_accounts
+  * @param {?Text} object containing the fee_schema
+  * @param {MigrationTypes.Current.Account} object containing the owner
+  * @param {Result.Result<Types.MarketTransferRequestReponse, Types.OrigynError>} object containing the result of the transfer operation
+  *
+  * @returns {Result.Result<Types.MarketTransferRequestReponse, Types.OrigynError>} Result object representing the result of the transfer operation
+  */
   private func async_market_transfer_unlock_fee_account_callback(
     state : StateAccess,
     metadata : CandyTypes.CandyShared,
@@ -1361,7 +1395,9 @@ module {
     * @param {StateAccess} state - StateAccess instance representing the state of the canister
     * @param {Types.MarketTransferRequest} request - MarketTransferRequest object containing the details of the transfer
     * @param {Principal} caller - Principal object representing the caller
-    * @returns {AsyncGenerator<Types.MarketTransferResult>} An async generator that yields a Result object representing the result of the transfer operation
+    * @param {Bool} canister_call - Bool object representing whether the transfer is being done in a canister call
+    *
+    * @returns {Result.Result<Types.MarketTransferRequestReponse, Types.OrigynError>} Result object representing the result of the transfer operation
     */
   public func market_transfer_nft_origyn_async(state : StateAccess, request : Types.MarketTransferRequest, caller : Principal, canister_call : Bool) : async* Result.Result<Types.MarketTransferRequestReponse, Types.OrigynError> {
 
@@ -2145,6 +2181,18 @@ module {
     };
   };
 
+  /**
+  * callback for market_transfer_nft_origyn
+  * @param {StateAccess} state - StateAccess object for accessing the canister's state.
+  * @param {CandyTypes.CandyShared} object containing the metadata for the token
+  * @param {Types.TokenSpec} object containing the details of the transfer
+  * @param {Text} object containing the sale_id
+  * @param {?MigrationTypes.Current.FeeAccountsParams} object containing the fee_accounts
+  * @param {?Text} object containing the fee_schema
+  * @param {MigrationTypes.Current.Account} object containing the owner
+  *
+  * @returns {Result.Result<Types.MarketTransferRequestReponse, Types.OrigynError>} Result object representing the result of the transfer operation
+  */
   private func market_transfer_unlock_fee_account_callback(
     state : StateAccess,
     metadata : CandyTypes.CandyShared,
@@ -2180,22 +2228,11 @@ module {
   //handles non-async market functions like starting an auction
   /**
     * Processes royalties for a given escrow transaction and updates state accordingly.
-    * @param {StateAccess} state - The current state of the application.
-    * @param {Object} request - An object containing the necessary information for royalty processing.
-    * @param {Nat} request.remaining - The amount of remaining royalty to be paid.
-    * @param {Nat} request.total - The total amount of royalty to be paid.
-    * @param {Nat} request.fee - The fee to be paid for processing royalty.
-    * @param {?Blob} request.account_hash - An optional hash of the account for which royalty is being paid.
-    * @param {[CandyTypes.CandyShared]} request.royalty - The array of royalty being paid.
-    * @param {Types.EscrowReceipt} request.escrow - The escrow receipt associated with the transaction.
-    * @param {?Principal} request.broker_id - The broker ID associated with the transaction.
-    * @param {?Principal} request.original_broker_id - The original broker ID associated with the transaction.
-    * @param {?Text} request.sale_id - The sale ID associated with the transaction.
-    * @param {CandyTypes.CandyShared} request.metadata - The metadata associated with the transaction.
-    * @param {?Text} request.token_id - The token ID associated with the transaction.
-    * @param {Types.TokenSpec} request.token - The token specification associated with the transaction.
-    * @param {Principal} caller - The principal that initiated the transaction.
-    * @returns {[Nat, [Types.EscrowRecord]]} A tuple containing the remaining royalty amount and an array of EscrowRecords.
+    * @param {StateAccess} state - StateAccess object for accessing the canister's state.
+    * @param {Types.MarketTransferRequest} request - An object containing the necessary information for royalty processing.
+    * @param {Principal} caller - Principal object containing the caller of the function.
+    *
+    * @returns {Result.Result<Types.MarketTransferRequestReponse, Types.OrigynError>} Result object representing the result of the transfer operation
     */
   public func market_transfer_nft_origyn(state : StateAccess, request : Types.MarketTransferRequest, caller : Principal) : async* Result.Result<Types.MarketTransferRequestReponse, Types.OrigynError> {
 
@@ -2597,6 +2634,14 @@ module {
     return txn;
   };
 
+  /**
+  * _get_ask_sale_detail
+  * @param {StateAccess} state - StateAccess object for accessing the canister's state.
+  * @param {[Types.AskFeature]} val - Array of ask features to be used to determine the sale details.
+  * @param {Principal} caller - Principal of the caller making the request.
+  * @param {CandyTypes.CandyShared} metadata - CandyShared object containing the metadata for the token.
+  * @returns {Result.Result<{ reserve : ?Nat; buy_now : ?Nat; token : MigrationTypes.Current.TokenSpec; start_date : Int; start_price : Nat; end_date : Int; dutch : ?MigrationTypes.Current.DutchParams; allow_list : ?Map.Map<Principal, Bool>; notify : [Principal]; fee_accounts : ?MigrationTypes.Current.FeeAccountsParams; fee_schema : ?Text }, Types.OrigynError>} - Result object containing the sale details.
+  */
   private func _get_ask_sale_detail(state : StateAccess, val : [Types.AskFeature], caller : Principal, metadata : CandyTypes.CandyShared) : Result.Result<{ reserve : ?Nat; buy_now : ?Nat; token : MigrationTypes.Current.TokenSpec; start_date : Int; start_price : Nat; end_date : Int; dutch : ?MigrationTypes.Current.DutchParams; allow_list : ?Map.Map<Principal, Bool>; notify : [Principal]; fee_accounts : ?MigrationTypes.Current.FeeAccountsParams; fee_schema : ?Text }, Types.OrigynError> {
     //what does an escrow reciept do for an auction? Place a bid?
     //for now ignore
@@ -2825,6 +2870,11 @@ module {
     });
   };
 
+  /**
+  * handle_notify
+  * @param {StateAccess} state - StateAccess object for accessing the canister's state.
+  * @returns {async *}
+  */
   public func handle_notify(state : StateAccess) : async () {
 
     debug if (debug_channel.notifications) D.print("in handle_notify");
@@ -2938,6 +2988,13 @@ module {
 
   };
 
+  /**
+  * calc_dutch_price
+  * @param {StateAccess} state - StateAccess object for accessing the canister's state.
+  * @param {Types.AuctionState} auction - AuctionState object containing the auction details.
+  * @param {CandyTypes.CandyShared} metadata - CandyShared object containing the metadata for the sale.
+  * @returns {Types.AuctionState} - AuctionState object containing the updated auction details.
+  */
   public func calc_dutch_price(state : StateAccess, auction : Types.AuctionState, metadata : CandyTypes.CandyShared) : Types.AuctionState {
     //make sure the sale is still open
     if (auction.status == #closed) {
@@ -3146,6 +3203,13 @@ module {
     }; */
 
   //refreshes the offers collection
+  /**
+  * refresh_offers_nft_origyn
+  * @param {StateAccess} state - StateAccess object for accessing the canister's state.
+  * @param {?Types.Account} request - Optional account information for the request.
+  * @param {Principal} caller - Principal object representing the caller.
+  * @returns {Types.ManageSaleResult} - A result indicating whether the offers were refreshed.
+  */
   public func refresh_offers_nft_origyn(state : StateAccess, request : ?Types.Account, caller : Principal) : Types.ManageSaleResult {
 
     let seller = switch (request) {
@@ -3207,6 +3271,13 @@ module {
   };
 
   //moves tokens from a deposit into an escrow
+  /**
+  * escrow_nft_origyn
+  * @param {StateAccess} state - StateAccess object for accessing the canister's state.
+  * @param {Types.EscrowRequest} request - EscrowRequest object containing the details of the deposit and escrow.
+  * @param {Principal} caller - Principal object representing the caller.
+  * @returns {Star.Star<Types.ManageSaleResponse, Types.OrigynError>} - A result indicating whether the escrow was created.
+  */
   public func escrow_nft_origyn(state : StateAccess, request : Types.EscrowRequest, caller : Principal) : async* Star.Star<Types.ManageSaleResponse, Types.OrigynError> {
     //can someone escrow for someone else? No. Only a buyer can create an escrow for themselves for now
     //we will also allow a canister/canister owner to create escrows for itself
@@ -3330,6 +3401,13 @@ module {
   };
 
   //recognizes tokens sent to a fee_deposit account
+  /**
+  * deposit_fee_nft_origyn
+  * @param {StateAccess} state - StateAccess object for accessing the canister's state.
+  * @param {Types.FeeDepositRequest} request - FeeDepositRequest object containing the details of the fee deposit.
+  * @param {Principal} caller - Principal object representing the caller.
+  * @returns {Star.Star<Types.ManageSaleResponse, Types.OrigynError>} - A result indicating whether the fee deposit was created.
+  */
   public func deposit_fee_nft_origyn(state : StateAccess, request : Types.FeeDepositRequest, caller : Principal) : async* Star.Star<Types.ManageSaleResponse, Types.OrigynError> {
     //account owner, canister, manager, collection owner can all call this
     if (
@@ -3403,12 +3481,26 @@ module {
     return #awaited(#fee_deposit({ balance = balance; transaction = new_trx }));
   };
 
+  /**
+  * ask_subscribe_nft_origyn
+  * @param {StateAccess} state - StateAccess object for accessing the canister's state.
+  * @param {Types.AskSubscribeRequest} request - AskSubscribeRequest object containing the details of the ask subscribe.
+  * @param {Principal} caller - Principal object representing the caller.
+  * @returns {Star.Star<Types.ManageSaleResponse, Types.OrigynError>} - A result indicating whether the ask subscribe was created.
+  */
   public func ask_subscribe_nft_origyn(state : StateAccess, request : Types.AskSubscribeRequest, caller : Principal) : async* Star.Star<Types.ManageSaleResponse, Types.OrigynError> {
     return #trappable(#ask_subscribe(false));
   };
 
   //recognizes tokens already at an escrow address but not yet recognized as an escrow - saves one fee
   //if this fails and there is a balance, it will attempt to refund it(we can't recognize misfiled escrows or the user may get access to something unplaned)
+  /**
+  * recognize_escrow_nft_origyn
+  * @param {StateAccess} state - StateAccess object for accessing the canister's state.
+  * @param {Types.EscrowRequest} request - EscrowRequest object containing the details of the escrow.
+  * @param {Principal} caller - Principal object representing the caller.
+  * @returns {Star.Star<Types.ManageSaleResponse, Types.OrigynError>} - A result indicating whether the escrow was recognized.
+  */
   public func recognize_escrow_nft_origyn(state : StateAccess, request : Types.EscrowRequest, caller : Principal) : async* Star.Star<Types.ManageSaleResponse, Types.OrigynError> {
 
     //can someone escrow for someone else? No. Only a buyer can create an escrow for themselves for now
@@ -4287,6 +4379,18 @@ module {
     };
   };
 
+  /**
+  * _lock_fee_accounts_according_to_fee_schema
+  * @param {StateAccess} state - The state access object.
+  * @param {CandyTypes.CandyShared} metadata - The metadata for the sale.
+  * @param {MigrationTypes.Current.TokenSpec} token - The token specification for the sale.
+  * @param {MigrationTypes.Current.Account} account - The account for which the fee accounts are being locked.
+  * @param {Text} sale_id - The ID of the sale.
+  * @param {Bool} broker_set - Whether the broker set is being used.
+  * @param {Text} fee_schema - The fee schema for the sale.
+  * @param {MigrationTypes.Current.FeeAccountsParams} fee_accounts - The fee accounts to be locked.
+  * @returns {Result.Result<(), Types.OrigynError>} - A result indicating whether the fee accounts were locked or not.
+  */
   private func _lock_fee_accounts_according_to_fee_schema(
     state : StateAccess,
     metadata : CandyTypes.CandyShared,
@@ -4395,6 +4499,17 @@ module {
     return #ok(());
   };
 
+  /**
+  * _unlock_fee_accounts_according_to_fee_schema
+  * @param {StateAccess} state - The state access object.
+  * @param {CandyTypes.CandyShared} metadata - The metadata for the sale.
+  * @param {MigrationTypes.Current.TokenSpec} token - The token specification for the sale.
+  * @param {Text} sale_id - The ID of the sale.
+  * @param {MigrationTypes.Current.FeeAccountsParams} fee_accounts - The fee accounts to be unlocked.
+  * @param {Text} fee_schema - The fee schema for the sale.
+  * @param {MigrationTypes.Current.Account} owner - The account for which the fee accounts are being unlocked.
+  * @returns {Result.Result<(), Types.OrigynError>} - A result indicating whether the fee accounts were unlocked or not.
+  */
   private func _unlock_fee_accounts_according_to_fee_schema(
     state : StateAccess,
     metadata : CandyTypes.CandyShared,

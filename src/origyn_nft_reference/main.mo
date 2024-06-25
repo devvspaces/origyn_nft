@@ -147,7 +147,7 @@ shared (deployer) actor class Nft_Canister() = this {
 
   debug if (debug_channel.instantiation) D.print("have memory_manager");
 
-  /*
+  /**
     var btreemap_ = {
         _1 = StableBTree.init<Nat32, [Nat8]>(memory_manager.get(0), BytesConverter.NAT32_CONVERTER, BytesConverter.bytesPassthrough(1000));
         _4 = StableBTree.init<Nat32, [Nat8]>(memory_manager.get(1), BytesConverter.NAT32_CONVERTER, BytesConverter.bytesPassthrough(4000));
@@ -846,7 +846,7 @@ shared (deployer) actor class Nft_Canister() = this {
     * @throws {Error} - If the canister is currently in maintenance mode.
     */
   public shared (msg) func dip721_transfer_from(from : Principal, to : Principal, tokenAsNat : Nat) : async DIP721.DIP721NatResult {
-    return #Err(#Other("transferFrom is not supported by origyn_nft.  Create a market ask using market_transfer_nft_origyn(#ask(X)) instead.")); /*
+    return #Err(#Other("transferFrom is not supported by origyn_nft.  Create a market ask using market_transfer_nft_origyn(#ask(X)) instead.")); /**
         if (halt == true) {
             throw Error.reject("canister is in maintenance mode");
         };
@@ -2766,7 +2766,7 @@ shared (deployer) actor class Nft_Canister() = this {
 
     return #ok(#nonfungible({ metadata = ?Text.encodeUtf8("https://prptl.io/-/" # Principal.toText(get_canister()) # "/-/" # token_id) }));
   };
-  /*
+  /**
     return #ok({
                 fields = fields;
                 logo = state.state.collection_data.logo;
@@ -3651,7 +3651,7 @@ shared (deployer) actor class Nft_Canister() = this {
     * Returns an array of tuples representing the nft library.
     * @returns {Future<Array<[Text, Array<[Text, CandyTypes.AddressedChunkArray]>]>>} - A promise that resolves to an array of tuples representing the nft library.
     */
-  /*
+  /**
     public query func show_nft_library_array() : async  [(Text, [(Text, CandyTypes.AddressedChunkArray)])] {
         let nft_library_stable_buffer = Buffer.Buffer<(Text, [(Text, CandyTypes.AddressedChunkArray)])>(nft_library.size());
         for(thisKey in nft_library.entries()){
