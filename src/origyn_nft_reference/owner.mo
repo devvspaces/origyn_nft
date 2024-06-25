@@ -30,7 +30,7 @@ module {
 
   let debug_channel = {
     owner = false;
-    icrc7 = true;
+    icrc7 = false;
   };
 
   let CandyTypes = MigrationTypes.Current.CandyTypes;
@@ -235,7 +235,7 @@ module {
   };
 
   /**
-    * Transfer a ICRC7 token from one account to another by finding the appropriate escrow record and using it for the transfer.
+    * Prepare ransfer a ICRC7 token from one account to another by finding the appropriate escrow record and using it for the transfer.
     * If the escrow does not exist, the function fails.
     *
     * @param {StateAccess} state - StateAccess to the canister's state
@@ -246,7 +246,7 @@ module {
     *
     * @returns {ICRC7.TransferResult} - A ICRC7 result object indicating the success or failure of the transfer operation.
     */
-  public func transferICRC7(state : StateAccess, from : ICRC7.Account, to : ICRC7.Account, tokenAsNat : Nat, caller : Principal) : async* ICRC7.TransferResultItem {
+  public func _prepare_transferICRC7(state : StateAccess, from : ICRC7.Account, to : ICRC7.Account, tokenAsNat : Nat, caller : Principal) : async* ICRC7.TransferResultItem {
     let token_id = NFTUtils.get_nat_as_token_id(tokenAsNat);
     debug if (debug_channel.icrc7) D.print("transferICRC7 : token_id " # debug_show (token_id));
 
@@ -302,7 +302,7 @@ module {
 
     let fee_deposit_amount : Nat = Royalties.get_total_amount_fixed_royalties(_royalties_names, metadata);
 
-    let ogy_ledger : ICRC2.Self = actor (NFTUtils.OGY_LEDGER_CANISTER_ID);
+    let ogy_ledger : ICRC2.Self = actor (MigrationTypes.Current.OGY_LEDGER_CANISTER_ID);
 
     debug if (debug_channel.icrc7) D.print("transferICRC7 : fee_deposit_amount " # debug_show (fee_deposit_amount));
     debug if (debug_channel.icrc7) D.print("transferICRC7 : icrc2 parameter " # debug_show ({ to = { owner = feeDepositAccount.account.principal; subaccount = ?feeDepositAccount.account.sub_account }; fee = ?200_000; spender_subaccount = null; from = from; memo = null; created_at_time = null; amount = fee_deposit_amount }));
@@ -320,20 +320,38 @@ module {
       amount = fee_deposit_amount;
     });
 
+    switch (add_fund_to_fees_wallet) {
+      case (#Ok(data)) {
+        debug if (debug_channel.icrc7) D.print("transferICRC7 : add_fund_to_fees_wallet " # debug_show (add_fund_to_fees_wallet));
+      };
+      case (#Err(err)) {
+        return {
+          token_id = tokenAsNat;
+          transfer_result = #Err(
+            #GenericError({
+              message = "transferICRC7 : transfer from request failed " # debug_show (add_fund_to_fees_wallet);
+              error_code = 3;
+            })
+          );
+        };
+      };
+    };
+
     debug if (debug_channel.icrc7) D.print("transferICRC7 : add_fund_to_fees_wallet " # debug_show (add_fund_to_fees_wallet));
 
     let fee_deposit_request : Types.FeeDepositRequest = {
       account = #account({ owner = from.owner; sub_account = from.subaccount });
-      token = NFTUtils.get_ogy_ledger();
+      token = MigrationTypes.Current.OGY();
     };
 
     let fee_deposit_ret = Star.toResult<Types.ManageSaleResponse, Types.OrigynError>(await* Market.deposit_fee_nft_origyn(state, fee_deposit_request, caller));
-    D.print("fee_deposit_ret = " # debug_show (fee_deposit_ret));
-    // no fund has been sent to fees wallet, balance = 0
+    debug if (debug_channel.icrc7) D.print("fee_deposit_ret = " # debug_show (fee_deposit_ret));
     switch (fee_deposit_ret) {
       case (#ok(val)) {
         switch (val) {
-          case (#fee_deposit(info)) {};
+          case (#fee_deposit(info)) {
+            debug if (debug_channel.icrc7) D.print("transferICRC7 : fee_deposit(info) " # debug_show (info));
+          };
           case (_) {
             debug if (debug_channel.icrc7) D.print("transferICRC7 : fee_deposit request failed : Should have returned a #fee_deposit");
             return {
@@ -363,24 +381,26 @@ module {
 
       };
     };
+    return { token_id = tokenAsNat; transfer_result = #Ok(0) };
+  };
 
-    let amount_sent = switch (add_fund_to_fees_wallet) {
-      case (#Ok(data)) { data };
-      case (#Err(err)) {
-        return {
-          token_id = tokenAsNat;
-          transfer_result = #Err(
-            #GenericError({
-              message = " failure of ICRC2 transferFrom ";
-              error_code = 4;
-            })
-          );
-        };
-      };
-    };
+  /**
+    * Transfer a ICRC7 token from one account to another by finding the appropriate escrow record and using it for the transfer.
+    * If the escrow does not exist, the function fails.
+    *
+    * @param {StateAccess} state - StateAccess to the canister's state
+    * @param {Account} from - The account that currently owns the token
+    * @param {Account} to - The account that will own the token after the transfer
+    * @param {Nat} tokenAsNat - The token ID encoded as a Nat value
+    * @param {Principal} caller - The principal that called the function
+    *
+    * @returns {ICRC7.TransferResult} - A ICRC7 result object indicating the success or failure of the transfer operation.
+    */
 
-    debug if (debug_channel.icrc7) D.print("transferICRC7 : amount_sent " # debug_show (amount_sent));
-    debug if (debug_channel.icrc7) D.print("transferICRC7 : market_transfer_nft_origyn_async query " # debug_show ({ token_id = token_id; sales_config = { escrow_receipt = ?{ seller = #account({ owner = from.owner; sub_account = from.subaccount }); buyer = #account({ owner = to.owner; sub_account = to.subaccount }); token_id = token_id; token = #ic({ canister = Principal.fromText(NFTUtils.OGY_LEDGER_CANISTER_ID); standard = #Ledger; decimals = 8; symbol = "OGY "; fee = ?200_000; id = null }); amount = 0 }; pricing = #instant(?[#fee_accounts(Royalties.royalties_names), #fee_schema(Types.metadata.__system_fixed_royalty)]); broker_id = null } }));
+  public func transferICRC7(state : StateAccess, from : ICRC7.Account, to : ICRC7.Account, tokenAsNat : Nat, caller : Principal) : async* ICRC7.TransferResultItem {
+    let token_id = NFTUtils.get_nat_as_token_id(tokenAsNat);
+
+    debug if (debug_channel.icrc7) D.print("transferICRC7 : market_transfer_nft_origyn_async query " # debug_show ({ token_id = token_id; sales_config = { escrow_receipt = ?{ seller = #account({ owner = from.owner; sub_account = from.subaccount }); buyer = #account({ owner = to.owner; sub_account = to.subaccount }); token_id = token_id; token = #ic({ canister = Principal.fromText(MigrationTypes.Current.OGY_LEDGER_CANISTER_ID); standard = #Ledger; decimals = 8; symbol = "OGY "; fee = ?200_000; id = null }); amount = 0 }; pricing = #instant(?[#fee_accounts(Royalties.royalties_names), #fee_schema(Types.metadata.__system_fixed_royalty)]); broker_id = null } }));
 
     let result = await* Market.market_transfer_nft_origyn_async(
       state,
@@ -398,7 +418,7 @@ module {
             });
             token_id = token_id;
             token = #ic({
-              canister = Principal.fromText(NFTUtils.OGY_LEDGER_CANISTER_ID);
+              canister = Principal.fromText(MigrationTypes.Current.OGY_LEDGER_CANISTER_ID);
               standard = #Ledger;
               decimals = 8;
               symbol = "OGY ";

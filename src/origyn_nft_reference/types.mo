@@ -447,7 +447,7 @@ module {
 
   public type Account = MigrationTypes.Current.Account;
 
-  /*
+  /**
     public type Stable_Memory = {
       _1 : StableBTreeTypes.IBTreeMap<Nat32, [Nat8]>;
       _4 : StableBTreeTypes.IBTreeMap<Nat32, [Nat8]>;

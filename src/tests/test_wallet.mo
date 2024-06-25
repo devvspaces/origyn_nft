@@ -30,7 +30,7 @@ shared (deployer) actor class test_wallet() = this {
 
   let debug_channel = {
     throws = false;
-    deposit_info = true;
+    deposit_info = false;
   };
 
   public type Operation = {

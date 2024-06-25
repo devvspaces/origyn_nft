@@ -565,7 +565,7 @@ module {
           } else {
             debug if (debug_channel.library) D.print("Not a range requst");
 
-            /*
+            /**
                         remove this comment to get a dump of the actual headers that made it through.
                         return {
                                 status_code        = 200;
@@ -667,7 +667,7 @@ module {
           } else {
             debug if (debug_channel.library) D.print("Not a range requst");
 
-            /*
+            /**
                         remove this comment to get a dump of the actual headers that made it through.
                         return {
                                 status_code        = 200;

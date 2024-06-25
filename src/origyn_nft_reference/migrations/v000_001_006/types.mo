@@ -22,6 +22,7 @@ import Principal "mo:base/Principal";
 import Deque "mo:base/Deque";
 import MapUtils "mo:map_7_0_0/utils";
 import Option "mo:base/Option";
+import AccountIdentifier "mo:principalmo/AccountIdentifier";
 
 import ICRC3 "mo:icrc3-mo";
 
@@ -1085,11 +1086,14 @@ module {
 
   public let token_hash_uncompressed : (a : TokenSpec) -> Nat = v0_1_5.token_hash_uncompressed;
 
-  public let account_hash : (a : Account) -> Nat = v0_1_5.account_hash;
+  public func account_hash(a : Account) : Nat {
+    let _a = account_to_owner_subaccount(a);
+    Nat32.toNat(Text.hash(AccountIdentifier.toText(AccountIdentifier.fromPrincipal(_a.owner, switch (_a.sub_account) { case (null) { null }; case (?val) { ?Blob.toArray(val) } }))));
+  };
 
   public let account_eq : (a : Account, b : Account) -> Bool = v0_1_5.account_eq;
 
-  public let account_handler = v0_1_5.account_handler;
+  public let account_handler = (account_hash, account_eq);
 
   public let token_hash : (a : TokenSpec) -> Nat = v0_1_5.token_hash;
 
@@ -1460,15 +1464,16 @@ module {
 
   };
 
+  public let OGY_LEDGER_CANISTER_ID = "lkwrt-vyaaa-aaaaq-aadhq-cai";
+
   public func OGY() : TokenSpec {
     #ic({
-      canister = Principal.fromText("jwcfb-hyaaa-aaaaj-aac4q-cai");
+      canister = Principal.fromText(OGY_LEDGER_CANISTER_ID);
       fee = ?200_000;
       symbol = "OGY";
       decimals = 8;
       id = null;
-      standard = #ICRC1; //use #Ledger instead
+      standard = #Ledger;
     });
   };
-
 };

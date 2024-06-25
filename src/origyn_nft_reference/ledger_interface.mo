@@ -25,14 +25,14 @@ class Ledger_Interface() {
   //this file provides services around moving tokens around a standard ledger(ICP/OGY)
 
   let debug_channel = {
-    deposit = true;
-    sale = true;
+    deposit = false;
+    sale = false;
     transfer = false;
   };
 
   let Conversion = MigrationTypes.Current.Conversions;
 
-  /*
+  /**
 
    validate deposit was used before we implemented sub accounts. We are leaving it here as it is
    an example of how one could implement this using dip20 without implementing transferFrom

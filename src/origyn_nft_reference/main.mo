@@ -72,8 +72,8 @@ shared (deployer) actor class Nft_Canister() = this {
     storage = false;
     streaming = false;
     manage_storage = false;
-    calcs = true;
-    icrc7 = true;
+    calcs = false;
+    icrc7 = false;
   };
 
   let CandyTypes = MigrationTypes.Current.CandyTypes;
@@ -147,7 +147,7 @@ shared (deployer) actor class Nft_Canister() = this {
 
   debug if (debug_channel.instantiation) D.print("have memory_manager");
 
-  /*
+  /**
     var btreemap_ = {
         _1 = StableBTree.init<Nat32, [Nat8]>(memory_manager.get(0), BytesConverter.NAT32_CONVERTER, BytesConverter.bytesPassthrough(1000));
         _4 = StableBTree.init<Nat32, [Nat8]>(memory_manager.get(1), BytesConverter.NAT32_CONVERTER, BytesConverter.bytesPassthrough(4000));
@@ -846,7 +846,7 @@ shared (deployer) actor class Nft_Canister() = this {
     * @throws {Error} - If the canister is currently in maintenance mode.
     */
   public shared (msg) func dip721_transfer_from(from : Principal, to : Principal, tokenAsNat : Nat) : async DIP721.DIP721NatResult {
-    return #Err(#Other("transferFrom is not supported by origyn_nft.  Create a market ask using market_transfer_nft_origyn(#ask(X)) instead.")); /*
+    return #Err(#Other("transferFrom is not supported by origyn_nft.  Create a market ask using market_transfer_nft_origyn(#ask(X)) instead.")); /**
         if (halt == true) {
             throw Error.reject("canister is in maintenance mode");
         };
@@ -2766,7 +2766,7 @@ shared (deployer) actor class Nft_Canister() = this {
 
     return #ok(#nonfungible({ metadata = ?Text.encodeUtf8("https://prptl.io/-/" # Principal.toText(get_canister()) # "/-/" # token_id) }));
   };
-  /*
+  /**
     return #ok({
                 fields = fields;
                 logo = state.state.collection_data.logo;
@@ -3020,11 +3020,13 @@ shared (deployer) actor class Nft_Canister() = this {
       };
     };
 
+    debug if (debug_channel.icrc7) D.print("override " # debug_show (override));
     let _royalties_names = if (override) {
       Array.filter<Text>(Royalties.royalties_names, func x = x != "com.origyn.royalty.broker");
     } else {
       Royalties.royalties_names;
     };
+    debug if (debug_channel.icrc7) D.print("_royalties_names " # debug_show (_royalties_names));
 
     return ?Royalties.get_total_amount_fixed_royalties(_royalties_names, metadata);
   };
@@ -3289,21 +3291,55 @@ shared (deployer) actor class Nft_Canister() = this {
   };
 
   public shared (msg) func icrc7_transfer(requests : [ICRC7.TransferArgs]) : async ICRC7.TransferResult {
-    if (requests.size() != 1) {
-      return D.trap("origyn_nft does not support batch transactions through ICRC7. use market_transfer_batch_nft_origyn");
+    var _prepare_results = Buffer.Buffer<?ICRC7.TransferResultItem>(3);
+    var results = Buffer.Buffer<?ICRC7.TransferResultItem>(3);
+
+    for (request in requests.vals()) {
+      let result = await* Owner._prepare_transferICRC7(get_state(), { owner = msg.caller; subaccount = request.from_subaccount }, request.to, request.token_id, msg.caller);
+      _prepare_results.add(?result);
     };
-    let request = requests[0];
 
-    let log_data : Text = "To :" # debug_show (request.to) # " - Token : " # Nat.toText(request.token_id);
-    canistergeekLogger.logMessage("transferICRC7", #Text("transferICRC7"), ?msg.caller);
-    canistergeekMonitor.collectMetrics();
-    debug if (debug_channel.function_announce) D.print("in transferICRC7");
-    // Existing escrow acts as approval
-    let result = await* Owner.transferICRC7(get_state(), { owner = msg.caller; subaccount = request.from_subaccount }, request.to, request.token_id, msg.caller);
+    var i : Nat = 0;
+    for (request in requests.vals()) {
+      let result = _prepare_results.get(i);
 
-    debug if (debug_channel.icrc7) D.print("transferICRC7 : result " # debug_show (result));
+      switch (result) {
+        case (?_result) {
+          switch (_result.transfer_result) {
+            case (#Ok(data)) {
+              let result = await* Owner.transferICRC7(get_state(), { owner = msg.caller; subaccount = request.from_subaccount }, request.to, request.token_id, msg.caller);
+              results.add(?result);
+            };
+            case (#Err(err)) {
+              results.add(
+                ?{
+                  token_id = _result.token_id;
+                  transfer_result = #Err(err);
+                }
+              );
+            };
+          };
+        };
+        case (null) {
+          results.add(
+            ?{
+              token_id = request.token_id;
+              transfer_result = #Err(#GenericError({ message = "transferICRC7 : _prepare transfer return null "; error_code = 1 }));
+            }
+          );
+        };
+      };
 
-    return [?result];
+      i += 1;
+    };
+
+    var j = 0;
+    debug if (debug_channel.icrc7) {
+      for (result in results.vals()) {
+        j += 1;
+      };
+    };
+    return Buffer.toArray<?ICRC7.TransferResultItem>(results);
   };
 
   public shared func icrc7_approve(request : ICRC7.ApprovalArgs) : async ICRC7.ApprovalResult {
@@ -3615,7 +3651,7 @@ shared (deployer) actor class Nft_Canister() = this {
     * Returns an array of tuples representing the nft library.
     * @returns {Future<Array<[Text, Array<[Text, CandyTypes.AddressedChunkArray]>]>>} - A promise that resolves to an array of tuples representing the nft library.
     */
-  /*
+  /**
     public query func show_nft_library_array() : async  [(Text, [(Text, CandyTypes.AddressedChunkArray)])] {
         let nft_library_stable_buffer = Buffer.Buffer<(Text, [(Text, CandyTypes.AddressedChunkArray)])>(nft_library.size());
         for(thisKey in nft_library.entries()){
