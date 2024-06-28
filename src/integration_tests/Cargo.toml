@@ -23,7 +23,7 @@ lto = "thin"
 panic = "abort"
 
 [workspace.dependencies]
-candid = { version = "0.10.2" }
+candid = { version = "0.10.8", features = ["value"]  }
 ciborium = "0.2.2"
 futures = "0.3.29"
 # Enable `custom` feature of k256's getrandom dependency. See icp_neuron/impl/src/ecdsa.rs for more details.

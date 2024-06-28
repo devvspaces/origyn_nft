@@ -17,6 +17,9 @@ use origyn_nft_reference::origyn_nft_reference_canister::{
   TransferArgs,
   TransferResult,
   Value,
+  CollectionResult,
+  MarketTransferRequest,
+  MarketTransferResult,
 };
 
 generate_update_call!(stage_nft_origyn);
@@ -51,6 +54,9 @@ generate_update_call!(icrc7_transfer);
 generate_query_call!(icrc7_transfer_fee);
 generate_query_call!(icrc7_tx_window);
 generate_query_call!(get_token_id_as_nat);
+generate_query_call!(collection_nft_origyn);
+generate_update_call!(market_transfer_nft_origyn_batch);
+generate_update_call!(market_transfer_nft_origyn);
 
 pub mod stage_nft_origyn {
   use super::*;
@@ -236,6 +242,27 @@ pub mod icrc7_tx_window {
 pub mod get_token_id_as_nat {
   pub type Args = String;
   pub type Response = candid::Nat;
+}
+
+pub mod collection_nft_origyn {
+  use super::*;
+
+  pub type Args = Option<Vec<(String, Option<candid::Nat>, Option<candid::Nat>)>>;
+  pub type Response = CollectionResult;
+}
+
+pub mod market_transfer_nft_origyn_batch {
+  use super::*;
+
+  pub type Args = Vec<MarketTransferRequest>;
+  pub type Response = Vec<MarketTransferResult>;
+}
+
+pub mod market_transfer_nft_origyn {
+  use super::*;
+
+  pub type Args = MarketTransferRequest;
+  pub type Response = MarketTransferResult;
 }
 
 pub mod client {
@@ -598,5 +625,37 @@ pub mod client {
     args: get_token_id_as_nat::Args
   ) -> get_token_id_as_nat::Response {
     crate::client::origyn_nft_reference::get_token_id_as_nat(pic, sender, canister_id, &args)
+  }
+
+  pub fn collection_nft_origyn(
+    pic: &PocketIc,
+    canister_id: CanisterId,
+    sender: Principal,
+    args: collection_nft_origyn::Args
+  ) -> collection_nft_origyn::Response {
+    crate::client::origyn_nft_reference::collection_nft_origyn(pic, sender, canister_id, &args)
+  }
+
+  pub fn market_transfer_nft_origyn_batch(
+    pic: &mut PocketIc,
+    canister_id: CanisterId,
+    sender: Principal,
+    args: market_transfer_nft_origyn_batch::Args
+  ) -> market_transfer_nft_origyn_batch::Response {
+    crate::client::origyn_nft_reference::market_transfer_nft_origyn_batch(
+      pic,
+      sender,
+      canister_id,
+      &args
+    )
+  }
+
+  pub fn market_transfer_nft_origyn(
+    pic: &mut PocketIc,
+    canister_id: CanisterId,
+    sender: Principal,
+    args: market_transfer_nft_origyn::Args
+  ) -> market_transfer_nft_origyn::Response {
+    crate::client::origyn_nft_reference::market_transfer_nft_origyn(pic, sender, canister_id, &args)
   }
 }

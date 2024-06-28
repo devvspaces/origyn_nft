@@ -687,7 +687,7 @@ pub enum ChunkResult {
   #[serde(rename = "ok")] Ok(ChunkContent),
   #[serde(rename = "err")] Err(OrigynError),
 }
-#[derive(CandidType, Deserialize)]
+#[derive(CandidType, Deserialize, Debug)]
 pub struct CollectionInfo {
   pub multi_canister_count: Option<candid::Nat>,
   pub managers: Option<Vec<Principal>>,
@@ -709,7 +709,7 @@ pub struct CollectionInfo {
   pub symbol: Option<String>,
   pub allocated_storage: Option<candid::Nat>,
 }
-#[derive(CandidType, Deserialize)]
+#[derive(CandidType, Deserialize, Debug)]
 pub enum CollectionResult {
   #[serde(rename = "ok")] Ok(CollectionInfo),
   #[serde(rename = "err")] Err(OrigynError),

@@ -8,6 +8,7 @@ use origyn_nft_reference::origyn_nft_reference_canister::{
   StageLibraryResult,
 };
 use candid::{ Nat, Principal };
+use candid::types::value::IDLValue;
 use serde_bytes::ByteBuf;
 use pocket_ic::PocketIc;
 use types::CanisterId;
@@ -269,6 +270,8 @@ pub fn build_standard_collection(
     ledger_token
   );
 
+  // println!("acollection {:?}", aCollection);
+  // println!("acollection IDLValue {:?}", IDLValue::try_from_candid_type(&&aCollection).unwrap());
   let stage: OrigynTextResult = crate::client::origyn_nft_reference::client::stage_nft_origyn(
     pic,
     canister_id,
