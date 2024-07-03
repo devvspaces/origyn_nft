@@ -44,53 +44,7 @@ pub enum CandyShared {
   Array(Vec<Box<CandyShared>>),
   Class(Vec<PropertyShared>),
 }
-#[derive(CandidType, Deserialize)]
-pub enum Account {
-  #[serde(rename = "account_id")] AccountId(String),
-  #[serde(rename = "principal")] Principal_(Principal),
-  #[serde(rename = "extensible")] Extensible(Box<CandyShared>),
-  #[serde(rename = "account")] Account {
-    owner: Principal,
-    sub_account: Option<serde_bytes::ByteBuf>,
-  },
-}
-#[derive(CandidType, Deserialize)]
-pub enum IcTokenSpec1Standard {
-  #[serde(rename = "ICRC1")]
-  Icrc1,
-  #[serde(rename = "EXTFungible")]
-  ExtFungible,
-  #[serde(rename = "DIP20")]
-  Dip20,
-  Other(Box<CandyShared>),
-  Ledger,
-}
-#[derive(CandidType, Deserialize)]
-pub struct IcTokenSpec1 {
-  pub id: Option<candid::Nat>,
-  pub fee: Option<candid::Nat>,
-  pub decimals: candid::Nat,
-  pub canister: Principal,
-  pub standard: IcTokenSpec1Standard,
-  pub symbol: String,
-}
-#[derive(CandidType, Deserialize)]
-pub enum TokenSpec1 {
-  #[serde(rename = "ic")] Ic(IcTokenSpec1),
-  #[serde(rename = "extensible")] Extensible(Box<CandyShared>),
-}
-#[derive(CandidType, Deserialize)]
-pub struct EscrowRecord1 {
-  pub token: TokenSpec1,
-  pub token_id: String,
-  pub seller: Account,
-  pub lock_to_date: Option<candid::Int>,
-  pub buyer: Account,
-  pub amount: candid::Nat,
-  pub sale_id: Option<String>,
-  pub account_hash: Option<serde_bytes::ByteBuf>,
-}
-pub type StableSalesBalances = Vec<(Account, Account, String, EscrowRecord1)>;
+pub type StableSalesBalances = Vec<(Account, Account, String, EscrowRecord)>;
 pub type StableOffers = Vec<(Account, Account, candid::Int)>;
 #[derive(CandidType, Deserialize)]
 pub struct StableCollectionData {
@@ -135,16 +89,6 @@ pub enum TransactionId {
   #[serde(rename = "nat")] Nat(candid::Nat),
   #[serde(rename = "text")] Text(String),
   #[serde(rename = "extensible")] Extensible(Box<CandyShared>),
-}
-#[derive(CandidType, Deserialize)]
-pub enum Account1 {
-  #[serde(rename = "account_id")] AccountId(String),
-  #[serde(rename = "principal")] Principal_(Principal),
-  #[serde(rename = "extensible")] Extensible(Box<CandyShared>),
-  #[serde(rename = "account")] Account {
-    owner: Principal,
-    sub_account: Option<serde_bytes::ByteBuf>,
-  },
 }
 #[derive(CandidType, Deserialize)]
 pub struct TransactionRecordTxnTypeMintSaleInner {
@@ -255,15 +199,15 @@ pub enum TransactionRecordTxnType {
     token: TokenSpec,
     token_id: String,
     trx_id: TransactionId,
-    seller: Account1,
+    seller: Account,
     extensible: Box<CandyShared>,
-    buyer: Account1,
+    buyer: Account,
     amount: candid::Nat,
   },
   #[serde(rename = "fee_deposit")] FeeDeposit {
     token: TokenSpec,
     extensible: Box<CandyShared>,
-    account: Account1,
+    account: Account,
     amount: candid::Nat,
   },
   #[serde(rename = "canister_network_updated")] CanisterNetworkUpdated {
@@ -275,9 +219,9 @@ pub enum TransactionRecordTxnType {
     token: TokenSpec,
     token_id: String,
     trx_id: TransactionId,
-    seller: Account1,
+    seller: Account,
     extensible: Box<CandyShared>,
-    buyer: Account1,
+    buyer: Account,
     amount: candid::Nat,
   },
   #[serde(rename = "canister_managers_updated")] CanisterManagersUpdated {
@@ -287,12 +231,12 @@ pub enum TransactionRecordTxnType {
   #[serde(rename = "auction_bid")] AuctionBid {
     token: TokenSpec,
     extensible: Box<CandyShared>,
-    buyer: Account1,
+    buyer: Account,
     amount: candid::Nat,
     sale_id: String,
   },
   #[serde(rename = "burn")] Burn {
-    from: Option<Account1>,
+    from: Option<Account>,
     extensible: Box<CandyShared>,
   },
   #[serde(rename = "data")] Data {
@@ -303,26 +247,26 @@ pub enum TransactionRecordTxnType {
   },
   #[serde(rename = "sale_ended")] SaleEnded {
     token: TokenSpec,
-    seller: Account1,
+    seller: Account,
     extensible: Box<CandyShared>,
-    buyer: Account1,
+    buyer: Account,
     amount: candid::Nat,
     sale_id: Option<String>,
   },
   #[serde(rename = "mint")] Mint {
-    to: Account1,
-    from: Account1,
+    to: Account,
+    from: Account,
     sale: Option<TransactionRecordTxnTypeMintSaleInner>,
     extensible: Box<CandyShared>,
   },
   #[serde(rename = "royalty_paid")] RoyaltyPaid {
     tag: String,
     token: TokenSpec,
-    seller: Account1,
+    seller: Account,
     extensible: Box<CandyShared>,
-    buyer: Account1,
+    buyer: Account,
     amount: candid::Nat,
-    receiver: Account1,
+    receiver: Account,
     sale_id: Option<String>,
   },
   #[serde(rename = "extensible")] Extensible(Box<CandyShared>),
@@ -331,12 +275,12 @@ pub enum TransactionRecordTxnType {
     token: TokenSpec,
     trx_id: TransactionId,
     extensible: Box<CandyShared>,
-    account: Account1,
+    account: Account,
     amount: candid::Nat,
   },
   #[serde(rename = "owner_transfer")] OwnerTransfer {
-    to: Account1,
-    from: Account1,
+    to: Account,
+    from: Account,
     extensible: Box<CandyShared>,
   },
   #[serde(rename = "sale_opened")] SaleOpened {
@@ -353,9 +297,9 @@ pub enum TransactionRecordTxnType {
     token: TokenSpec,
     token_id: String,
     trx_id: TransactionId,
-    seller: Account1,
+    seller: Account,
     extensible: Box<CandyShared>,
-    buyer: Account1,
+    buyer: Account,
     amount: candid::Nat,
   },
   #[serde(rename = "deposit_withdraw")] DepositWithdraw {
@@ -363,7 +307,7 @@ pub enum TransactionRecordTxnType {
     token: TokenSpec,
     trx_id: TransactionId,
     extensible: Box<CandyShared>,
-    buyer: Account1,
+    buyer: Account,
     amount: candid::Nat,
   },
 }
@@ -396,7 +340,7 @@ pub enum AuctionStateSharedStatus {
 #[derive(CandidType, Deserialize)]
 pub enum BidFeature {
   #[serde(rename = "fee_schema")] FeeSchema(String),
-  #[serde(rename = "broker")] Broker(Account1),
+  #[serde(rename = "broker")] Broker(Account),
   #[serde(rename = "fee_accounts")] FeeAccounts(FeeAccountsParams),
 }
 pub type BidConfigShared = Option<Vec<BidFeature>>;
@@ -404,22 +348,15 @@ pub type BidConfigShared = Option<Vec<BidFeature>>;
 pub struct EscrowReceipt {
   pub token: TokenSpec,
   pub token_id: String,
-  pub seller: Account1,
-  pub buyer: Account1,
+  pub seller: Account,
+  pub buyer: Account,
   pub amount: candid::Nat,
-}
-#[derive(CandidType, Deserialize)]
-pub enum PricingConfigShared1 {
-  #[serde(rename = "ask")] Ask(AskConfigShared),
-  #[serde(rename = "extensible")] Extensible(Box<CandyShared>),
-  #[serde(rename = "instant")] Instant(InstantConfigShared),
-  #[serde(rename = "auction")] Auction(AuctionConfig),
 }
 #[derive(CandidType, Deserialize)]
 pub struct AuctionStateShared {
   pub status: AuctionStateSharedStatus,
   pub participants: Vec<(Principal, candid::Int)>,
-  pub token: TokenSpec1,
+  pub token: TokenSpec,
   pub current_bid_amount: candid::Nat,
   pub winner: Option<Account>,
   pub end_date: candid::Int,
@@ -429,7 +366,7 @@ pub struct AuctionStateShared {
   pub current_escrow: Option<EscrowReceipt>,
   pub allow_list: Option<Vec<(Principal, bool)>>,
   pub min_next_bid: candid::Nat,
-  pub config: PricingConfigShared1,
+  pub config: PricingConfigShared,
 }
 #[derive(CandidType, Deserialize)]
 pub enum SaleStatusSharedSaleType {
@@ -453,7 +390,7 @@ pub struct StableBucketData {
   pub available_space: candid::Nat,
   pub allocations: Vec<((String, String), candid::Int)>,
 }
-pub type StableEscrowBalances = Vec<(Account, Account, String, EscrowRecord1)>;
+pub type StableEscrowBalances = Vec<(Account, Account, String, EscrowRecord)>;
 #[derive(CandidType, Deserialize)]
 pub struct NftBackupChunk {
   pub sales_balances: StableSalesBalances,
@@ -502,11 +439,11 @@ pub struct StakeRecord {
 #[derive(CandidType, Deserialize)]
 pub struct BalanceResponse {
   pub nfts: Vec<String>,
-  pub offers: Vec<EscrowRecord1>,
-  pub sales: Vec<EscrowRecord1>,
+  pub offers: Vec<EscrowRecord>,
+  pub sales: Vec<EscrowRecord>,
   pub stake: Vec<StakeRecord>,
   pub multi_canister: Option<Vec<Principal>>,
-  pub escrow: Vec<EscrowRecord1>,
+  pub escrow: Vec<EscrowRecord>,
 }
 #[derive(CandidType, Deserialize, Debug)]
 pub enum Errors {
@@ -1073,41 +1010,16 @@ pub struct TransactionRange {
   pub length: candid::Nat,
 }
 #[derive(CandidType, Deserialize)]
-pub enum Value1 {
-  Int(candid::Int),
-  Map(Vec<(String, Box<Value1>)>),
-  Nat(candid::Nat),
-  Blob(serde_bytes::ByteBuf),
-  Text(String),
-  Array(Vec<Box<Value1>>),
-}
-#[derive(CandidType, Deserialize)]
 pub struct GetTransactionsResultBlocksItem {
   pub id: candid::Nat,
-  pub block: Box<Value1>,
+  pub block: Box<Value>,
 }
-#[derive(CandidType, Deserialize)]
-pub struct TransactionRange1 {
-  pub start: candid::Nat,
-  pub length: candid::Nat,
-}
-#[derive(CandidType, Deserialize)]
-pub struct GetTransactionsResult1BlocksItem {
-  pub id: candid::Nat,
-  pub block: Box<Value1>,
-}
-#[derive(CandidType, Deserialize)]
-pub struct GetTransactionsResult1 {
-  pub log_length: candid::Nat,
-  pub blocks: Vec<GetTransactionsResult1BlocksItem>,
-  pub archived_blocks: Vec<Box<ArchivedTransactionResponse>>,
-}
-candid::define_function!(pub GetTransactionsFn : (Vec<TransactionRange1>) -> (
-    GetTransactionsResult1,
+candid::define_function!(pub GetTransactionsFn : (Vec<TransactionRange>) -> (
+    GetTransactionsResult,
   ) query);
 #[derive(CandidType, Deserialize)]
 pub struct ArchivedTransactionResponse {
-  pub args: Vec<TransactionRange1>,
+  pub args: Vec<TransactionRange>,
   pub callback: GetTransactionsFn,
 }
 #[derive(CandidType, Deserialize)]
@@ -1237,18 +1149,10 @@ pub enum ManageStorageResult {
   #[serde(rename = "err")] Err(OrigynError),
 }
 #[derive(CandidType, Deserialize)]
-pub struct EscrowReceipt1 {
-  pub token: TokenSpec,
-  pub token_id: String,
-  pub seller: Account1,
-  pub buyer: Account1,
-  pub amount: candid::Nat,
-}
-#[derive(CandidType, Deserialize)]
 pub struct SalesConfig {
-  pub broker_id: Option<Account1>,
+  pub broker_id: Option<Account>,
   pub pricing: PricingConfigShared,
-  pub escrow_receipt: Option<EscrowReceipt1>,
+  pub escrow_receipt: Option<EscrowReceipt>,
 }
 #[derive(CandidType, Deserialize)]
 pub struct MarketTransferRequest {
@@ -1266,15 +1170,15 @@ pub enum MarketTransferRequestReponseTxnType {
     token: TokenSpec,
     token_id: String,
     trx_id: TransactionId,
-    seller: Account1,
+    seller: Account,
     extensible: Box<CandyShared>,
-    buyer: Account1,
+    buyer: Account,
     amount: candid::Nat,
   },
   #[serde(rename = "fee_deposit")] FeeDeposit {
     token: TokenSpec,
     extensible: Box<CandyShared>,
-    account: Account1,
+    account: Account,
     amount: candid::Nat,
   },
   #[serde(rename = "canister_network_updated")] CanisterNetworkUpdated {
@@ -1286,9 +1190,9 @@ pub enum MarketTransferRequestReponseTxnType {
     token: TokenSpec,
     token_id: String,
     trx_id: TransactionId,
-    seller: Account1,
+    seller: Account,
     extensible: Box<CandyShared>,
-    buyer: Account1,
+    buyer: Account,
     amount: candid::Nat,
   },
   #[serde(rename = "canister_managers_updated")] CanisterManagersUpdated {
@@ -1298,12 +1202,12 @@ pub enum MarketTransferRequestReponseTxnType {
   #[serde(rename = "auction_bid")] AuctionBid {
     token: TokenSpec,
     extensible: Box<CandyShared>,
-    buyer: Account1,
+    buyer: Account,
     amount: candid::Nat,
     sale_id: String,
   },
   #[serde(rename = "burn")] Burn {
-    from: Option<Account1>,
+    from: Option<Account>,
     extensible: Box<CandyShared>,
   },
   #[serde(rename = "data")] Data {
@@ -1314,26 +1218,26 @@ pub enum MarketTransferRequestReponseTxnType {
   },
   #[serde(rename = "sale_ended")] SaleEnded {
     token: TokenSpec,
-    seller: Account1,
+    seller: Account,
     extensible: Box<CandyShared>,
-    buyer: Account1,
+    buyer: Account,
     amount: candid::Nat,
     sale_id: Option<String>,
   },
   #[serde(rename = "mint")] Mint {
-    to: Account1,
-    from: Account1,
+    to: Account,
+    from: Account,
     sale: Option<MarketTransferRequestReponseTxnTypeMintSaleInner>,
     extensible: Box<CandyShared>,
   },
   #[serde(rename = "royalty_paid")] RoyaltyPaid {
     tag: String,
     token: TokenSpec,
-    seller: Account1,
+    seller: Account,
     extensible: Box<CandyShared>,
-    buyer: Account1,
+    buyer: Account,
     amount: candid::Nat,
-    receiver: Account1,
+    receiver: Account,
     sale_id: Option<String>,
   },
   #[serde(rename = "extensible")] Extensible(Box<CandyShared>),
@@ -1342,12 +1246,12 @@ pub enum MarketTransferRequestReponseTxnType {
     token: TokenSpec,
     trx_id: TransactionId,
     extensible: Box<CandyShared>,
-    account: Account1,
+    account: Account,
     amount: candid::Nat,
   },
   #[serde(rename = "owner_transfer")] OwnerTransfer {
-    to: Account1,
-    from: Account1,
+    to: Account,
+    from: Account,
     extensible: Box<CandyShared>,
   },
   #[serde(rename = "sale_opened")] SaleOpened {
@@ -1364,9 +1268,9 @@ pub enum MarketTransferRequestReponseTxnType {
     token: TokenSpec,
     token_id: String,
     trx_id: TransactionId,
-    seller: Account1,
+    seller: Account,
     extensible: Box<CandyShared>,
-    buyer: Account1,
+    buyer: Account,
     amount: candid::Nat,
   },
   #[serde(rename = "deposit_withdraw")] DepositWithdraw {
@@ -1374,7 +1278,7 @@ pub enum MarketTransferRequestReponseTxnType {
     token: TokenSpec,
     trx_id: TransactionId,
     extensible: Box<CandyShared>,
-    buyer: Account1,
+    buyer: Account,
     amount: candid::Nat,
   },
 }
@@ -1418,12 +1322,7 @@ pub enum NftInfoResult {
   #[serde(rename = "err")] Err(OrigynError),
 }
 #[derive(CandidType, Deserialize)]
-pub enum TokenSpec2 {
-  #[serde(rename = "ic")] Ic(IcTokenSpec),
-  #[serde(rename = "extensible")] Extensible(Box<CandyShared>),
-}
-#[derive(CandidType, Deserialize)]
-pub enum Account2 {
+pub enum Account {
   #[serde(rename = "account_id")] AccountId(String),
   #[serde(rename = "principal")] Principal_(Principal),
   #[serde(rename = "extensible")] Extensible(Box<CandyShared>),
@@ -1434,11 +1333,11 @@ pub enum Account2 {
 }
 #[derive(CandidType, Deserialize)]
 pub struct EscrowRecord {
-  pub token: TokenSpec2,
+  pub token: TokenSpec,
   pub token_id: String,
-  pub seller: Account2,
+  pub seller: Account,
   pub lock_to_date: Option<candid::Int>,
-  pub buyer: Account2,
+  pub buyer: Account,
   pub amount: candid::Nat,
   pub sale_id: Option<String>,
   pub account_hash: Option<serde_bytes::ByteBuf>,
@@ -1449,15 +1348,9 @@ pub struct BidRequest {
   pub escrow_record: EscrowRecord,
 }
 #[derive(CandidType, Deserialize)]
-pub enum TransactionId1 {
-  #[serde(rename = "nat")] Nat(candid::Nat),
-  #[serde(rename = "text")] Text(String),
-  #[serde(rename = "extensible")] Extensible(Box<CandyShared>),
-}
-#[derive(CandidType, Deserialize)]
 pub struct DepositDetail {
-  pub token: TokenSpec1,
-  pub trx_id: Option<TransactionId1>,
+  pub token: TokenSpec,
+  pub trx_id: Option<TransactionId>,
   pub seller: Account,
   pub buyer: Account,
   pub amount: candid::Nat,
@@ -1471,12 +1364,12 @@ pub struct EscrowRequest {
 }
 #[derive(CandidType, Deserialize)]
 pub struct FeeDepositRequest {
-  pub token: TokenSpec1,
+  pub token: TokenSpec,
   pub account: Account,
 }
 #[derive(CandidType, Deserialize)]
 pub struct RejectDescription {
-  pub token: TokenSpec1,
+  pub token: TokenSpec,
   pub token_id: String,
   pub seller: Account,
   pub buyer: Account,
@@ -1492,14 +1385,14 @@ pub enum FeeDepositWithdrawDescriptionStatus {
 #[derive(CandidType, Deserialize)]
 pub struct FeeDepositWithdrawDescription {
   pub status: FeeDepositWithdrawDescriptionStatus,
-  pub token: TokenSpec1,
+  pub token: TokenSpec,
   pub withdraw_to: Account,
   pub account: Account,
   pub amount: candid::Nat,
 }
 #[derive(CandidType, Deserialize)]
 pub struct WithdrawDescription {
-  pub token: TokenSpec1,
+  pub token: TokenSpec,
   pub token_id: String,
   pub seller: Account,
   pub withdraw_to: Account,
@@ -1508,7 +1401,7 @@ pub struct WithdrawDescription {
 }
 #[derive(CandidType, Deserialize)]
 pub struct DepositWithdrawDescription {
-  pub token: TokenSpec1,
+  pub token: TokenSpec,
   pub withdraw_to: Account,
   pub buyer: Account,
   pub amount: candid::Nat,
@@ -1530,7 +1423,7 @@ pub enum TokenSpecFilterFilterType {
 }
 #[derive(CandidType, Deserialize)]
 pub struct TokenSpecFilter {
-  pub token: TokenSpec1,
+  pub token: TokenSpec,
   pub filter_type: TokenSpecFilterFilterType,
 }
 #[derive(CandidType, Deserialize)]
@@ -1542,7 +1435,7 @@ pub enum TokenIdFilterFilterType {
 }
 #[derive(CandidType, Deserialize)]
 pub struct TokenIdFilterTokensItem {
-  pub token: TokenSpec1,
+  pub token: TokenSpec,
   pub min_amount: Option<candid::Nat>,
   pub max_amount: Option<candid::Nat>,
 }
@@ -1593,15 +1486,15 @@ pub enum BidResponseTxnType {
     token: TokenSpec,
     token_id: String,
     trx_id: TransactionId,
-    seller: Account1,
+    seller: Account,
     extensible: Box<CandyShared>,
-    buyer: Account1,
+    buyer: Account,
     amount: candid::Nat,
   },
   #[serde(rename = "fee_deposit")] FeeDeposit {
     token: TokenSpec,
     extensible: Box<CandyShared>,
-    account: Account1,
+    account: Account,
     amount: candid::Nat,
   },
   #[serde(rename = "canister_network_updated")] CanisterNetworkUpdated {
@@ -1613,9 +1506,9 @@ pub enum BidResponseTxnType {
     token: TokenSpec,
     token_id: String,
     trx_id: TransactionId,
-    seller: Account1,
+    seller: Account,
     extensible: Box<CandyShared>,
-    buyer: Account1,
+    buyer: Account,
     amount: candid::Nat,
   },
   #[serde(rename = "canister_managers_updated")] CanisterManagersUpdated {
@@ -1625,12 +1518,12 @@ pub enum BidResponseTxnType {
   #[serde(rename = "auction_bid")] AuctionBid {
     token: TokenSpec,
     extensible: Box<CandyShared>,
-    buyer: Account1,
+    buyer: Account,
     amount: candid::Nat,
     sale_id: String,
   },
   #[serde(rename = "burn")] Burn {
-    from: Option<Account1>,
+    from: Option<Account>,
     extensible: Box<CandyShared>,
   },
   #[serde(rename = "data")] Data {
@@ -1641,26 +1534,26 @@ pub enum BidResponseTxnType {
   },
   #[serde(rename = "sale_ended")] SaleEnded {
     token: TokenSpec,
-    seller: Account1,
+    seller: Account,
     extensible: Box<CandyShared>,
-    buyer: Account1,
+    buyer: Account,
     amount: candid::Nat,
     sale_id: Option<String>,
   },
   #[serde(rename = "mint")] Mint {
-    to: Account1,
-    from: Account1,
+    to: Account,
+    from: Account,
     sale: Option<BidResponseTxnTypeMintSaleInner>,
     extensible: Box<CandyShared>,
   },
   #[serde(rename = "royalty_paid")] RoyaltyPaid {
     tag: String,
     token: TokenSpec,
-    seller: Account1,
+    seller: Account,
     extensible: Box<CandyShared>,
-    buyer: Account1,
+    buyer: Account,
     amount: candid::Nat,
-    receiver: Account1,
+    receiver: Account,
     sale_id: Option<String>,
   },
   #[serde(rename = "extensible")] Extensible(Box<CandyShared>),
@@ -1669,12 +1562,12 @@ pub enum BidResponseTxnType {
     token: TokenSpec,
     trx_id: TransactionId,
     extensible: Box<CandyShared>,
-    account: Account1,
+    account: Account,
     amount: candid::Nat,
   },
   #[serde(rename = "owner_transfer")] OwnerTransfer {
-    to: Account1,
-    from: Account1,
+    to: Account,
+    from: Account,
     extensible: Box<CandyShared>,
   },
   #[serde(rename = "sale_opened")] SaleOpened {
@@ -1691,9 +1584,9 @@ pub enum BidResponseTxnType {
     token: TokenSpec,
     token_id: String,
     trx_id: TransactionId,
-    seller: Account1,
+    seller: Account,
     extensible: Box<CandyShared>,
-    buyer: Account1,
+    buyer: Account,
     amount: candid::Nat,
   },
   #[serde(rename = "deposit_withdraw")] DepositWithdraw {
@@ -1701,7 +1594,7 @@ pub enum BidResponseTxnType {
     token: TokenSpec,
     trx_id: TransactionId,
     extensible: Box<CandyShared>,
-    buyer: Account1,
+    buyer: Account,
     amount: candid::Nat,
   },
 }
@@ -1740,15 +1633,15 @@ pub enum WithdrawResponseTxnType {
     token: TokenSpec,
     token_id: String,
     trx_id: TransactionId,
-    seller: Account1,
+    seller: Account,
     extensible: Box<CandyShared>,
-    buyer: Account1,
+    buyer: Account,
     amount: candid::Nat,
   },
   #[serde(rename = "fee_deposit")] FeeDeposit {
     token: TokenSpec,
     extensible: Box<CandyShared>,
-    account: Account1,
+    account: Account,
     amount: candid::Nat,
   },
   #[serde(rename = "canister_network_updated")] CanisterNetworkUpdated {
@@ -1760,9 +1653,9 @@ pub enum WithdrawResponseTxnType {
     token: TokenSpec,
     token_id: String,
     trx_id: TransactionId,
-    seller: Account1,
+    seller: Account,
     extensible: Box<CandyShared>,
-    buyer: Account1,
+    buyer: Account,
     amount: candid::Nat,
   },
   #[serde(rename = "canister_managers_updated")] CanisterManagersUpdated {
@@ -1772,12 +1665,12 @@ pub enum WithdrawResponseTxnType {
   #[serde(rename = "auction_bid")] AuctionBid {
     token: TokenSpec,
     extensible: Box<CandyShared>,
-    buyer: Account1,
+    buyer: Account,
     amount: candid::Nat,
     sale_id: String,
   },
   #[serde(rename = "burn")] Burn {
-    from: Option<Account1>,
+    from: Option<Account>,
     extensible: Box<CandyShared>,
   },
   #[serde(rename = "data")] Data {
@@ -1788,26 +1681,26 @@ pub enum WithdrawResponseTxnType {
   },
   #[serde(rename = "sale_ended")] SaleEnded {
     token: TokenSpec,
-    seller: Account1,
+    seller: Account,
     extensible: Box<CandyShared>,
-    buyer: Account1,
+    buyer: Account,
     amount: candid::Nat,
     sale_id: Option<String>,
   },
   #[serde(rename = "mint")] Mint {
-    to: Account1,
-    from: Account1,
+    to: Account,
+    from: Account,
     sale: Option<WithdrawResponseTxnTypeMintSaleInner>,
     extensible: Box<CandyShared>,
   },
   #[serde(rename = "royalty_paid")] RoyaltyPaid {
     tag: String,
     token: TokenSpec,
-    seller: Account1,
+    seller: Account,
     extensible: Box<CandyShared>,
-    buyer: Account1,
+    buyer: Account,
     amount: candid::Nat,
-    receiver: Account1,
+    receiver: Account,
     sale_id: Option<String>,
   },
   #[serde(rename = "extensible")] Extensible(Box<CandyShared>),
@@ -1816,12 +1709,12 @@ pub enum WithdrawResponseTxnType {
     token: TokenSpec,
     trx_id: TransactionId,
     extensible: Box<CandyShared>,
-    account: Account1,
+    account: Account,
     amount: candid::Nat,
   },
   #[serde(rename = "owner_transfer")] OwnerTransfer {
-    to: Account1,
-    from: Account1,
+    to: Account,
+    from: Account,
     extensible: Box<CandyShared>,
   },
   #[serde(rename = "sale_opened")] SaleOpened {
@@ -1838,9 +1731,9 @@ pub enum WithdrawResponseTxnType {
     token: TokenSpec,
     token_id: String,
     trx_id: TransactionId,
-    seller: Account1,
+    seller: Account,
     extensible: Box<CandyShared>,
-    buyer: Account1,
+    buyer: Account,
     amount: candid::Nat,
   },
   #[serde(rename = "deposit_withdraw")] DepositWithdraw {
@@ -1848,7 +1741,7 @@ pub enum WithdrawResponseTxnType {
     token: TokenSpec,
     trx_id: TransactionId,
     extensible: Box<CandyShared>,
-    buyer: Account1,
+    buyer: Account,
     amount: candid::Nat,
   },
 }
@@ -1871,15 +1764,15 @@ pub enum EndSaleResponseTxnType {
     token: TokenSpec,
     token_id: String,
     trx_id: TransactionId,
-    seller: Account1,
+    seller: Account,
     extensible: Box<CandyShared>,
-    buyer: Account1,
+    buyer: Account,
     amount: candid::Nat,
   },
   #[serde(rename = "fee_deposit")] FeeDeposit {
     token: TokenSpec,
     extensible: Box<CandyShared>,
-    account: Account1,
+    account: Account,
     amount: candid::Nat,
   },
   #[serde(rename = "canister_network_updated")] CanisterNetworkUpdated {
@@ -1891,9 +1784,9 @@ pub enum EndSaleResponseTxnType {
     token: TokenSpec,
     token_id: String,
     trx_id: TransactionId,
-    seller: Account1,
+    seller: Account,
     extensible: Box<CandyShared>,
-    buyer: Account1,
+    buyer: Account,
     amount: candid::Nat,
   },
   #[serde(rename = "canister_managers_updated")] CanisterManagersUpdated {
@@ -1903,12 +1796,12 @@ pub enum EndSaleResponseTxnType {
   #[serde(rename = "auction_bid")] AuctionBid {
     token: TokenSpec,
     extensible: Box<CandyShared>,
-    buyer: Account1,
+    buyer: Account,
     amount: candid::Nat,
     sale_id: String,
   },
   #[serde(rename = "burn")] Burn {
-    from: Option<Account1>,
+    from: Option<Account>,
     extensible: Box<CandyShared>,
   },
   #[serde(rename = "data")] Data {
@@ -1919,26 +1812,26 @@ pub enum EndSaleResponseTxnType {
   },
   #[serde(rename = "sale_ended")] SaleEnded {
     token: TokenSpec,
-    seller: Account1,
+    seller: Account,
     extensible: Box<CandyShared>,
-    buyer: Account1,
+    buyer: Account,
     amount: candid::Nat,
     sale_id: Option<String>,
   },
   #[serde(rename = "mint")] Mint {
-    to: Account1,
-    from: Account1,
+    to: Account,
+    from: Account,
     sale: Option<EndSaleResponseTxnTypeMintSaleInner>,
     extensible: Box<CandyShared>,
   },
   #[serde(rename = "royalty_paid")] RoyaltyPaid {
     tag: String,
     token: TokenSpec,
-    seller: Account1,
+    seller: Account,
     extensible: Box<CandyShared>,
-    buyer: Account1,
+    buyer: Account,
     amount: candid::Nat,
-    receiver: Account1,
+    receiver: Account,
     sale_id: Option<String>,
   },
   #[serde(rename = "extensible")] Extensible(Box<CandyShared>),
@@ -1947,12 +1840,12 @@ pub enum EndSaleResponseTxnType {
     token: TokenSpec,
     trx_id: TransactionId,
     extensible: Box<CandyShared>,
-    account: Account1,
+    account: Account,
     amount: candid::Nat,
   },
   #[serde(rename = "owner_transfer")] OwnerTransfer {
-    to: Account1,
-    from: Account1,
+    to: Account,
+    from: Account,
     extensible: Box<CandyShared>,
   },
   #[serde(rename = "sale_opened")] SaleOpened {
@@ -1969,9 +1862,9 @@ pub enum EndSaleResponseTxnType {
     token: TokenSpec,
     token_id: String,
     trx_id: TransactionId,
-    seller: Account1,
+    seller: Account,
     extensible: Box<CandyShared>,
-    buyer: Account1,
+    buyer: Account,
     amount: candid::Nat,
   },
   #[serde(rename = "deposit_withdraw")] DepositWithdraw {
@@ -1979,7 +1872,7 @@ pub enum EndSaleResponseTxnType {
     token: TokenSpec,
     trx_id: TransactionId,
     extensible: Box<CandyShared>,
-    buyer: Account1,
+    buyer: Account,
     amount: candid::Nat,
   },
 }
@@ -2005,7 +1898,7 @@ pub enum ManageSaleResponse {
   #[serde(rename = "withdraw")] Withdraw(WithdrawResponse),
   #[serde(rename = "ask_subscribe")] AskSubscribe(AskSubscribeResponse),
   #[serde(rename = "end_sale")] EndSale(EndSaleResponse),
-  #[serde(rename = "refresh_offers")] RefreshOffers(Vec<EscrowRecord1>),
+  #[serde(rename = "refresh_offers")] RefreshOffers(Vec<EscrowRecord>),
   #[serde(rename = "distribute_sale")] DistributeSale(DistributeSaleResponse),
   #[serde(rename = "open_sale")] OpenSale(bool),
 }

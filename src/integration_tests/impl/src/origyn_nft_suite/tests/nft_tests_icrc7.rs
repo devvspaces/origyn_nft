@@ -1,10 +1,7 @@
 use crate::client::icrc1_icrc2_token;
-use crate::client::origyn_nft_reference::icrc7_owner_of;
 use crate::client::pocket::unwrap_response;
 use crate::origyn_nft_suite::{ CanisterIds, PrincipalIds };
 use crate::origyn_nft_suite::{ init::init, TestEnv };
-use ic_cdk::print;
-use icrc_ledger_types::icrc2;
 use origyn_nft_reference::origyn_nft_reference_canister::{ Account, Account3 };
 use candid::{ Nat, Principal, Encode };
 use pocket_ic::PocketIc;
@@ -18,7 +15,7 @@ fn init_nft_with_premint_nft(
   nft_owner: Principal,
   nft_name: String
 ) -> bool {
-  let standard_nft_return: crate::origyn_nft_suite::nft_utils::BuildStandardNftReturns = crate::origyn_nft_suite::nft_utils::build_standard_nft(
+  let _standard_nft_return: crate::origyn_nft_suite::nft_utils::BuildStandardNftReturns = crate::origyn_nft_suite::nft_utils::build_standard_nft(
     pic,
     nft_name.clone(),
     origyn_nft.clone(),
