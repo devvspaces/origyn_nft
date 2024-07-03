@@ -285,7 +285,7 @@ pub fn build_standard_collection(
       canister_id,
       Some(net_principal),
       standardFileChunk(
-        " ".to_string(),
+        "".to_string(),
         "collection_banner".to_string(),
         "collection_banner".to_string(),
         CandyShared::Option(None)
