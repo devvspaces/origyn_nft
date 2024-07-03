@@ -4,7 +4,7 @@
 use candid::{ self, CandidType, Deserialize, Principal };
 use ic_cdk::api::call::CallResult as Result;
 
-#[derive(CandidType, Deserialize)]
+#[derive(CandidType, Deserialize, Debug)]
 pub enum NftCanisterSetTimeModeArg {
   #[serde(rename = "test")]
   Test,
@@ -46,7 +46,7 @@ pub enum CandyShared {
 }
 pub type StableSalesBalances = Vec<(Account, Account, String, EscrowRecord)>;
 pub type StableOffers = Vec<(Account, Account, candid::Int)>;
-#[derive(CandidType, Deserialize)]
+#[derive(CandidType, Deserialize, Debug)]
 pub struct StableCollectionData {
   pub active_bucket: Option<Principal>,
   pub managers: Vec<Principal>,
@@ -59,7 +59,7 @@ pub struct StableCollectionData {
   pub symbol: Option<String>,
   pub allocated_storage: candid::Nat,
 }
-#[derive(CandidType, Deserialize)]
+#[derive(CandidType, Deserialize, Debug)]
 pub enum IcTokenSpecStandard {
   #[serde(rename = "ICRC1")]
   Icrc1,
@@ -70,7 +70,7 @@ pub enum IcTokenSpecStandard {
   Other(Box<CandyShared>),
   Ledger,
 }
-#[derive(CandidType, Deserialize)]
+#[derive(CandidType, Deserialize, Debug)]
 pub struct IcTokenSpec {
   pub id: Option<candid::Nat>,
   pub fee: Option<candid::Nat>,
@@ -79,36 +79,36 @@ pub struct IcTokenSpec {
   pub standard: IcTokenSpecStandard,
   pub symbol: String,
 }
-#[derive(CandidType, Deserialize)]
+#[derive(CandidType, Deserialize, Debug)]
 pub enum TokenSpec {
   #[serde(rename = "ic")] Ic(IcTokenSpec),
   #[serde(rename = "extensible")] Extensible(Box<CandyShared>),
 }
-#[derive(CandidType, Deserialize)]
+#[derive(CandidType, Deserialize, Debug)]
 pub enum TransactionId {
   #[serde(rename = "nat")] Nat(candid::Nat),
   #[serde(rename = "text")] Text(String),
   #[serde(rename = "extensible")] Extensible(Box<CandyShared>),
 }
-#[derive(CandidType, Deserialize)]
+#[derive(CandidType, Deserialize, Debug)]
 pub struct TransactionRecordTxnTypeMintSaleInner {
   pub token: TokenSpec,
   pub amount: candid::Nat,
 }
-#[derive(CandidType, Deserialize)]
+#[derive(CandidType, Deserialize, Debug)]
 pub struct WaitForQuietType {
   pub max: candid::Nat,
   pub fade: f64,
   pub extension: u64,
 }
-#[derive(CandidType, Deserialize)]
+#[derive(CandidType, Deserialize, Debug)]
 pub enum MinIncreaseType {
   #[serde(rename = "amount")] Amount(candid::Nat),
   #[serde(rename = "percentage")] Percentage(f64),
 }
 pub type FeeName = String;
 pub type FeeAccountsParams = Vec<FeeName>;
-#[derive(CandidType, Deserialize)]
+#[derive(CandidType, Deserialize, Debug)]
 pub struct NiftySettlementType {
   pub fixed: bool,
   pub interestRatePerSecond: f64,
@@ -116,28 +116,28 @@ pub struct NiftySettlementType {
   pub expiration: Option<candid::Int>,
   pub lenderOffer: bool,
 }
-#[derive(CandidType, Deserialize)]
+#[derive(CandidType, Deserialize, Debug)]
 pub enum DutchParamsTimeUnit {
   #[serde(rename = "day")] Day(candid::Nat),
   #[serde(rename = "hour")] Hour(candid::Nat),
   #[serde(rename = "minute")] Minute(candid::Nat),
 }
-#[derive(CandidType, Deserialize)]
+#[derive(CandidType, Deserialize, Debug)]
 pub enum DutchParamsDecayType {
   #[serde(rename = "flat")] Flat(candid::Nat),
   #[serde(rename = "percent")] Percent(f64),
 }
-#[derive(CandidType, Deserialize)]
+#[derive(CandidType, Deserialize, Debug)]
 pub struct DutchParams {
   pub time_unit: DutchParamsTimeUnit,
   pub decay_type: DutchParamsDecayType,
 }
-#[derive(CandidType, Deserialize)]
+#[derive(CandidType, Deserialize, Debug)]
 pub enum EndingType {
   #[serde(rename = "date")] Date(candid::Int),
   #[serde(rename = "timeout")] Timeout(candid::Nat),
 }
-#[derive(CandidType, Deserialize)]
+#[derive(CandidType, Deserialize, Debug)]
 pub enum AskFeature {
   #[serde(rename = "kyc")] Kyc(Principal),
   #[serde(rename = "start_price")] StartPrice(candid::Nat),
@@ -159,13 +159,13 @@ pub enum AskFeature {
 }
 pub type AskFeatureArray = Vec<AskFeature>;
 pub type AskConfigShared = Option<AskFeatureArray>;
-#[derive(CandidType, Deserialize)]
+#[derive(CandidType, Deserialize, Debug)]
 pub enum InstantFeature {
   #[serde(rename = "fee_schema")] FeeSchema(String),
   #[serde(rename = "fee_accounts")] FeeAccounts(FeeAccountsParams),
 }
 pub type InstantConfigShared = Option<Vec<InstantFeature>>;
-#[derive(CandidType, Deserialize)]
+#[derive(CandidType, Deserialize, Debug)]
 pub enum AuctionConfigEnding {
   #[serde(rename = "date")] Date(candid::Int),
   #[serde(rename = "wait_for_quiet")] WaitForQuiet {
@@ -175,7 +175,7 @@ pub enum AuctionConfigEnding {
     extension: u64,
   },
 }
-#[derive(CandidType, Deserialize)]
+#[derive(CandidType, Deserialize, Debug)]
 pub struct AuctionConfig {
   pub start_price: candid::Nat,
   pub token: TokenSpec,
@@ -186,14 +186,14 @@ pub struct AuctionConfig {
   pub buy_now: Option<candid::Nat>,
   pub ending: AuctionConfigEnding,
 }
-#[derive(CandidType, Deserialize)]
+#[derive(CandidType, Deserialize, Debug)]
 pub enum PricingConfigShared {
   #[serde(rename = "ask")] Ask(AskConfigShared),
   #[serde(rename = "extensible")] Extensible(Box<CandyShared>),
   #[serde(rename = "instant")] Instant(InstantConfigShared),
   #[serde(rename = "auction")] Auction(AuctionConfig),
 }
-#[derive(CandidType, Deserialize)]
+#[derive(CandidType, Deserialize, Debug)]
 pub enum TransactionRecordTxnType {
   #[serde(rename = "escrow_deposit")] EscrowDeposit {
     token: TokenSpec,
@@ -311,7 +311,7 @@ pub enum TransactionRecordTxnType {
     amount: candid::Nat,
   },
 }
-#[derive(CandidType, Deserialize)]
+#[derive(CandidType, Deserialize, Debug)]
 pub struct TransactionRecord {
   pub token_id: String,
   pub txn_type: TransactionRecordTxnType,
@@ -319,7 +319,7 @@ pub struct TransactionRecord {
   pub index: candid::Nat,
 }
 pub type StableNftLedger = Vec<(String, TransactionRecord)>;
-#[derive(CandidType, Deserialize)]
+#[derive(CandidType, Deserialize, Debug)]
 pub struct AllocationRecordStable {
   pub allocated_space: candid::Nat,
   pub token_id: String,
@@ -328,7 +328,7 @@ pub struct AllocationRecordStable {
   pub chunks: Vec<candid::Nat>,
   pub library_id: String,
 }
-#[derive(CandidType, Deserialize)]
+#[derive(CandidType, Deserialize, Debug)]
 pub enum AuctionStateSharedStatus {
   #[serde(rename = "closed")]
   Closed,
@@ -337,14 +337,14 @@ pub enum AuctionStateSharedStatus {
   #[serde(rename = "not_started")]
   NotStarted,
 }
-#[derive(CandidType, Deserialize)]
+#[derive(CandidType, Deserialize, Debug)]
 pub enum BidFeature {
   #[serde(rename = "fee_schema")] FeeSchema(String),
   #[serde(rename = "broker")] Broker(Account),
   #[serde(rename = "fee_accounts")] FeeAccounts(FeeAccountsParams),
 }
 pub type BidConfigShared = Option<Vec<BidFeature>>;
-#[derive(CandidType, Deserialize)]
+#[derive(CandidType, Deserialize, Debug)]
 pub struct EscrowReceipt {
   pub token: TokenSpec,
   pub token_id: String,
@@ -352,7 +352,7 @@ pub struct EscrowReceipt {
   pub buyer: Account,
   pub amount: candid::Nat,
 }
-#[derive(CandidType, Deserialize)]
+#[derive(CandidType, Deserialize, Debug)]
 pub struct AuctionStateShared {
   pub status: AuctionStateSharedStatus,
   pub participants: Vec<(Principal, candid::Int)>,
@@ -368,11 +368,11 @@ pub struct AuctionStateShared {
   pub min_next_bid: candid::Nat,
   pub config: PricingConfigShared,
 }
-#[derive(CandidType, Deserialize)]
+#[derive(CandidType, Deserialize, Debug)]
 pub enum SaleStatusSharedSaleType {
   #[serde(rename = "auction")] Auction(AuctionStateShared),
 }
-#[derive(CandidType, Deserialize)]
+#[derive(CandidType, Deserialize, Debug)]
 pub struct SaleStatusShared {
   pub token_id: String,
   pub sale_type: SaleStatusSharedSaleType,
@@ -380,7 +380,7 @@ pub struct SaleStatusShared {
   pub original_broker_id: Option<Principal>,
   pub sale_id: String,
 }
-#[derive(CandidType, Deserialize)]
+#[derive(CandidType, Deserialize, Debug)]
 pub struct StableBucketData {
   pub principal: Principal,
   pub allocated_space: candid::Nat,
@@ -391,7 +391,7 @@ pub struct StableBucketData {
   pub allocations: Vec<((String, String), candid::Int)>,
 }
 pub type StableEscrowBalances = Vec<(Account, Account, String, EscrowRecord)>;
-#[derive(CandidType, Deserialize)]
+#[derive(CandidType, Deserialize, Debug)]
 pub struct NftBackupChunk {
   pub sales_balances: StableSalesBalances,
   pub offers: StableOffers,
@@ -403,40 +403,40 @@ pub struct NftBackupChunk {
   pub buckets: Vec<(Principal, StableBucketData)>,
   pub escrow_balances: StableEscrowBalances,
 }
-#[derive(CandidType, Deserialize)]
+#[derive(CandidType, Deserialize, Debug)]
 pub enum NftCanisterBackUpRet {
   #[serde(rename = "eof")] Eof(NftBackupChunk),
   #[serde(rename = "data")] Data(NftBackupChunk),
 }
 pub type ExtTokenIdentifier = String;
-#[derive(CandidType, Deserialize)]
+#[derive(CandidType, Deserialize, Debug)]
 pub enum ExtUser {
   #[serde(rename = "principal")] Principal_(Principal),
   #[serde(rename = "address")] Address(String),
 }
-#[derive(CandidType, Deserialize)]
+#[derive(CandidType, Deserialize, Debug)]
 pub struct ExtBalanceRequest {
   pub token: ExtTokenIdentifier,
   pub user: ExtUser,
 }
 pub type ExtBalance = candid::Nat;
-#[derive(CandidType, Deserialize)]
+#[derive(CandidType, Deserialize, Debug)]
 pub enum ExtCommonError {
   InvalidToken(ExtTokenIdentifier),
   Other(String),
 }
-#[derive(CandidType, Deserialize)]
+#[derive(CandidType, Deserialize, Debug)]
 pub enum ExtBalanceResult {
   #[serde(rename = "ok")] Ok(ExtBalance),
   #[serde(rename = "err")] Err(ExtCommonError),
 }
-#[derive(CandidType, Deserialize)]
+#[derive(CandidType, Deserialize, Debug)]
 pub struct StakeRecord {
   pub staker: Account,
   pub token_id: String,
   pub amount: candid::Nat,
 }
-#[derive(CandidType, Deserialize)]
+#[derive(CandidType, Deserialize, Debug)]
 pub struct BalanceResponse {
   pub nfts: Vec<String>,
   pub offers: Vec<EscrowRecord>,
@@ -555,28 +555,28 @@ pub struct OrigynError {
   pub number: u32,
   pub flag_point: String,
 }
-#[derive(CandidType, Deserialize)]
+#[derive(CandidType, Deserialize, Debug)]
 pub enum BalanceResult {
   #[serde(rename = "ok")] Ok(BalanceResponse),
   #[serde(rename = "err")] Err(OrigynError),
 }
 pub type ExtAccountIdentifier = String;
-#[derive(CandidType, Deserialize)]
+#[derive(CandidType, Deserialize, Debug)]
 pub enum ExtBearerResult {
   #[serde(rename = "ok")] Ok(ExtAccountIdentifier),
   #[serde(rename = "err")] Err(ExtCommonError),
 }
-#[derive(CandidType, Deserialize)]
+#[derive(CandidType, Deserialize, Debug)]
 pub enum BearerResult {
   #[serde(rename = "ok")] Ok(Account),
   #[serde(rename = "err")] Err(OrigynError),
 }
 pub type CanisterId = Principal;
-#[derive(CandidType, Deserialize)]
+#[derive(CandidType, Deserialize, Debug)]
 pub struct NftCanisterCanisterStatusArg {
   pub canister_id: CanisterId,
 }
-#[derive(CandidType, Deserialize)]
+#[derive(CandidType, Deserialize, Debug)]
 pub enum CanisterStatusStatus {
   #[serde(rename = "stopped")]
   Stopped,
@@ -585,14 +585,14 @@ pub enum CanisterStatusStatus {
   #[serde(rename = "running")]
   Running,
 }
-#[derive(CandidType, Deserialize)]
+#[derive(CandidType, Deserialize, Debug)]
 pub struct DefiniteCanisterSettings {
   pub freezing_threshold: candid::Nat,
   pub controllers: Option<Vec<Principal>>,
   pub memory_allocation: candid::Nat,
   pub compute_allocation: candid::Nat,
 }
-#[derive(CandidType, Deserialize)]
+#[derive(CandidType, Deserialize, Debug)]
 pub struct CanisterStatus {
   pub status: CanisterStatusStatus,
   pub memory_size: candid::Nat,
@@ -600,13 +600,13 @@ pub struct CanisterStatus {
   pub settings: DefiniteCanisterSettings,
   pub module_hash: Option<serde_bytes::ByteBuf>,
 }
-#[derive(CandidType, Deserialize)]
+#[derive(CandidType, Deserialize, Debug)]
 pub struct ChunkRequest {
   pub token_id: String,
   pub chunk: Option<candid::Nat>,
   pub library_id: String,
 }
-#[derive(CandidType, Deserialize)]
+#[derive(CandidType, Deserialize, Debug)]
 pub enum ChunkContent {
   #[serde(rename = "remote")] Remote {
     args: ChunkRequest,
@@ -619,7 +619,7 @@ pub enum ChunkContent {
     current_chunk: Option<candid::Nat>,
   },
 }
-#[derive(CandidType, Deserialize)]
+#[derive(CandidType, Deserialize, Debug)]
 pub enum ChunkResult {
   #[serde(rename = "ok")] Ok(ChunkContent),
   #[serde(rename = "err")] Err(OrigynError),
@@ -651,7 +651,7 @@ pub enum CollectionResult {
   #[serde(rename = "ok")] Ok(CollectionInfo),
   #[serde(rename = "err")] Err(OrigynError),
 }
-#[derive(CandidType, Deserialize)]
+#[derive(CandidType, Deserialize, Debug)]
 pub enum ManageCollectionCommand {
   UpdateOwner(Principal),
   UpdateManagers(Vec<Principal>),
@@ -667,7 +667,7 @@ pub enum OrigynBoolResult {
   #[serde(rename = "ok")] Ok(bool),
   #[serde(rename = "err")] Err(OrigynError),
 }
-#[derive(CandidType, Deserialize)]
+#[derive(CandidType, Deserialize, Debug)]
 pub enum NftError {
   UnauthorizedOperator,
   SelfTransfer,
@@ -681,12 +681,12 @@ pub enum NftError {
   OwnerNotFound,
   Other(String),
 }
-#[derive(CandidType, Deserialize)]
+#[derive(CandidType, Deserialize, Debug)]
 pub enum Dip721BoolResult {
   Ok(bool),
   Err(NftError),
 }
-#[derive(CandidType, Deserialize)]
+#[derive(CandidType, Deserialize, Debug)]
 pub struct Dip721Metadata {
   pub logo: Option<String>,
   pub name: Option<String>,
@@ -695,12 +695,12 @@ pub struct Dip721Metadata {
   pub custodians: Vec<Principal>,
   pub symbol: Option<String>,
 }
-#[derive(CandidType, Deserialize)]
+#[derive(CandidType, Deserialize, Debug)]
 pub enum Dip721TokensListMetadata {
   Ok(Vec<candid::Nat>),
   Err(NftError),
 }
-#[derive(CandidType, Deserialize)]
+#[derive(CandidType, Deserialize, Debug)]
 pub enum VecItem1 {
   Nat64Content(u64),
   Nat32Content(u32),
@@ -719,7 +719,7 @@ pub enum VecItem1 {
   #[serde(rename = "Principal")] Principal_(Principal),
   TextContent(String),
 }
-#[derive(CandidType, Deserialize)]
+#[derive(CandidType, Deserialize, Debug)]
 pub enum GenericValue {
   Nat64Content(u64),
   Nat32Content(u32),
@@ -738,7 +738,7 @@ pub enum GenericValue {
   #[serde(rename = "Principal")] Principal_(Principal),
   TextContent(String),
 }
-#[derive(CandidType, Deserialize)]
+#[derive(CandidType, Deserialize, Debug)]
 pub struct TokenMetadata {
   pub transferred_at: Option<u64>,
   pub transferred_by: Option<Principal>,
@@ -754,81 +754,81 @@ pub struct TokenMetadata {
   pub minted_at: u64,
   pub minted_by: Principal,
 }
-#[derive(CandidType, Deserialize)]
+#[derive(CandidType, Deserialize, Debug)]
 pub enum Dip721TokensMetadata {
   Ok(Vec<TokenMetadata>),
   Err(NftError),
 }
-#[derive(CandidType, Deserialize)]
+#[derive(CandidType, Deserialize, Debug)]
 pub enum OwnerOfResponse {
   Ok(Option<Principal>),
   Err(NftError),
 }
-#[derive(CandidType, Deserialize)]
+#[derive(CandidType, Deserialize, Debug)]
 pub struct Dip721Stats {
   pub cycles: candid::Nat,
   pub total_transactions: candid::Nat,
   pub total_unique_holders: candid::Nat,
   pub total_supply: candid::Nat,
 }
-#[derive(CandidType, Deserialize)]
+#[derive(CandidType, Deserialize, Debug)]
 pub enum Dip721SupportedInterface {
   Burn,
   Mint,
   Approval,
   TransactionHistory,
 }
-#[derive(CandidType, Deserialize)]
+#[derive(CandidType, Deserialize, Debug)]
 pub enum Dip721TokenMetadata {
   Ok(TokenMetadata),
   Err(NftError),
 }
-#[derive(CandidType, Deserialize)]
+#[derive(CandidType, Deserialize, Debug)]
 pub enum Dip721NatResult {
   Ok(candid::Nat),
   Err(NftError),
 }
-#[derive(CandidType, Deserialize)]
+#[derive(CandidType, Deserialize, Debug)]
 pub struct GetLogMessagesFilter {
   pub analyzeCount: u32,
   pub messageRegex: Option<String>,
   pub messageContains: Option<String>,
 }
 pub type Nanos = u64;
-#[derive(CandidType, Deserialize)]
+#[derive(CandidType, Deserialize, Debug)]
 pub struct GetLogMessagesParameters {
   pub count: u32,
   pub filter: Option<GetLogMessagesFilter>,
   pub fromTimeNanos: Option<Nanos>,
 }
-#[derive(CandidType, Deserialize)]
+#[derive(CandidType, Deserialize, Debug)]
 pub struct GetLatestLogMessagesParameters {
   pub upToTimeNanos: Option<Nanos>,
   pub count: u32,
   pub filter: Option<GetLogMessagesFilter>,
 }
-#[derive(CandidType, Deserialize)]
+#[derive(CandidType, Deserialize, Debug)]
 pub enum CanisterLogRequest {
   #[serde(rename = "getMessagesInfo")]
   GetMessagesInfo,
   #[serde(rename = "getMessages")] GetMessages(GetLogMessagesParameters),
   #[serde(rename = "getLatestMessages")] GetLatestMessages(GetLatestLogMessagesParameters),
 }
-#[derive(CandidType, Deserialize)]
+#[derive(CandidType, Deserialize, Debug)]
 pub enum CanisterLogFeature {
   #[serde(rename = "filterMessageByContains")]
   FilterMessageByContains,
   #[serde(rename = "filterMessageByRegex")]
   FilterMessageByRegex,
 }
-#[derive(CandidType, Deserialize)]
+#[derive(CandidType, Deserialize, Debug)]
 pub struct CanisterLogMessagesInfo {
   pub features: Vec<Option<CanisterLogFeature>>,
   pub lastTimeNanos: Option<Nanos>,
   pub count: u32,
   pub firstTimeNanos: Option<Nanos>,
 }
-#[derive(CandidType, Deserialize)]
+#[derive(CandidType, Deserialize, Debug)]
 pub enum Data {
   Int(candid::Int),
   Map(Vec<(Box<CandyShared>, Box<CandyShared>)>),
@@ -856,31 +856,31 @@ pub enum Data {
   Class(Vec<PropertyShared>),
 }
 pub type Caller = Option<Principal>;
-#[derive(CandidType, Deserialize)]
+#[derive(CandidType, Deserialize, Debug)]
 pub struct LogMessagesData {
   pub data: Data,
   pub timeNanos: Nanos,
   pub message: String,
   pub caller: Caller,
 }
-#[derive(CandidType, Deserialize)]
+#[derive(CandidType, Deserialize, Debug)]
 pub struct CanisterLogMessages {
   pub data: Vec<LogMessagesData>,
   pub lastAnalyzedMessageTimeNanos: Option<Nanos>,
 }
-#[derive(CandidType, Deserialize)]
+#[derive(CandidType, Deserialize, Debug)]
 pub enum CanisterLogResponse {
   #[serde(rename = "messagesInfo")] MessagesInfo(CanisterLogMessagesInfo),
   #[serde(rename = "messages")] Messages(CanisterLogMessages),
 }
-#[derive(CandidType, Deserialize)]
+#[derive(CandidType, Deserialize, Debug)]
 pub enum MetricsGranularity {
   #[serde(rename = "hourly")]
   Hourly,
   #[serde(rename = "daily")]
   Daily,
 }
-#[derive(CandidType, Deserialize)]
+#[derive(CandidType, Deserialize, Debug)]
 pub struct GetMetricsParameters {
   pub dateToMillis: candid::Nat,
   pub granularity: MetricsGranularity,
@@ -890,7 +890,7 @@ pub type UpdateCallsAggregatedData = Vec<u64>;
 pub type CanisterHeapMemoryAggregatedData = Vec<u64>;
 pub type CanisterCyclesAggregatedData = Vec<u64>;
 pub type CanisterMemoryAggregatedData = Vec<u64>;
-#[derive(CandidType, Deserialize)]
+#[derive(CandidType, Deserialize, Debug)]
 pub struct HourlyMetricsData {
   pub updateCalls: UpdateCallsAggregatedData,
   pub canisterHeapMemorySize: CanisterHeapMemoryAggregatedData,
@@ -898,7 +898,7 @@ pub struct HourlyMetricsData {
   pub canisterMemorySize: CanisterMemoryAggregatedData,
   pub timeMillis: candid::Int,
 }
-#[derive(CandidType, Deserialize)]
+#[derive(CandidType, Deserialize, Debug)]
 pub struct NumericEntity {
   pub avg: u64,
   pub max: u64,
@@ -906,7 +906,7 @@ pub struct NumericEntity {
   pub first: u64,
   pub last: u64,
 }
-#[derive(CandidType, Deserialize)]
+#[derive(CandidType, Deserialize, Debug)]
 pub struct DailyMetricsData {
   pub updateCalls: u64,
   pub canisterHeapMemorySize: NumericEntity,
@@ -914,12 +914,12 @@ pub struct DailyMetricsData {
   pub canisterMemorySize: NumericEntity,
   pub timeMillis: candid::Int,
 }
-#[derive(CandidType, Deserialize)]
+#[derive(CandidType, Deserialize, Debug)]
 pub enum CanisterMetricsData {
   #[serde(rename = "hourly")] Hourly(Vec<HourlyMetricsData>),
   #[serde(rename = "daily")] Daily(Vec<DailyMetricsData>),
 }
-#[derive(CandidType, Deserialize)]
+#[derive(CandidType, Deserialize, Debug)]
 pub struct CanisterMetrics {
   pub data: CanisterMetricsData,
 }
@@ -928,13 +928,13 @@ pub enum OrigynTextResult {
   #[serde(rename = "ok")] Ok(String),
   #[serde(rename = "err")] Err(OrigynError),
 }
-#[derive(CandidType, Deserialize)]
+#[derive(CandidType, Deserialize, Debug)]
 pub struct Tip {
   pub last_block_index: serde_bytes::ByteBuf,
   pub hash_tree: serde_bytes::ByteBuf,
   pub last_block_hash: serde_bytes::ByteBuf,
 }
-#[derive(CandidType, Deserialize)]
+#[derive(CandidType, Deserialize, Debug)]
 pub enum GovernanceRequest {
   #[serde(rename = "update_system_var")] UpdateSystemVar {
     key: String,
@@ -943,73 +943,73 @@ pub enum GovernanceRequest {
   },
   #[serde(rename = "clear_shared_wallets")] ClearSharedWallets(String),
 }
-#[derive(CandidType, Deserialize)]
+#[derive(CandidType, Deserialize, Debug)]
 pub enum GovernanceResponse {
   #[serde(rename = "update_system_var")] UpdateSystemVar(bool),
   #[serde(rename = "clear_shared_wallets")] ClearSharedWallets(bool),
 }
-#[derive(CandidType, Deserialize)]
+#[derive(CandidType, Deserialize, Debug)]
 pub enum GovernanceResult {
   #[serde(rename = "ok")] Ok(GovernanceResponse),
   #[serde(rename = "err")] Err(OrigynError),
 }
-#[derive(CandidType, Deserialize)]
+#[derive(CandidType, Deserialize, Debug)]
 pub enum HistoryResult {
   #[serde(rename = "ok")] Ok(Vec<TransactionRecord>),
   #[serde(rename = "err")] Err(OrigynError),
 }
-#[derive(CandidType, Deserialize)]
+#[derive(CandidType, Deserialize, Debug)]
 pub struct HeaderField(pub String, pub String);
-#[derive(CandidType, Deserialize)]
+#[derive(CandidType, Deserialize, Debug)]
 pub struct HttpRequest {
   pub url: String,
   pub method: String,
   pub body: serde_bytes::ByteBuf,
   pub headers: Vec<HeaderField>,
 }
-#[derive(CandidType, Deserialize)]
+#[derive(CandidType, Deserialize, Debug)]
 pub struct StreamingCallbackToken {
   pub key: String,
   pub index: candid::Nat,
   pub content_encoding: String,
 }
 candid::define_function!(pub StreamingStrategyCallbackCallback : () -> ());
-#[derive(CandidType, Deserialize)]
+#[derive(CandidType, Deserialize, Debug)]
 pub enum StreamingStrategy {
   Callback {
     token: StreamingCallbackToken,
     callback: StreamingStrategyCallbackCallback,
   },
 }
-#[derive(CandidType, Deserialize)]
+#[derive(CandidType, Deserialize, Debug)]
 pub struct HttpResponse {
   pub body: serde_bytes::ByteBuf,
   pub headers: Vec<HeaderField>,
   pub streaming_strategy: Option<StreamingStrategy>,
   pub status_code: u16,
 }
-#[derive(CandidType, Deserialize)]
+#[derive(CandidType, Deserialize, Debug)]
 pub struct StreamingCallbackResponse {
   pub token: Option<StreamingCallbackToken>,
   pub body: serde_bytes::ByteBuf,
 }
-#[derive(CandidType, Deserialize)]
+#[derive(CandidType, Deserialize, Debug)]
 pub struct GetArchivesArgs {
   pub from: Option<Principal>,
 }
-#[derive(CandidType, Deserialize)]
+#[derive(CandidType, Deserialize, Debug)]
 pub struct GetArchivesResultItem {
   pub end: candid::Nat,
   pub canister_id: Principal,
   pub start: candid::Nat,
 }
 pub type GetArchivesResult = Vec<GetArchivesResultItem>;
-#[derive(CandidType, Deserialize)]
+#[derive(CandidType, Deserialize, Debug)]
 pub struct TransactionRange {
   pub start: candid::Nat,
   pub length: candid::Nat,
 }
-#[derive(CandidType, Deserialize)]
+#[derive(CandidType, Deserialize, Debug)]
 pub struct GetTransactionsResultBlocksItem {
   pub id: candid::Nat,
   pub block: Box<Value>,
@@ -1017,23 +1017,23 @@ pub struct GetTransactionsResultBlocksItem {
 candid::define_function!(pub GetTransactionsFn : (Vec<TransactionRange>) -> (
     GetTransactionsResult,
   ) query);
-#[derive(CandidType, Deserialize)]
+#[derive(CandidType, Deserialize, Debug)]
 pub struct ArchivedTransactionResponse {
   pub args: Vec<TransactionRange>,
   pub callback: GetTransactionsFn,
 }
-#[derive(CandidType, Deserialize)]
+#[derive(CandidType, Deserialize, Debug)]
 pub struct GetTransactionsResult {
   pub log_length: candid::Nat,
   pub blocks: Vec<GetTransactionsResultBlocksItem>,
   pub archived_blocks: Vec<Box<ArchivedTransactionResponse>>,
 }
-#[derive(CandidType, Deserialize)]
+#[derive(CandidType, Deserialize, Debug)]
 pub struct DataCertificate {
   pub certificate: serde_bytes::ByteBuf,
   pub hash_tree: serde_bytes::ByteBuf,
 }
-#[derive(CandidType, Deserialize)]
+#[derive(CandidType, Deserialize, Debug)]
 pub struct BlockType {
   pub url: String,
   pub block_type: String,
@@ -1044,7 +1044,7 @@ pub struct Account3 {
   pub owner: Principal,
   pub subaccount: Option<Subaccount>,
 }
-#[derive(CandidType, Deserialize)]
+#[derive(CandidType, Deserialize, Debug)]
 pub struct ApprovalArgs {
   pub memo: Option<serde_bytes::ByteBuf>,
   pub from_subaccount: Option<serde_bytes::ByteBuf>,
@@ -1052,7 +1052,7 @@ pub struct ApprovalArgs {
   pub expires_at: Option<u64>,
   pub spender: Account3,
 }
-#[derive(CandidType, Deserialize)]
+#[derive(CandidType, Deserialize, Debug)]
 pub enum ApprovalError {
   GenericError {
     message: String,
@@ -1065,18 +1065,18 @@ pub enum ApprovalError {
   Unauthorized,
   TooOld,
 }
-#[derive(CandidType, Deserialize)]
+#[derive(CandidType, Deserialize, Debug)]
 pub enum ApprovalResultItemApprovalResult {
   Ok(candid::Nat),
   Err(ApprovalError),
 }
-#[derive(CandidType, Deserialize)]
+#[derive(CandidType, Deserialize, Debug)]
 pub struct ApprovalResultItem {
   pub token_id: candid::Nat,
   pub approval_result: ApprovalResultItemApprovalResult,
 }
 pub type ApprovalResult = Vec<ApprovalResultItem>;
-#[derive(CandidType, Deserialize)]
+#[derive(CandidType, Deserialize, Debug)]
 pub enum Value {
   Int(candid::Int),
   Map(Vec<(String, Box<Value>)>),
@@ -1086,7 +1086,7 @@ pub enum Value {
   Array(Vec<Box<Value>>),
 }
 pub type CollectionMetadata = Vec<(String, Box<Value>)>;
-#[derive(CandidType, Deserialize)]
+#[derive(CandidType, Deserialize, Debug)]
 pub struct SupportedStandard {
   pub url: String,
   pub name: String,
@@ -1126,12 +1126,12 @@ pub struct TransferResultItem {
   pub transfer_result: TransferResultItemTransferResult,
 }
 pub type TransferResult = Vec<Option<TransferResultItem>>;
-#[derive(CandidType, Deserialize)]
+#[derive(CandidType, Deserialize, Debug)]
 pub enum ManageStorageRequestConfigureStorage {
   #[serde(rename = "stableBtree")] StableBtree(Option<candid::Nat>),
   #[serde(rename = "heap")] Heap(Option<candid::Nat>),
 }
-#[derive(CandidType, Deserialize)]
+#[derive(CandidType, Deserialize, Debug)]
 pub enum ManageStorageRequest {
   #[serde(rename = "add_storage_canisters")] AddStorageCanisters(
     Vec<(Principal, candid::Nat, (candid::Nat, candid::Nat, candid::Nat))>,
@@ -1148,23 +1148,23 @@ pub enum ManageStorageResult {
   #[serde(rename = "ok")] Ok(ManageStorageResponse),
   #[serde(rename = "err")] Err(OrigynError),
 }
-#[derive(CandidType, Deserialize)]
+#[derive(CandidType, Deserialize, Debug)]
 pub struct SalesConfig {
   pub broker_id: Option<Account>,
   pub pricing: PricingConfigShared,
   pub escrow_receipt: Option<EscrowReceipt>,
 }
-#[derive(CandidType, Deserialize)]
+#[derive(CandidType, Deserialize, Debug)]
 pub struct MarketTransferRequest {
   pub token_id: String,
   pub sales_config: SalesConfig,
 }
-#[derive(CandidType, Deserialize)]
+#[derive(CandidType, Deserialize, Debug)]
 pub struct MarketTransferRequestReponseTxnTypeMintSaleInner {
   pub token: TokenSpec,
   pub amount: candid::Nat,
 }
-#[derive(CandidType, Deserialize)]
+#[derive(CandidType, Deserialize, Debug)]
 pub enum MarketTransferRequestReponseTxnType {
   #[serde(rename = "escrow_deposit")] EscrowDeposit {
     token: TokenSpec,
@@ -1282,19 +1282,19 @@ pub enum MarketTransferRequestReponseTxnType {
     amount: candid::Nat,
   },
 }
-#[derive(CandidType, Deserialize)]
+#[derive(CandidType, Deserialize, Debug)]
 pub struct MarketTransferRequestReponse {
   pub token_id: String,
   pub txn_type: MarketTransferRequestReponseTxnType,
   pub timestamp: candid::Int,
   pub index: candid::Nat,
 }
-#[derive(CandidType, Deserialize)]
+#[derive(CandidType, Deserialize, Debug)]
 pub enum MarketTransferResult {
   #[serde(rename = "ok")] Ok(MarketTransferRequestReponse),
   #[serde(rename = "err")] Err(OrigynError),
 }
-#[derive(CandidType, Deserialize)]
+#[derive(CandidType, Deserialize, Debug)]
 pub enum ExtMetadata {
   #[serde(rename = "fungible")] Fungible {
     decimals: u8,
@@ -1306,22 +1306,22 @@ pub enum ExtMetadata {
     metadata: Option<serde_bytes::ByteBuf>,
   },
 }
-#[derive(CandidType, Deserialize)]
+#[derive(CandidType, Deserialize, Debug)]
 pub enum ExtMetadataResult {
   #[serde(rename = "ok")] Ok(ExtMetadata),
   #[serde(rename = "err")] Err(ExtCommonError),
 }
-#[derive(CandidType, Deserialize)]
+#[derive(CandidType, Deserialize, Debug)]
 pub struct NftInfoStable {
   pub metadata: Box<CandyShared>,
   pub current_sale: Option<SaleStatusShared>,
 }
-#[derive(CandidType, Deserialize)]
+#[derive(CandidType, Deserialize, Debug)]
 pub enum NftInfoResult {
   #[serde(rename = "ok")] Ok(NftInfoStable),
   #[serde(rename = "err")] Err(OrigynError),
 }
-#[derive(CandidType, Deserialize)]
+#[derive(CandidType, Deserialize, Debug)]
 pub enum Account {
   #[serde(rename = "account_id")] AccountId(String),
   #[serde(rename = "principal")] Principal_(Principal),
@@ -1331,7 +1331,7 @@ pub enum Account {
     sub_account: Option<serde_bytes::ByteBuf>,
   },
 }
-#[derive(CandidType, Deserialize)]
+#[derive(CandidType, Deserialize, Debug)]
 pub struct EscrowRecord {
   pub token: TokenSpec,
   pub token_id: String,
@@ -1342,12 +1342,12 @@ pub struct EscrowRecord {
   pub sale_id: Option<String>,
   pub account_hash: Option<serde_bytes::ByteBuf>,
 }
-#[derive(CandidType, Deserialize)]
+#[derive(CandidType, Deserialize, Debug)]
 pub struct BidRequest {
   pub config: BidConfigShared,
   pub escrow_record: EscrowRecord,
 }
-#[derive(CandidType, Deserialize)]
+#[derive(CandidType, Deserialize, Debug)]
 pub struct DepositDetail {
   pub token: TokenSpec,
   pub trx_id: Option<TransactionId>,
@@ -1356,25 +1356,25 @@ pub struct DepositDetail {
   pub amount: candid::Nat,
   pub sale_id: Option<String>,
 }
-#[derive(CandidType, Deserialize)]
+#[derive(CandidType, Deserialize, Debug)]
 pub struct EscrowRequest {
   pub token_id: String,
   pub deposit: DepositDetail,
   pub lock_to_date: Option<candid::Int>,
 }
-#[derive(CandidType, Deserialize)]
+#[derive(CandidType, Deserialize, Debug)]
 pub struct FeeDepositRequest {
   pub token: TokenSpec,
   pub account: Account,
 }
-#[derive(CandidType, Deserialize)]
+#[derive(CandidType, Deserialize, Debug)]
 pub struct RejectDescription {
   pub token: TokenSpec,
   pub token_id: String,
   pub seller: Account,
   pub buyer: Account,
 }
-#[derive(CandidType, Deserialize)]
+#[derive(CandidType, Deserialize, Debug)]
 pub enum FeeDepositWithdrawDescriptionStatus {
   #[serde(rename = "locked")] Locked {
     sale_id: String,
@@ -1382,7 +1382,7 @@ pub enum FeeDepositWithdrawDescriptionStatus {
   #[serde(rename = "unlocked")]
   Unlocked,
 }
-#[derive(CandidType, Deserialize)]
+#[derive(CandidType, Deserialize, Debug)]
 pub struct FeeDepositWithdrawDescription {
   pub status: FeeDepositWithdrawDescriptionStatus,
   pub token: TokenSpec,
@@ -1390,7 +1390,7 @@ pub struct FeeDepositWithdrawDescription {
   pub account: Account,
   pub amount: candid::Nat,
 }
-#[derive(CandidType, Deserialize)]
+#[derive(CandidType, Deserialize, Debug)]
 pub struct WithdrawDescription {
   pub token: TokenSpec,
   pub token_id: String,
@@ -1399,14 +1399,14 @@ pub struct WithdrawDescription {
   pub buyer: Account,
   pub amount: candid::Nat,
 }
-#[derive(CandidType, Deserialize)]
+#[derive(CandidType, Deserialize, Debug)]
 pub struct DepositWithdrawDescription {
   pub token: TokenSpec,
   pub withdraw_to: Account,
   pub buyer: Account,
   pub amount: candid::Nat,
 }
-#[derive(CandidType, Deserialize)]
+#[derive(CandidType, Deserialize, Debug)]
 pub enum WithdrawRequest {
   #[serde(rename = "reject")] Reject(RejectDescription),
   #[serde(rename = "fee_deposit")] FeeDeposit(FeeDepositWithdrawDescription),
@@ -1414,43 +1414,43 @@ pub enum WithdrawRequest {
   #[serde(rename = "deposit")] Deposit(DepositWithdrawDescription),
   #[serde(rename = "escrow")] Escrow(WithdrawDescription),
 }
-#[derive(CandidType, Deserialize)]
+#[derive(CandidType, Deserialize, Debug)]
 pub enum TokenSpecFilterFilterType {
   #[serde(rename = "allow")]
   Allow,
   #[serde(rename = "block")]
   Block,
 }
-#[derive(CandidType, Deserialize)]
+#[derive(CandidType, Deserialize, Debug)]
 pub struct TokenSpecFilter {
   pub token: TokenSpec,
   pub filter_type: TokenSpecFilterFilterType,
 }
-#[derive(CandidType, Deserialize)]
+#[derive(CandidType, Deserialize, Debug)]
 pub enum TokenIdFilterFilterType {
   #[serde(rename = "allow")]
   Allow,
   #[serde(rename = "block")]
   Block,
 }
-#[derive(CandidType, Deserialize)]
+#[derive(CandidType, Deserialize, Debug)]
 pub struct TokenIdFilterTokensItem {
   pub token: TokenSpec,
   pub min_amount: Option<candid::Nat>,
   pub max_amount: Option<candid::Nat>,
 }
-#[derive(CandidType, Deserialize)]
+#[derive(CandidType, Deserialize, Debug)]
 pub struct TokenIdFilter {
   pub filter_type: TokenIdFilterFilterType,
   pub token_id: String,
   pub tokens: Vec<TokenIdFilterTokensItem>,
 }
-#[derive(CandidType, Deserialize)]
+#[derive(CandidType, Deserialize, Debug)]
 pub struct AskSubscribeRequestSubscribeFilterInner {
   pub tokens: Option<Vec<TokenSpecFilter>>,
   pub token_ids: Option<Vec<TokenIdFilter>>,
 }
-#[derive(CandidType, Deserialize)]
+#[derive(CandidType, Deserialize, Debug)]
 pub enum AskSubscribeRequest {
   #[serde(rename = "subscribe")] Subscribe {
     stake: (Principal, candid::Nat),
@@ -1458,11 +1458,11 @@ pub enum AskSubscribeRequest {
   },
   #[serde(rename = "unsubscribe")] Unsubscribe(Principal, candid::Nat),
 }
-#[derive(CandidType, Deserialize)]
+#[derive(CandidType, Deserialize, Debug)]
 pub struct DistributeSaleRequest {
   pub seller: Option<Account>,
 }
-#[derive(CandidType, Deserialize)]
+#[derive(CandidType, Deserialize, Debug)]
 pub enum ManageSaleRequest {
   #[serde(rename = "bid")] Bid(BidRequest),
   #[serde(rename = "escrow_deposit")] EscrowDeposit(EscrowRequest),
@@ -1475,12 +1475,12 @@ pub enum ManageSaleRequest {
   #[serde(rename = "distribute_sale")] DistributeSale(DistributeSaleRequest),
   #[serde(rename = "open_sale")] OpenSale(String),
 }
-#[derive(CandidType, Deserialize)]
+#[derive(CandidType, Deserialize, Debug)]
 pub struct BidResponseTxnTypeMintSaleInner {
   pub token: TokenSpec,
   pub amount: candid::Nat,
 }
-#[derive(CandidType, Deserialize)]
+#[derive(CandidType, Deserialize, Debug)]
 pub enum BidResponseTxnType {
   #[serde(rename = "escrow_deposit")] EscrowDeposit {
     token: TokenSpec,
@@ -1598,36 +1598,36 @@ pub enum BidResponseTxnType {
     amount: candid::Nat,
   },
 }
-#[derive(CandidType, Deserialize)]
+#[derive(CandidType, Deserialize, Debug)]
 pub struct BidResponse {
   pub token_id: String,
   pub txn_type: BidResponseTxnType,
   pub timestamp: candid::Int,
   pub index: candid::Nat,
 }
-#[derive(CandidType, Deserialize)]
+#[derive(CandidType, Deserialize, Debug)]
 pub struct EscrowResponse {
   pub balance: candid::Nat,
   pub receipt: EscrowReceipt,
   pub transaction: TransactionRecord,
 }
-#[derive(CandidType, Deserialize)]
+#[derive(CandidType, Deserialize, Debug)]
 pub struct FeeDepositResponse {
   pub balance: candid::Nat,
   pub transaction: TransactionRecord,
 }
-#[derive(CandidType, Deserialize)]
+#[derive(CandidType, Deserialize, Debug)]
 pub struct RecognizeEscrowResponse {
   pub balance: candid::Nat,
   pub receipt: EscrowReceipt,
   pub transaction: Option<TransactionRecord>,
 }
-#[derive(CandidType, Deserialize)]
+#[derive(CandidType, Deserialize, Debug)]
 pub struct WithdrawResponseTxnTypeMintSaleInner {
   pub token: TokenSpec,
   pub amount: candid::Nat,
 }
-#[derive(CandidType, Deserialize)]
+#[derive(CandidType, Deserialize, Debug)]
 pub enum WithdrawResponseTxnType {
   #[serde(rename = "escrow_deposit")] EscrowDeposit {
     token: TokenSpec,
@@ -1745,7 +1745,7 @@ pub enum WithdrawResponseTxnType {
     amount: candid::Nat,
   },
 }
-#[derive(CandidType, Deserialize)]
+#[derive(CandidType, Deserialize, Debug)]
 pub struct WithdrawResponse {
   pub token_id: String,
   pub txn_type: WithdrawResponseTxnType,
@@ -1753,12 +1753,12 @@ pub struct WithdrawResponse {
   pub index: candid::Nat,
 }
 pub type AskSubscribeResponse = bool;
-#[derive(CandidType, Deserialize)]
+#[derive(CandidType, Deserialize, Debug)]
 pub struct EndSaleResponseTxnTypeMintSaleInner {
   pub token: TokenSpec,
   pub amount: candid::Nat,
 }
-#[derive(CandidType, Deserialize)]
+#[derive(CandidType, Deserialize, Debug)]
 pub enum EndSaleResponseTxnType {
   #[serde(rename = "escrow_deposit")] EscrowDeposit {
     token: TokenSpec,
@@ -1876,20 +1876,20 @@ pub enum EndSaleResponseTxnType {
     amount: candid::Nat,
   },
 }
-#[derive(CandidType, Deserialize)]
+#[derive(CandidType, Deserialize, Debug)]
 pub struct EndSaleResponse {
   pub token_id: String,
   pub txn_type: EndSaleResponseTxnType,
   pub timestamp: candid::Int,
   pub index: candid::Nat,
 }
-#[derive(CandidType, Deserialize)]
+#[derive(CandidType, Deserialize, Debug)]
 pub enum Result_ {
   #[serde(rename = "ok")] Ok(Box<ManageSaleResponse>),
   #[serde(rename = "err")] Err(OrigynError),
 }
 pub type DistributeSaleResponse = Vec<Result_>;
-#[derive(CandidType, Deserialize)]
+#[derive(CandidType, Deserialize, Debug)]
 pub enum ManageSaleResponse {
   #[serde(rename = "bid")] Bid(BidResponse),
   #[serde(rename = "escrow_deposit")] EscrowDeposit(EscrowResponse),
@@ -1902,12 +1902,12 @@ pub enum ManageSaleResponse {
   #[serde(rename = "distribute_sale")] DistributeSale(DistributeSaleResponse),
   #[serde(rename = "open_sale")] OpenSale(bool),
 }
-#[derive(CandidType, Deserialize)]
+#[derive(CandidType, Deserialize, Debug)]
 pub enum ManageSaleResult {
   #[serde(rename = "ok")] Ok(Box<ManageSaleResponse>),
   #[serde(rename = "err")] Err(OrigynError),
 }
-#[derive(CandidType, Deserialize)]
+#[derive(CandidType, Deserialize, Debug)]
 pub enum SaleInfoRequest {
   #[serde(rename = "status")] Status(String),
   #[serde(rename = "fee_deposit_info")] FeeDepositInfo(Option<Account>),
@@ -1916,19 +1916,19 @@ pub enum SaleInfoRequest {
   #[serde(rename = "history")] History(Option<(candid::Nat, candid::Nat)>),
   #[serde(rename = "escrow_info")] EscrowInfo(EscrowReceipt),
 }
-#[derive(CandidType, Deserialize)]
+#[derive(CandidType, Deserialize, Debug)]
 pub struct SubAccountInfoAccount {
   pub principal: Principal,
   pub sub_account: serde_bytes::ByteBuf,
 }
-#[derive(CandidType, Deserialize)]
+#[derive(CandidType, Deserialize, Debug)]
 pub struct SubAccountInfo {
   pub account_id: serde_bytes::ByteBuf,
   pub principal: Principal,
   pub account_id_text: String,
   pub account: SubAccountInfoAccount,
 }
-#[derive(CandidType, Deserialize)]
+#[derive(CandidType, Deserialize, Debug)]
 pub enum SaleInfoResponse {
   #[serde(rename = "status")] Status(Option<SaleStatusShared>),
   #[serde(rename = "fee_deposit_info")] FeeDepositInfo(SubAccountInfo),
@@ -1945,32 +1945,32 @@ pub enum SaleInfoResponse {
   },
   #[serde(rename = "escrow_info")] EscrowInfo(SubAccountInfo),
 }
-#[derive(CandidType, Deserialize)]
+#[derive(CandidType, Deserialize, Debug)]
 pub enum SaleInfoResult {
   #[serde(rename = "ok")] Ok(SaleInfoResponse),
   #[serde(rename = "err")] Err(OrigynError),
 }
-#[derive(CandidType, Deserialize)]
+#[derive(CandidType, Deserialize, Debug)]
 pub struct ShareWalletRequest {
   pub to: Account,
   pub token_id: String,
   pub from: Account,
 }
-#[derive(CandidType, Deserialize)]
+#[derive(CandidType, Deserialize, Debug)]
 pub struct OwnerTransferResponse {
   pub transaction: TransactionRecord,
   pub assets: Vec<Box<CandyShared>>,
 }
-#[derive(CandidType, Deserialize)]
+#[derive(CandidType, Deserialize, Debug)]
 pub enum OwnerUpdateResult {
   #[serde(rename = "ok")] Ok(OwnerTransferResponse),
   #[serde(rename = "err")] Err(OrigynError),
 }
-#[derive(CandidType, Deserialize)]
+#[derive(CandidType, Deserialize, Debug)]
 pub struct NftCanisterStageBatchNftOrigynArgItem {
   pub metadata: Box<CandyShared>,
 }
-#[derive(CandidType, Deserialize)]
+#[derive(CandidType, Deserialize, Debug)]
 pub struct StageChunkArg {
   pub content: serde_bytes::ByteBuf,
   pub token_id: String,
@@ -1991,7 +1991,7 @@ pub enum StageLibraryResult {
 pub struct NftCanisterStageNftOrigynArg {
   pub metadata: Box<CandyShared>,
 }
-#[derive(CandidType, Deserialize)]
+#[derive(CandidType, Deserialize, Debug)]
 pub struct StateSize {
   pub sales_balances: candid::Nat,
   pub offers: candid::Nat,
@@ -2001,38 +2001,38 @@ pub struct StateSize {
   pub buckets: candid::Nat,
   pub escrow_balances: candid::Nat,
 }
-#[derive(CandidType, Deserialize)]
+#[derive(CandidType, Deserialize, Debug)]
 pub struct StorageMetrics {
   pub gateway: Principal,
   pub available_space: candid::Nat,
   pub allocations: Vec<AllocationRecordStable>,
   pub allocated_storage: candid::Nat,
 }
-#[derive(CandidType, Deserialize)]
+#[derive(CandidType, Deserialize, Debug)]
 pub enum StorageMetricsResult {
   #[serde(rename = "ok")] Ok(StorageMetrics),
   #[serde(rename = "err")] Err(OrigynError),
 }
-#[derive(CandidType, Deserialize)]
+#[derive(CandidType, Deserialize, Debug)]
 pub struct ExtTokensResponse1Inner {
   pub locked: Option<candid::Int>,
   pub seller: Principal,
   pub price: u64,
 }
-#[derive(CandidType, Deserialize)]
+#[derive(CandidType, Deserialize, Debug)]
 pub struct ExtTokensResponse(
   pub u32,
   pub Option<ExtTokensResponse1Inner>,
   pub Option<serde_bytes::ByteBuf>,
 );
-#[derive(CandidType, Deserialize)]
+#[derive(CandidType, Deserialize, Debug)]
 pub enum ExtTokensResult {
   #[serde(rename = "ok")] Ok(Vec<ExtTokensResponse>),
   #[serde(rename = "err")] Err(ExtCommonError),
 }
 pub type ExtMemo = serde_bytes::ByteBuf;
 pub type ExtSubAccount = serde_bytes::ByteBuf;
-#[derive(CandidType, Deserialize)]
+#[derive(CandidType, Deserialize, Debug)]
 pub struct ExtTransferRequest {
   pub to: ExtUser,
   pub token: ExtTokenIdentifier,
@@ -2042,7 +2042,7 @@ pub struct ExtTransferRequest {
   pub subaccount: Option<ExtSubAccount>,
   pub amount: ExtBalance,
 }
-#[derive(CandidType, Deserialize)]
+#[derive(CandidType, Deserialize, Debug)]
 pub enum ExtTransferResponseErr {
   CannotNotify(ExtAccountIdentifier),
   InsufficientBalance,
@@ -2051,28 +2051,28 @@ pub enum ExtTransferResponseErr {
   Unauthorized(ExtAccountIdentifier),
   Other(String),
 }
-#[derive(CandidType, Deserialize)]
+#[derive(CandidType, Deserialize, Debug)]
 pub enum ExtTransferResponse {
   #[serde(rename = "ok")] Ok(ExtBalance),
   #[serde(rename = "err")] Err(ExtTransferResponseErr),
 }
-#[derive(CandidType, Deserialize)]
+#[derive(CandidType, Deserialize, Debug)]
 pub enum UpdateModeShared {
   Set(Box<CandyShared>),
   Lock(Box<CandyShared>),
   Next(Vec<Box<UpdateShared>>),
 }
-#[derive(CandidType, Deserialize)]
+#[derive(CandidType, Deserialize, Debug)]
 pub struct UpdateShared {
   pub mode: UpdateModeShared,
   pub name: String,
 }
-#[derive(CandidType, Deserialize)]
+#[derive(CandidType, Deserialize, Debug)]
 pub struct UpdateRequestShared {
   pub id: String,
   pub update: Vec<Box<UpdateShared>>,
 }
-#[derive(CandidType, Deserialize)]
+#[derive(CandidType, Deserialize, Debug)]
 pub enum NftUpdateRequest {
   #[serde(rename = "update")] Update {
     token_id: String,
@@ -2085,18 +2085,18 @@ pub enum NftUpdateRequest {
   },
 }
 pub type NftUpdateResponse = bool;
-#[derive(CandidType, Deserialize)]
+#[derive(CandidType, Deserialize, Debug)]
 pub enum NftUpdateResult {
   #[serde(rename = "ok")] Ok(NftUpdateResponse),
   #[serde(rename = "err")] Err(OrigynError),
 }
-#[derive(CandidType, Deserialize)]
+#[derive(CandidType, Deserialize, Debug)]
 pub enum IndexType {
   Stable,
   StableTyped,
   Managed,
 }
-#[derive(CandidType, Deserialize)]
+#[derive(CandidType, Deserialize, Debug)]
 pub enum UpdateSetting {
   #[serde(rename = "maxRecordsToArchive")] MaxRecordsToArchive(candid::Nat),
   #[serde(rename = "archiveIndexType")] ArchiveIndexType(IndexType),

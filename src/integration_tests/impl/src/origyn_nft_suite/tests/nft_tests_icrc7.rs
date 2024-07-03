@@ -2,7 +2,14 @@ use crate::client::icrc1_icrc2_token;
 use crate::client::pocket::unwrap_response;
 use crate::origyn_nft_suite::{ CanisterIds, PrincipalIds };
 use crate::origyn_nft_suite::{ init::init, TestEnv };
-use origyn_nft_reference::origyn_nft_reference_canister::{ Account, Account3 };
+use ic_cdk::print;
+use origyn_nft_reference::origyn_nft_reference_canister::{
+  Account,
+  Account3,
+  SalesConfig,
+  PricingConfigShared,
+  AskFeature,
+};
 use candid::{ Nat, Principal, Encode };
 use pocket_ic::PocketIc;
 use utils::consts::E8S_FEE_OGY;
@@ -311,7 +318,7 @@ fn icrc7_transfer_one() {
   let mut env = init();
   let TestEnv {
     ref mut pic,
-    canister_ids: CanisterIds { origyn_nft, ogy_ledger, ldg_ledger },
+    canister_ids: CanisterIds { origyn_nft, ogy_ledger, ldg_ledger, notify },
     principal_ids: PrincipalIds { net_principal, controller, originator, nft_owner },
   } = env;
 
@@ -426,7 +433,7 @@ fn icrc7_transfer_multiple() {
   let mut env = init();
   let TestEnv {
     ref mut pic,
-    canister_ids: CanisterIds { origyn_nft, ogy_ledger, ldg_ledger },
+    canister_ids: CanisterIds { origyn_nft, ogy_ledger, ldg_ledger, notify },
     principal_ids: PrincipalIds { net_principal, controller, originator, nft_owner },
   } = env;
 
@@ -554,7 +561,7 @@ fn icrc7_transfer_multiple_same_call_simple() {
   let mut env = init();
   let TestEnv {
     ref mut pic,
-    canister_ids: CanisterIds { origyn_nft, ogy_ledger, ldg_ledger },
+    canister_ids: CanisterIds { origyn_nft, ogy_ledger, ldg_ledger, notify },
     principal_ids: PrincipalIds { net_principal, controller, originator, nft_owner },
   } = env;
 
@@ -715,7 +722,7 @@ fn icrc7_transfer_multiple_same_call_complex() {
   let mut env = init();
   let TestEnv {
     ref mut pic,
-    canister_ids: CanisterIds { origyn_nft, ogy_ledger, ldg_ledger },
+    canister_ids: CanisterIds { origyn_nft, ogy_ledger, ldg_ledger, notify },
     principal_ids: PrincipalIds { net_principal, controller, originator, nft_owner },
   } = env;
 
@@ -880,4 +887,75 @@ fn icrc7_transfer_multiple_same_call_complex() {
   println!("failed_call: {:?}", failed_call);
   println!("NUMBER_CONCURRENT_MESSAGES - 1: {:?}", NUMBER_CONCURRENT_MESSAGES - 1);
   assert!(failed_call == NUMBER_CONCURRENT_MESSAGES - 1);
+}
+
+#[test]
+fn market_transfer_nft_origyn_test() {
+  let mut env = init();
+
+  println!("init done");
+
+  let TestEnv {
+    ref mut pic,
+    canister_ids: CanisterIds { origyn_nft, ogy_ledger, ldg_ledger, notify },
+    principal_ids: PrincipalIds { net_principal, controller, originator, nft_owner },
+  } = env;
+
+  init_nft_with_premint_nft(
+    pic,
+    origyn_nft.clone(),
+    originator.clone(),
+    net_principal.clone(),
+    nft_owner.clone(),
+    "1".to_string()
+  );
+  println!("init_nft_with_premint_nft done");
+
+  let ret: origyn_nft_reference::origyn_nft_reference_canister::MarketTransferResult = crate::client::origyn_nft_reference::client::market_transfer_nft_origyn(
+    pic,
+    origyn_nft.clone(),
+    nft_owner.clone(),
+    crate::client::origyn_nft_reference::market_transfer_nft_origyn::Args {
+      token_id: "1".to_string(),
+      sales_config: SalesConfig {
+        broker_id: None,
+        pricing: PricingConfigShared::Ask(
+          Some(
+            vec![
+              AskFeature::StartPrice(Nat::from(100 as u32)),
+              AskFeature::Notify(vec![notify.clone()])
+            ]
+          )
+        ),
+        escrow_receipt: None,
+      },
+    }
+  );
+
+  println!("ret: {:?}", ret);
+
+  crate::utils::tick_n_blocks(pic, 100);
+
+  let ret2: origyn_nft_reference::origyn_nft_reference_canister::MarketTransferResult = crate::client::origyn_nft_reference::client::market_transfer_nft_origyn(
+    pic,
+    origyn_nft.clone(),
+    nft_owner.clone(),
+    crate::client::origyn_nft_reference::market_transfer_nft_origyn::Args {
+      token_id: "1".to_string(),
+      sales_config: SalesConfig {
+        broker_id: None,
+        pricing: PricingConfigShared::Ask(
+          Some(
+            vec![
+              AskFeature::StartPrice(Nat::from(100 as u32)),
+              AskFeature::Notify(vec![notify.clone()])
+            ]
+          )
+        ),
+        escrow_receipt: None,
+      },
+    }
+  );
+
+  println!("ret2: {:?}", ret2);
 }

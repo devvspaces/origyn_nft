@@ -144,6 +144,12 @@
       "args": "-v --compacting-gc -no-check-ir",
       "dependencies": []
     },
+    "test_canister_notify": {
+      "main": "src/tests/test_notify.mo",
+      "type": "motoko",
+      "args": "-v --compacting-gc -no-check-ir",
+      "dependencies": []
+    },
     "test_storage_factory": {
       "main": "src/tests/storage_creator.mo",
       "type": "motoko",

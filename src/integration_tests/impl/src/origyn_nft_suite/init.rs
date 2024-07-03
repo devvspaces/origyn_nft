@@ -127,10 +127,12 @@ fn install_canisters(
     "lkwrt-vyaaa-aaaaq-aadhq-cai"
   );
   let ldg_ledger_canister_id: Principal = create_canister(pic, controller);
+  let notify_canister_id: Principal = create_canister(pic, controller);
 
   let origyn_nft_canister_wasm: Vec<u8> = wasms::ORIGYN_NFT.clone();
   let ogy_ledger_canister_wasm: Vec<u8> = wasms::OGY_LEDGER.clone();
   let ldg_ledger_canister_wasm: Vec<u8> = wasms::LDG_LEDGER.clone();
+  let notify_canister_wasm: Vec<u8> = wasms::NOTIFY_WASM.clone();
 
   install_canister(pic, controller, origyn_nft_canister_id, origyn_nft_canister_wasm, {});
 
@@ -191,10 +193,13 @@ fn install_canisters(
     ldg_ledger_init_args
   );
 
+  install_canister(pic, controller, notify_canister_id, notify_canister_wasm, {});
+
   CanisterIds {
     origyn_nft: origyn_nft_canister_id,
     ogy_ledger: ogy_ledger_canister_id,
     ldg_ledger: ldg_ledger_canister_id,
+    notify: notify_canister_id,
   }
 }
 

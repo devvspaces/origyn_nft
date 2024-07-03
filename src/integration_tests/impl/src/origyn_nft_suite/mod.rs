@@ -25,4 +25,5 @@ pub struct CanisterIds {
   pub origyn_nft: CanisterId,
   pub ogy_ledger: CanisterId,
   pub ldg_ledger: CanisterId,
+  pub notify: CanisterId,
 }

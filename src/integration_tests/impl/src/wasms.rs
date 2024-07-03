@@ -8,6 +8,7 @@ lazy_static! {
   pub static ref ORIGYN_NFT: CanisterWasm = get_external_canister_wasm("origyn_nft_reference");
   pub static ref OGY_LEDGER: CanisterWasm = get_external_canister_wasm("icrc_ledger");
   pub static ref LDG_LEDGER: CanisterWasm = get_external_canister_wasm("icrc_ledger");
+  pub static ref NOTIFY_WASM: CanisterWasm = get_external_canister_wasm("test_notify");
 }
 
 fn get_internal_canister_wasm(canister: &str) -> Vec<u8> {
