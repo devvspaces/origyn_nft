@@ -646,6 +646,23 @@ module {
     };
   };
 
+  public type CollectionUpdateRequest = {
+    data : CandyTypes.PropertyShared;
+    erase : Bool;
+  };
+
+  public type NFTUpdateMetadataNode = {
+    token_id : Text;
+    _system : Boolean;
+    field_id : Text;
+    value : Text;
+  };
+
+  public type NFTUpdateMetadataNodeResponse = {
+    property_old : PropertyShared;
+    property_new : PropertyShared;
+  };
+
   public type NFTUpdateResponse = Bool;
 
   public type EndSaleResponse = TransactionRecord;
