@@ -37,6 +37,4 @@ droute-client = "https://github.com/ORIGYN-SA/droute-client#v0.1.0@923184d7e68a9
 motoko-hash-map = "https://github.com/ZhenyaUsenko/motoko-hash-map#v7.0.0@f0e25632e5da80118274e78ceeb5bec95f3c2b81"
 icrc3-mo = "0.2.6"
 cert = "https://github.com/nomeata/ic-certification#v0.1.3@c403ffec0a60f658a1009976c785aa567ff0da77"
-timerTool = "https://github.com/panIndustrial-Org/timerTool#master@6e1e55e62d9ce1945eb576568eac0726f840d193"
-ovs-fixed = "0.1.1"
-stableheapbtreemap = "1.5.0"
+timer-tool = "0.0.2"

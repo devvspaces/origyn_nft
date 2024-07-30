@@ -17,7 +17,7 @@ import Result "mo:base/Result";
 import Text "mo:base/Text";
 import Time "mo:base/Time";
 import Timer "mo:base/Timer";
-import TimerTool "mo:timerTool";
+import TimerTool "mo:timer-tool";
 
 import AccountIdentifier "mo:principalmo/AccountIdentifier";
 

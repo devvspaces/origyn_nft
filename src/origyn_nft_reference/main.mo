@@ -17,7 +17,7 @@ import Text "mo:base/Text";
 import Time "mo:base/Time";
 import Timer "mo:base/Timer";
 import TrieMap "mo:base/TrieMap";
-import TimerTool "mo:timerTool";
+import TimerTool "mo:timer-tool";
 
 import BytesConverter "mo:stableBTree/bytesConverter";
 
@@ -3716,7 +3716,6 @@ shared (deployer) actor class Nft_Canister() = this {
     */
 
   system func preupgrade() {
-    D.print("preupgrade ");
 
     //todo: significant maitenance needed in 0.1.5- consider moving into migration
 
@@ -3740,7 +3739,6 @@ shared (deployer) actor class Nft_Canister() = this {
   };
 
   system func postupgrade() {
-    D.print("postupgrade ");
     nft_library_stable := [];
     nft_library_stable_2 := [];
 

@@ -6,7 +6,7 @@ import CandyTypes = "mo:candy/types";
 import SB_lib "mo:stablebuffer_0_2_0/StableBuffer";
 import Map_lib "mo:map_7_0_0/Map";
 import Buffer "mo:base/Buffer";
-import TimerTool "mo:timerTool";
+import TimerTool "mo:timer-tool";
 
 import MigrationTypes "../types";
 import v0_1_5 "../v000_001_005/types";
