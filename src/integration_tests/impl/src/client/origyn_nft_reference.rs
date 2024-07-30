@@ -20,6 +20,9 @@ use origyn_nft_reference::origyn_nft_reference_canister::{
   CollectionResult,
   MarketTransferRequest,
   MarketTransferResult,
+  NftInfoResult,
+  SaleInfoRequest,
+  SaleInfoResult,
 };
 
 generate_update_call!(stage_nft_origyn);
@@ -57,6 +60,9 @@ generate_query_call!(get_token_id_as_nat);
 generate_query_call!(collection_nft_origyn);
 generate_update_call!(market_transfer_nft_origyn_batch);
 generate_update_call!(market_transfer_nft_origyn);
+generate_query_call!(get_nat_as_token_id_origyn);
+generate_query_call!(nft_origyn);
+generate_query_call!(sale_info_nft_origyn);
 
 pub mod stage_nft_origyn {
   use super::*;
@@ -265,6 +271,26 @@ pub mod market_transfer_nft_origyn {
   pub type Response = MarketTransferResult;
 }
 
+pub mod get_nat_as_token_id_origyn {
+  use super::*;
+
+  pub type Args = candid::Nat;
+  pub type Response = String;
+}
+
+pub mod nft_origyn {
+  use super::*;
+
+  pub type Args = String;
+  pub type Response = NftInfoResult;
+}
+
+pub mod sale_info_nft_origyn {
+  use super::*;
+
+  pub type Args = SaleInfoRequest;
+  pub type Response = SaleInfoResult;
+}
 pub mod client {
   use super::*;
   use candid::Principal;
@@ -657,5 +683,32 @@ pub mod client {
     args: market_transfer_nft_origyn::Args
   ) -> market_transfer_nft_origyn::Response {
     crate::client::origyn_nft_reference::market_transfer_nft_origyn(pic, sender, canister_id, &args)
+  }
+
+  pub fn get_nat_as_token_id_origyn(
+    pic: &PocketIc,
+    canister_id: CanisterId,
+    sender: Principal,
+    args: get_nat_as_token_id_origyn::Args
+  ) -> get_nat_as_token_id_origyn::Response {
+    crate::client::origyn_nft_reference::get_nat_as_token_id_origyn(pic, sender, canister_id, &args)
+  }
+
+  pub fn nft_origyn(
+    pic: &PocketIc,
+    canister_id: CanisterId,
+    sender: Principal,
+    args: nft_origyn::Args
+  ) -> nft_origyn::Response {
+    crate::client::origyn_nft_reference::nft_origyn(pic, sender, canister_id, &args)
+  }
+
+  pub fn sale_info_nft_origyn(
+    pic: &PocketIc,
+    canister_id: CanisterId,
+    sender: Principal,
+    args: sale_info_nft_origyn::Args
+  ) -> sale_info_nft_origyn::Response {
+    crate::client::origyn_nft_reference::sale_info_nft_origyn(pic, sender, canister_id, &args)
   }
 }

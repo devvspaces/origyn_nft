@@ -2,51 +2,15 @@ use crate::client::icrc1_icrc2_token;
 use crate::client::pocket::unwrap_response;
 use crate::origyn_nft_suite::{ CanisterIds, PrincipalIds };
 use crate::origyn_nft_suite::{ init::init, TestEnv };
-use ic_cdk::print;
 use origyn_nft_reference::origyn_nft_reference_canister::{
-  Account,
   Account3,
   SalesConfig,
   PricingConfigShared,
   AskFeature,
 };
-use candid::{ Nat, Principal, Encode };
-use pocket_ic::PocketIc;
+use candid::{ Nat, Encode };
 use utils::consts::E8S_FEE_OGY;
-
-fn init_nft_with_premint_nft(
-  pic: &mut PocketIc,
-  origyn_nft: Principal,
-  originator: Principal,
-  net_principal: Principal,
-  nft_owner: Principal,
-  nft_name: String
-) -> bool {
-  let _standard_nft_return: crate::origyn_nft_suite::nft_utils::BuildStandardNftReturns = crate::origyn_nft_suite::nft_utils::build_standard_nft(
-    pic,
-    nft_name.clone(),
-    origyn_nft.clone(),
-    origyn_nft.clone(),
-    originator.clone(),
-    Nat::from(1024 as u32),
-    false,
-    net_principal.clone()
-  );
-
-  let mint_return: origyn_nft_reference::origyn_nft_reference_canister::OrigynTextResult = crate::client::origyn_nft_reference::client::mint_nft_origyn(
-    pic,
-    origyn_nft.clone(),
-    Some(net_principal.clone()),
-    (nft_name.clone(), Account::Principal_(nft_owner.clone()))
-  );
-
-  println!("mint_return: {:?}", mint_return);
-
-  match mint_return {
-    origyn_nft_reference::origyn_nft_reference_canister::OrigynTextResult::Ok(_) => true,
-    _ => false,
-  }
-}
+use crate::origyn_nft_suite::tests::utils::init_nft_with_premint_nft;
 
 /*
 

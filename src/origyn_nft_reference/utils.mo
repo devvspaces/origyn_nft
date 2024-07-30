@@ -63,7 +63,11 @@ module {
     * @param {Nat} tokenNat - The Nat value to convert.
     * @returns {Text} The resulting token ID Text value.
     */
-  public func get_nat_as_token_id(tokenNat : Nat) : Text {
+  public func get_nat_as_token_id(tokenNat : Nat) : Result.Result<Text, Types.OrigynError> {
+    if (tokenNat > MigrationTypes.Current.MAX_NAT()) {
+      return #err(Types.errors(null, #token_not_found, "get_nat_as_token_id - tokenNat is too large", null));
+    };
+
     debug if (debug_channel.announce) D.print("nat as token");
     debug if (debug_channel.announce) D.print(debug_show (Conversions.natToBytes(tokenNat)));
 
@@ -76,7 +80,7 @@ module {
     } else { CandyTypes.toBuffer<Nat8>([0]) };
 
     SB.append(prefixBuffer, stagedBuffer);
-    return Conversions.bytesToText((SB.toArray(prefixBuffer)));
+    return #ok(Conversions.bytesToText((SB.toArray(prefixBuffer))));
   };
 
   /**

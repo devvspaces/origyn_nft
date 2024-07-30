@@ -10,12 +10,14 @@ import Int "mo:base/Int";
 import Iter "mo:base/Iter";
 import Nat "mo:base/Nat";
 import Nat32 "mo:base/Nat32";
+import Nat64 "mo:base/Nat64";
 import Option "mo:base/Option";
 import Principal "mo:base/Principal";
 import Result "mo:base/Result";
 import Text "mo:base/Text";
 import Time "mo:base/Time";
 import Timer "mo:base/Timer";
+import TimerTool "mo:timerTool";
 
 import AccountIdentifier "mo:principalmo/AccountIdentifier";
 
@@ -176,8 +178,8 @@ module {
   * @param {Principal} caller - The caller principal.
   * @returns {Result.Result<Types.ManageSaleResponse,Types.OrigynError>} - A `Result` object that either contains a `Types.ManageSaleResponse` object or a `Types.OrigynError` object.
   */
-  public func open_sale_nft_origyn(state : StateAccess, token_id : Text, caller : Principal) : Result.Result<Types.ManageSaleResponse, Types.OrigynError> {
-    //D.print("in open_sale_nft_origyn");
+  public func open_sale_nft_origyn<system>(state : StateAccess, token_id : Text, caller : Principal) : Result.Result<Types.ManageSaleResponse, Types.OrigynError> {
+    D.print("in open_sale_nft_origyn");
     let metadata = switch (Metadata.get_metadata_for_token(state, token_id, caller, ?state.canister(), state.state.collection_data.owner)) {
       case (#err(err)) return #err(Types.errors(?state.canistergeekLogger, #token_not_found, "open_sale_nft_origyn " # err.flag_point, ?caller));
       case (#ok(val)) val;
@@ -205,8 +207,19 @@ module {
     switch (current_sale_state.status) {
       case (#closed) return #err(Types.errors(?state.canistergeekLogger, #auction_ended, "open_sale_nft_origyn - auction already closed ", ?caller));
       case (#not_started) {
-        if (state.get_time() >= current_sale_state.start_date and state.get_time() < current_sale_state.end_date) {
+        let _time = state.get_time();
+        if (_time >= current_sale_state.start_date and _time < current_sale_state.end_date) {
           current_sale_state.status := #open;
+
+          let timerTool = TimerTool.TimerTool(state.state.timerState, state.canister(), { advanced = null; reportExecution = null; reportError = null });
+
+          let actionRequest = {
+            actionType = "close_sale_timeouted_nft_origyn";
+            params = to_candid ([current_sale.sale_id]);
+          };
+
+          let actionId = timerTool.setActionASync<system>(Nat64.toNat(Nat64.fromIntWrap(current_sale_state.end_date - _time)), actionRequest, Nat64.toNat(Nat64.fromIntWrap(3600)));
+
           return (#ok(#open_sale(true)));
         } else return #err(Types.errors(?state.canistergeekLogger, #auction_not_started, "open_sale_nft_origyn - auction does not need to be opened " # debug_show (current_sale_state.start_date), ?caller));
       };
@@ -896,6 +909,7 @@ module {
       case (null) {
         //end sale but don't move NFT
         current_sale_state.status := #closed;
+        debug if (debug_channel.end_sale) D.print("closed" # debug_show (current_sale_state.status));
 
         switch (
           Metadata.add_transaction_record<system>(
@@ -2309,6 +2323,8 @@ module {
       return #err(Types.errors(?state.canistergeekLogger, #nyi, "cannot auction off a unminted item", ?caller));
     };
 
+    let _time = state.get_time();
+
     let h = SHA256.New();
     h.write(Conversions.candySharedToBytes(#Text("com.origyn.nft.sale-id")));
     h.write(Conversions.candySharedToBytes(#Text("token-id")));
@@ -2316,7 +2332,7 @@ module {
     h.write(Conversions.candySharedToBytes(#Text("seller")));
     h.write(Conversions.candySharedToBytes(#Nat(MigrationTypes.Current.account_hash_uncompressed(owner))));
     h.write(Conversions.candySharedToBytes(#Text("timestamp")));
-    h.write(Conversions.candySharedToBytes(#Int(state.get_time())));
+    h.write(Conversions.candySharedToBytes(#Int(_time)));
     let sale_id : Text = Conversions.candySharedToText(#Bytes(h.sum([])));
 
     let {
@@ -2337,7 +2353,7 @@ module {
         let start_date : Int = if (auction_details.start_date > 0) {
           auction_details.start_date;
         } else {
-          state.get_time();
+          _time;
         };
 
         switch (auction_details.ending) {
@@ -2404,9 +2420,9 @@ module {
           reserve = null;
           buy_now = null;
           token : MigrationTypes.Current.TokenSpec = MigrationTypes.Current.OGY();
-          start_date : Int = state.get_time();
+          start_date : Int = _time;
           start_price : Nat = 1;
-          end_date : Int = state.get_time() + NFTUtils.MINUTE_LENGTH;
+          end_date : Int = _time + NFTUtils.MINUTE_LENGTH;
           allow_list = null;
           dutch = null;
           notify = [];
@@ -2536,7 +2552,7 @@ module {
     };
 
     var participants = Map.new<Principal, Int>();
-    Map.set<Principal, Int>(participants, Map.phash, caller, state.get_time());
+    Map.set<Principal, Int>(participants, Map.phash, caller, _time);
 
     let new_auction : MigrationTypes.Current.AuctionState = {
       config = MigrationTypes.Current.pricing_shared_to_pricing(request.sales_config.pricing);
@@ -2565,7 +2581,8 @@ module {
 
         ?newQueue;
       };
-      var status = if (state.get_time() >= start_date) {
+
+      var status = if (_time >= start_date) {
         #open;
       } else {
         #not_started;
@@ -2603,7 +2620,7 @@ module {
       {
         token_id = request.token_id;
         index = 0;
-        timestamp = state.get_time();
+        timestamp = _time;
         txn_type = #sale_opened({
           sale_id = sale_id;
           pricing = request.sales_config.pricing;
@@ -2629,6 +2646,27 @@ module {
         debug if (debug_channel.dutch) D.print("dutch auction was submitted");
       };
       case (null) {};
+    };
+
+    if (new_auction.status == #open) {
+      let timerTool = state.timertool;
+
+      let actionRequest = {
+        actionType = "close_sale_timeouted_nft_origyn";
+        params = to_candid (sale_id);
+      };
+
+      let actionId = timerTool.setActionASync<system>(Nat64.toNat(Nat64.fromIntWrap(end_date - _time)), actionRequest, Nat64.toNat(Nat64.fromIntWrap(NFTUtils.HOUR_LENGTH)));
+    } else if (new_auction.status == #not_started) {
+      // TODO
+      // let timerTool = state.timertool;
+
+      // let actionRequest = {
+      //   actionType = "open_sale_nft_origyn";
+      //   params = Blob.fromArray([]); // todo add param
+      // };
+
+      // let actionId = timerTool.setActionASync<system>(Nat64.toNat(Nat64.fromIntWrap(_time - start_date)), actionRequest, Nat64.toNat(Nat64.fromIntWrap(3600)));
     };
 
     return txn;

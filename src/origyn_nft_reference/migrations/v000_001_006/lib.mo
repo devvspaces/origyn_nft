@@ -6,6 +6,7 @@ import CandyTypes = "mo:candy/types";
 import SB_lib "mo:stablebuffer_0_2_0/StableBuffer";
 import Map_lib "mo:map_7_0_0/Map";
 import Buffer "mo:base/Buffer";
+import TimerTool "mo:timerTool";
 
 import MigrationTypes "../types";
 import v0_1_5 "../v000_001_005/types";
@@ -16,6 +17,7 @@ import BlockTypes "../../ledger/block_types";
 import CertTree "mo:cert/CertTree";
 
 import ICRC3 "mo:icrc3-mo";
+import Market "../../market";
 
 module {
 
@@ -362,8 +364,35 @@ module {
 
     D.print("update done");
 
-    return #v0_1_6(#data({ var collection_data = state.collection_data; var buckets = state.buckets; var allocations = state.allocations; var canister_availible_space = state.canister_availible_space; var canister_allocated_storage = state.canister_allocated_storage; var offers = state.offers; var nft_metadata = state.nft_metadata; var escrow_balances = state.escrow_balances; var sales_balances = state.sales_balances; var fee_deposit_balances = Map.new<v0_1_6.Account, Map.Map<v0_1_6.TokenSpec, v0_1_6.FeeDepositDetail>>(); var nft_ledgers = new_ledgers; var master_ledger = new_master_ledger; var nft_sales = new_sales; var access_tokens = state.access_tokens; var kyc_cache = state.kyc_cache; var droute = state.droute; var use_stableBTree = state.use_stableBTree; var pending_sale_notifications = state.pending_sale_notifications; var icrc3_migration_state = icrc3_migration_state; var cert_store = cert_store;
-    /* add certification ref here */ }));
+    // init timer tool
+    let timerTool = TimerTool.init(TimerTool.initialState(), #v0_1_0(#id), null, caller);
+
+    return #v0_1_6(
+      #data({
+        var collection_data = state.collection_data;
+        var buckets = state.buckets;
+        var allocations = state.allocations;
+        var canister_availible_space = state.canister_availible_space;
+        var canister_allocated_storage = state.canister_allocated_storage;
+        var offers = state.offers;
+        var nft_metadata = state.nft_metadata;
+        var escrow_balances = state.escrow_balances;
+        var sales_balances = state.sales_balances;
+        var fee_deposit_balances = Map.new<v0_1_6.Account, Map.Map<v0_1_6.TokenSpec, v0_1_6.FeeDepositDetail>>();
+        var nft_ledgers = new_ledgers;
+        var master_ledger = new_master_ledger;
+        var nft_sales = new_sales;
+        var access_tokens = state.access_tokens;
+        var kyc_cache = state.kyc_cache;
+        var droute = state.droute;
+        var use_stableBTree = state.use_stableBTree;
+        var pending_sale_notifications = state.pending_sale_notifications;
+        var icrc3_migration_state = icrc3_migration_state;
+        var cert_store = cert_store;
+        var timerState = ?timerTool;
+        /* add certification ref here */
+      })
+    );
   };
 
   public func downgrade(migration_state : MigrationTypes.State, args : MigrationTypes.Args, caller : Principal) : MigrationTypes.State {

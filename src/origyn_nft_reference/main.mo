@@ -17,6 +17,7 @@ import Text "mo:base/Text";
 import Time "mo:base/Time";
 import Timer "mo:base/Timer";
 import TrieMap "mo:base/TrieMap";
+import TimerTool "mo:timerTool";
 
 import BytesConverter "mo:stableBTree/bytesConverter";
 
@@ -206,8 +207,27 @@ shared (deployer) actor class Nft_Canister() = this {
 
   var notify_timer : ?Nat = null;
 
+  var timertool : ?TimerTool.TimerTool = null;
+
+  private func init_timertools() : TimerTool.TimerTool {
+    switch (timertool) {
+      case (?val) {
+        val;
+      };
+      case (null) {
+        let _timertool = TimerTool.TimerTool(state_current.timerState, Principal.fromActor(this), { advanced = null; reportExecution = null; reportError = null });
+        _timertool.registerExecutionListenerAsync(?"close_sale_timeouted_nft_origyn", close_sale_timeouted_nft_origyn : TimerTool.ExecutionAsyncHandler);
+        timertool := ?_timertool;
+
+        _timertool;
+      };
+    };
+  };
+
   // Let us access state and pass it to other modules
   let get_state : () -> Types.State = func() {
+    let _timertool = init_timertools();
+
     {
       state = state_current;
       canister = get_canister;
@@ -224,6 +244,7 @@ shared (deployer) actor class Nft_Canister() = this {
         get = get_notify_timer;
         set = set_notify_timer;
       };
+      timertool = _timertool;
     };
   };
 
@@ -2162,7 +2183,12 @@ shared (deployer) actor class Nft_Canister() = this {
 
     debug if (debug_channel.function_announce) D.print("in get_nat_as_token_id_origyn");
 
-    NFTUtils.get_nat_as_token_id(tokenAsNat);
+    let token_id = switch (NFTUtils.get_nat_as_token_id(tokenAsNat)) {
+      case (#ok(val)) val;
+      case (#err(err)) return "not found";
+    };
+
+    return token_id;
   };
 
   /**
@@ -2172,12 +2198,17 @@ shared (deployer) actor class Nft_Canister() = this {
     * @returns {DIP721.OwnerOfResponse} - The owner of the DIP721 token.
     */
   private func _ownerOfDip721(tokenAsNat : Nat, caller : Principal) : DIP721.OwnerOfResponse {
+    let token_id = switch (NFTUtils.get_nat_as_token_id(tokenAsNat)) {
+      case (#ok(val)) val;
+      case (#err(err)) return #Err(#Other("ownerOfDIP721 - token_id not found"));
+    };
+
     let foundVal = switch (
       Metadata.get_nft_owner(
         switch (
           Metadata.get_metadata_for_token(
             get_state(),
-            NFTUtils.get_nat_as_token_id(tokenAsNat),
+            token_id,
             caller,
             null,
             state_current.collection_data.owner,
@@ -2367,8 +2398,10 @@ shared (deployer) actor class Nft_Canister() = this {
     * @returns {async} Result.Result<DIP721.Metadata_3, Types.OrigynError>
     */
   private func _dip_721_metadata(caller : Principal, token_id : Nat) : DIP721.DIP721TokenMetadata {
-
-    let token_id_raw = NFTUtils.get_nat_as_token_id(token_id);
+    let token_id_raw = switch (NFTUtils.get_nat_as_token_id(token_id)) {
+      case (#ok(val)) val;
+      case (#err(err)) return #Err(#Other("ownerOfDIP721 - token_id not found"));
+    };
 
     let nft = switch (_nft_origyn(token_id_raw, caller)) {
       case (#ok(nft)) nft;
@@ -3000,7 +3033,11 @@ shared (deployer) actor class Nft_Canister() = this {
 
   public query (msg) func icrc7_transfer_fee(token_ids : Nat) : async ?Nat {
     let state = get_state();
-    let token_id = NFTUtils.get_nat_as_token_id(token_ids);
+
+    let token_id = switch (NFTUtils.get_nat_as_token_id(token_ids)) {
+      case (#ok(val)) val;
+      case (#err(err)) return null;
+    };
 
     let metadata = switch (Metadata.get_metadata_for_token(state, token_id, msg.caller, ?state.canister(), state.state.collection_data.owner)) {
       case (#err(err)) { return null };
@@ -3178,9 +3215,16 @@ shared (deployer) actor class Nft_Canister() = this {
 
     let aBuf = Buffer.Buffer<?[(Text, ICRC7.Value)]>(token_ids.size());
 
-    for (token_id in token_ids.vals()) {
+    label iter for (token_id in token_ids.vals()) {
+      let nat_token_id = switch (NFTUtils.get_nat_as_token_id(token_id)) {
+        case (#ok(val)) val;
+        case (#err(err)) {
+          aBuf.add(null);
+          continue iter;
+        };
+      };
 
-      switch (Metadata.get_metadata_for_token(state, NFTUtils.get_nat_as_token_id(token_id), state.canister(), ?state.canister(), state.state.collection_data.owner)) {
+      switch (Metadata.get_metadata_for_token(state, nat_token_id, state.canister(), ?state.canister(), state.state.collection_data.owner)) {
         case (#ok(metadata)) {
           let json = JSON.value_to_json(Metadata.get_clean_metadata(metadata, msg.caller));
 
@@ -3201,9 +3245,15 @@ shared (deployer) actor class Nft_Canister() = this {
 
     let aBuf = Buffer.Buffer<?ICRC7.Account>(token_ids.size());
 
-    for (token_id in token_ids.vals()) {
-
-      switch (Metadata.get_metadata_for_token(state, NFTUtils.get_nat_as_token_id(token_id), msg.caller, ?state.canister(), state.state.collection_data.owner)) {
+    label iter for (token_id in token_ids.vals()) {
+      let nat_token_id = switch (NFTUtils.get_nat_as_token_id(token_id)) {
+        case (#ok(val)) val;
+        case (#err(err)) {
+          aBuf.add(null);
+          continue iter;
+        };
+      };
+      switch (Metadata.get_metadata_for_token(state, nat_token_id, msg.caller, ?state.canister(), state.state.collection_data.owner)) {
         case (#ok(metadata)) {
           switch (
             Metadata.get_nft_owner(metadata)
@@ -3666,6 +3716,7 @@ shared (deployer) actor class Nft_Canister() = this {
     */
 
   system func preupgrade() {
+    D.print("preupgrade ");
 
     //todo: significant maitenance needed in 0.1.5- consider moving into migration
 
@@ -3689,6 +3740,7 @@ shared (deployer) actor class Nft_Canister() = this {
   };
 
   system func postupgrade() {
+    D.print("postupgrade ");
     nft_library_stable := [];
     nft_library_stable_2 := [];
 
@@ -3746,6 +3798,54 @@ shared (deployer) actor class Nft_Canister() = this {
 
     if (icrc3().stats().lastIndex == 0) {
       ignore __implement_icrc3();
+    };
+  };
+
+  private func close_sale_timeouted_nft_origyn(id : TimerTool.ActionId, action : TimerTool.Action) : async* Star.Star<TimerTool.ActionId, TimerTool.Error> {
+    let candidParsed : ?Text = from_candid (action.params);
+    let ?sale_id = candidParsed else { D.trap("unexpected type") };
+
+    let state = get_state();
+
+    switch (Map.get(state.state.nft_sales, Map.thash, sale_id)) {
+      case (?status) {
+        switch (NFTUtils.get_auction_state_from_status(status)) {
+          case (#ok(val)) {
+            if (val.status == #open) {
+              let owner = switch (Map.get(state.state.nft_metadata, Map.thash, status.token_id)) {
+                case (?val) {
+                  switch (Metadata.get_nft_owner(val)) {
+                    case (#ok(val)) {
+                      val;
+                    };
+                    case (#err(err)) {
+                      return #err(#trappable({ error_code = 1; message = "close_sale_timeouted_nft_origyn - couldnt get nft owner " # status.token_id }));
+                    };
+                  };
+                };
+                case (null) {
+                  return #err(#trappable({ error_code = 2; message = "close_sale_timeouted_nft_origyn - couldnt get nft owner " # status.token_id }));
+                };
+              };
+
+              let ret = await* Market.end_sale_nft_origyn(get_state(), status.token_id, MigrationTypes.Current.account_to_principal(owner));
+              switch (ret) {
+                case (#err(err)) {
+                  return #err(#trappable({ error_code = 3; message = "close_sale_timeouted_nft_origyn - could not end sale " # status.token_id }));
+                };
+                case (_) { return #awaited(id) };
+              };
+            };
+          };
+          case (#err(val)) {
+            return #err(#trappable({ error_code = 4; message = "close_sale_timeouted_nft_origyn - could not find sale for token " }));
+          };
+        };
+        return #err(#trappable({ error_code = 5; message = "close_sale_timeouted_nft_origyn - could not find sale for token " }));
+      };
+      case (null) {
+        return #err(#trappable({ error_code = 6; message = "close_sale_timeouted_nft_origyn - could not find sale for token " }));
+      };
     };
   };
 };

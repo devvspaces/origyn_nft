@@ -188,7 +188,12 @@ module {
     //if the escrow doesn't exist then we should fail
     //nyi: determine if this is a marketable NFT and take proper action
     //marketable NFT may not be transfered between owner wallets execpt through share_nft_origyn
-    let token_id = NFTUtils.get_nat_as_token_id(tokenAsNat);
+    let token_id = switch (NFTUtils.get_nat_as_token_id(tokenAsNat)) {
+      case (#ok(val)) { val };
+      case (#err(err)) {
+        return #Err(#Other("get nat as token id failed"));
+      };
+    };
 
     let escrows = switch (Market.find_escrow_reciept(state, #principal(to), #principal(from), token_id)) {
       case (#ok(val)) { val };
@@ -247,7 +252,21 @@ module {
     * @returns {ICRC7.TransferResult} - A ICRC7 result object indicating the success or failure of the transfer operation.
     */
   public func _prepare_transferICRC7(state : StateAccess, from : ICRC7.Account, to : ICRC7.Account, tokenAsNat : Nat, caller : Principal) : async* ICRC7.TransferResultItem {
-    let token_id = NFTUtils.get_nat_as_token_id(tokenAsNat);
+    let token_id = switch (NFTUtils.get_nat_as_token_id(tokenAsNat)) {
+      case (#ok(val)) { val };
+      case (#err(err)) {
+        return {
+          token_id = 0;
+          transfer_result = #Err(
+            #GenericError({
+              message = "get nat as token id failed";
+              error_code = 1;
+            })
+          );
+        };
+      };
+    };
+
     debug if (debug_channel.icrc7) D.print("transferICRC7 : token_id " # debug_show (token_id));
 
     let metadata = switch (Metadata.get_metadata_for_token(state, token_id, caller, ?state.canister(), state.state.collection_data.owner)) {
@@ -398,7 +417,15 @@ module {
     */
 
   public func transferICRC7(state : StateAccess, from : ICRC7.Account, to : ICRC7.Account, tokenAsNat : Nat, caller : Principal) : async* ICRC7.TransferResultItem {
-    let token_id = NFTUtils.get_nat_as_token_id(tokenAsNat);
+    let token_id = switch (NFTUtils.get_nat_as_token_id(tokenAsNat)) {
+      case (#ok(val)) { val };
+      case (#err(err)) {
+        return {
+          token_id = 0;
+          transfer_result = #Err(#GenericError({ message = "get nat as token id failed"; error_code = 1 }));
+        };
+      };
+    };
 
     debug if (debug_channel.icrc7) D.print("transferICRC7 : market_transfer_nft_origyn_async query " # debug_show ({ token_id = token_id; sales_config = { escrow_receipt = ?{ seller = #account({ owner = from.owner; sub_account = from.subaccount }); buyer = #account({ owner = to.owner; sub_account = to.subaccount }); token_id = token_id; token = #ic({ canister = Principal.fromText(MigrationTypes.Current.OGY_LEDGER_CANISTER_ID); standard = #Ledger; decimals = 8; symbol = "OGY "; fee = ?200_000; id = null }); amount = 0 }; pricing = #instant(?[#fee_accounts(Royalties.royalties_names), #fee_schema(Types.metadata.__system_fixed_royalty)]); broker_id = null } }));
 

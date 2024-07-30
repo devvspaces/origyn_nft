@@ -23,6 +23,7 @@ import Deque "mo:base/Deque";
 import MapUtils "mo:map_7_0_0/utils";
 import Option "mo:base/Option";
 import AccountIdentifier "mo:principalmo/AccountIdentifier";
+import TimerTool "mo:timerTool";
 
 import ICRC3 "mo:icrc3-mo";
 
@@ -1459,7 +1460,7 @@ module {
     var use_stableBTree : Bool;
     var icrc3_migration_state : ICRC3.State;
     var cert_store : CertTree.Store;
-
+    var timerState : ?TimerTool.State;
     //add certification type here
 
   };
@@ -1475,5 +1476,9 @@ module {
       id = null;
       standard = #Ledger;
     });
+  };
+
+  public func MAX_NAT() : Nat {
+    return Nat.bitshiftLeft(1, 1024);
   };
 };

@@ -12,6 +12,7 @@ import Result "mo:base/Result";
 import Text "mo:base/Text";
 import Time "mo:base/Time";
 import TrieMap "mo:base/TrieMap";
+import TimerTool "mo:timerTool";
 
 import AccountIdentifier "mo:principalmo/AccountIdentifier";
 
@@ -476,6 +477,7 @@ module {
       get : () -> ?Nat;
       set : (?Nat) -> ();
     };
+    timertool : TimerTool.TimerTool;
     //btreemap : Stable_Memory;
   };
 
