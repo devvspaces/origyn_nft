@@ -23,7 +23,7 @@ import Deque "mo:base/Deque";
 import MapUtils "mo:map_7_0_0/utils";
 import Option "mo:base/Option";
 import AccountIdentifier "mo:principalmo/AccountIdentifier";
-import TimerTool "mo:timerTool";
+import TimerTool "mo:timer-tool";
 
 import ICRC3 "mo:icrc3-mo";
 
