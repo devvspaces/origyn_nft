@@ -218,7 +218,7 @@ module {
             params = to_candid ([current_sale.sale_id]);
           };
 
-          let actionId = timerTool.setActionASync<system>(Nat64.toNat(Nat64.fromIntWrap(current_sale_state.end_date - _time)), actionRequest, Nat64.toNat(Nat64.fromIntWrap(3600)));
+          let actionId = timerTool.setActionASync<system>(Nat64.toNat(Nat64.fromIntWrap(current_sale_state.end_date)), actionRequest, Nat64.toNat(Nat64.fromIntWrap(3600)));
 
           return (#ok(#open_sale(true)));
         } else return #err(Types.errors(?state.canistergeekLogger, #auction_not_started, "open_sale_nft_origyn - auction does not need to be opened " # debug_show (current_sale_state.start_date), ?caller));
@@ -2656,7 +2656,7 @@ module {
         params = to_candid (sale_id);
       };
 
-      let actionId = timerTool.setActionASync<system>(Nat64.toNat(Nat64.fromIntWrap(end_date - _time)), actionRequest, Nat64.toNat(Nat64.fromIntWrap(NFTUtils.HOUR_LENGTH)));
+      let actionId = timerTool.setActionASync<system>(Nat64.toNat(Nat64.fromIntWrap(end_date)), actionRequest, Nat64.toNat(Nat64.fromIntWrap(NFTUtils.HOUR_LENGTH)));
     } else if (new_auction.status == #not_started) {
       // TODO
       // let timerTool = state.timertool;

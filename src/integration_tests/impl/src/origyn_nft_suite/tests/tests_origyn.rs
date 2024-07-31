@@ -21,6 +21,7 @@ use origyn_nft_reference::origyn_nft_reference_canister::{
   EndingType,
 };
 use std::time::SystemTime;
+use canister_time::{ NANOS_PER_MILLISECOND, MINUTE_IN_MS };
 
 #[test]
 fn test_get_nat_as_token_id_origyn() {
@@ -93,7 +94,7 @@ fn test_big_get_nat_as_token_id_origyn() {
 }
 
 #[test]
-fn test_market_transfer_nft_origyn() {
+fn test_market_transfer_nft_origyn_timeout() {
   let mut env = init();
   let TestEnv {
     ref mut pic,
@@ -186,6 +187,220 @@ fn test_market_transfer_nft_origyn() {
     SaleInfoRequest::Status(sale_id.clone())
   );
   println!("sale_info_status_2: {:?}", sale_info_status_2);
+
+  let sale_info_status_3 = sale_info_nft_origyn(
+    pic,
+    origyn_nft.clone(),
+    nft_owner.clone(),
+    SaleInfoRequest::Status(sale_id.clone())
+  );
+  println!("sale_info_status_3: {:?}", sale_info_status_3);
+}
+
+#[test]
+fn test_market_transfer_nft_origyn_timeout_precise() {
+  let mut env = init();
+  let TestEnv {
+    ref mut pic,
+    canister_ids: CanisterIds { origyn_nft, ogy_ledger, ldg_ledger, notify },
+    principal_ids: PrincipalIds { net_principal, controller, originator, nft_owner },
+  } = env;
+
+  let MAX_NFTS = 1;
+  // loop to create multiple nft
+  for i in 0..MAX_NFTS {
+    init_nft_with_premint_nft(
+      pic,
+      origyn_nft.clone(),
+      originator.clone(),
+      net_principal.clone(),
+      nft_owner.clone(),
+      i.to_string()
+    );
+  }
+
+  pic.set_time(SystemTime::now());
+
+  let ret: origyn_nft_reference::origyn_nft_reference_canister::MarketTransferResult = market_transfer_nft_origyn_client(
+    pic,
+    origyn_nft.clone(),
+    nft_owner.clone(),
+    market_transfer_nft_origynArgs {
+      token_id: '0'.to_string(),
+      sales_config: SalesConfig {
+        broker_id: None,
+        pricing: PricingConfigShared::Ask(
+          Some(
+            vec![
+              AskFeature::StartPrice(Nat::from(100 as u32)),
+              AskFeature::Ending(
+                EndingType::Timeout(
+                  Nat::from(NANOS_PER_MILLISECOND * ((MINUTE_IN_MS * 100) as u64))
+                )
+              )
+            ]
+          )
+        ),
+        escrow_receipt: None,
+      },
+    }
+  );
+
+  let sale_id: String = match ret {
+    origyn_nft_reference::origyn_nft_reference_canister::MarketTransferResult::Ok(val) => {
+      match val.txn_type {
+        origyn_nft_reference::origyn_nft_reference_canister::MarketTransferRequestReponseTxnType::SaleOpened {
+          pricing,
+          extensible,
+          sale_id,
+        } => {
+          sale_id
+        }
+        _ => {
+          panic!("TransactionType::Sale not found");
+        }
+      }
+    }
+    origyn_nft_reference::origyn_nft_reference_canister::MarketTransferResult::Err(err) => {
+      panic!("MarketTransferResult::Err: {:?}", err);
+    }
+  };
+
+  println!("sale_id: {:?}", sale_id);
+  println!("get_time: {:?}", pic.get_time());
+
+  let sale_info_status = sale_info_nft_origyn(
+    pic,
+    origyn_nft.clone(),
+    nft_owner.clone(),
+    SaleInfoRequest::Status(sale_id.clone())
+  );
+  println!("sale_info_status: {:?}", sale_info_status);
+
+  pic.advance_time(std::time::Duration::from_secs(60 * 99));
+  pic.tick();
+
+  crate::utils::tick_n_blocks(pic, 100);
+
+  println!("get_time: {:?}", pic.get_time());
+
+  let sale_info_status_2 = sale_info_nft_origyn(
+    pic,
+    origyn_nft.clone(),
+    nft_owner.clone(),
+    SaleInfoRequest::Status(sale_id.clone())
+  );
+  println!("sale_info_status_2: {:?}", sale_info_status_2);
+
+  pic.advance_time(std::time::Duration::from_secs(57));
+  pic.tick();
+
+  let sale_info_status_3 = sale_info_nft_origyn(
+    pic,
+    origyn_nft.clone(),
+    nft_owner.clone(),
+    SaleInfoRequest::Status(sale_id.clone())
+  );
+  println!("sale_info_status_3: {:?}", sale_info_status_3);
+}
+
+#[test]
+fn test_market_transfer_nft_origyn_timeout_fundback() {
+  let mut env = init();
+  let TestEnv {
+    ref mut pic,
+    canister_ids: CanisterIds { origyn_nft, ogy_ledger, ldg_ledger, notify },
+    principal_ids: PrincipalIds { net_principal, controller, originator, nft_owner },
+  } = env;
+
+  let MAX_NFTS = 1;
+  // loop to create multiple nft
+  for i in 0..MAX_NFTS {
+    init_nft_with_premint_nft(
+      pic,
+      origyn_nft.clone(),
+      originator.clone(),
+      net_principal.clone(),
+      nft_owner.clone(),
+      i.to_string()
+    );
+  }
+
+  pic.set_time(SystemTime::now());
+
+  let ret: origyn_nft_reference::origyn_nft_reference_canister::MarketTransferResult = market_transfer_nft_origyn_client(
+    pic,
+    origyn_nft.clone(),
+    nft_owner.clone(),
+    market_transfer_nft_origynArgs {
+      token_id: '0'.to_string(),
+      sales_config: SalesConfig {
+        broker_id: None,
+        pricing: PricingConfigShared::Ask(
+          Some(
+            vec![
+              AskFeature::StartPrice(Nat::from(100 as u32)),
+              AskFeature::Ending(
+                EndingType::Timeout(
+                  Nat::from(NANOS_PER_MILLISECOND * ((MINUTE_IN_MS * 100) as u64))
+                )
+              )
+            ]
+          )
+        ),
+        escrow_receipt: None,
+      },
+    }
+  );
+
+  let sale_id: String = match ret {
+    origyn_nft_reference::origyn_nft_reference_canister::MarketTransferResult::Ok(val) => {
+      match val.txn_type {
+        origyn_nft_reference::origyn_nft_reference_canister::MarketTransferRequestReponseTxnType::SaleOpened {
+          pricing,
+          extensible,
+          sale_id,
+        } => {
+          sale_id
+        }
+        _ => {
+          panic!("TransactionType::Sale not found");
+        }
+      }
+    }
+    origyn_nft_reference::origyn_nft_reference_canister::MarketTransferResult::Err(err) => {
+      panic!("MarketTransferResult::Err: {:?}", err);
+    }
+  };
+
+  println!("sale_id: {:?}", sale_id);
+  println!("get_time: {:?}", pic.get_time());
+
+  let sale_info_status = sale_info_nft_origyn(
+    pic,
+    origyn_nft.clone(),
+    nft_owner.clone(),
+    SaleInfoRequest::Status(sale_id.clone())
+  );
+  println!("sale_info_status: {:?}", sale_info_status);
+
+  pic.advance_time(std::time::Duration::from_secs(60 * 99));
+  pic.tick();
+
+  crate::utils::tick_n_blocks(pic, 100);
+
+  println!("get_time: {:?}", pic.get_time());
+
+  let sale_info_status_2 = sale_info_nft_origyn(
+    pic,
+    origyn_nft.clone(),
+    nft_owner.clone(),
+    SaleInfoRequest::Status(sale_id.clone())
+  );
+  println!("sale_info_status_2: {:?}", sale_info_status_2);
+
+  pic.advance_time(std::time::Duration::from_secs(57));
+  pic.tick();
 
   let sale_info_status_3 = sale_info_nft_origyn(
     pic,
