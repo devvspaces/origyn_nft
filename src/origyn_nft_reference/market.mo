@@ -1489,9 +1489,11 @@ module {
 
     switch (request.sales_config.pricing) {
       case (#instant(instant_config)) {
+        D.print("instant_config");
         let {
           fee_schema : ?Text;
           fee_accounts : ?MigrationTypes.Current.FeeAccountsParams;
+          transfer : Bool;
           config_map : MigrationTypes.Current.InstantConfig;
         } = switch (instant_config) {
           case (?config) {
@@ -1500,6 +1502,7 @@ module {
             {
               fee_schema = MigrationTypes.Current.load_fee_schema_instant_feature(?config_map);
               fee_accounts = MigrationTypes.Current.load_fee_accounts_instant_feature(?config_map);
+              transfer = MigrationTypes.Current.load_transfer_instant_feature(?config_map);
               config_map = ?config_map;
             };
           };
@@ -1507,10 +1510,13 @@ module {
             {
               fee_schema = null;
               fee_accounts = null;
+              transfer = false;
               config_map = null;
             };
           };
         };
+
+        D.print("transfer " # debug_show (transfer));
 
         let _fee_schema : Text = if (this_is_minted == false) {
           Types.metadata.__system_primary_royalty;
@@ -2010,43 +2016,84 @@ module {
           //D.print("updating metadata");
           Map.set(state.state.nft_metadata, Map.thash, escrow.token_id, metadata);
           //no need to mint
-          switch (
-            Metadata.add_transaction_record<system>(
-              state,
-              {
-                token_id = request.token_id;
-                index = 0; //mint should always be 0
-                txn_type = #sale_ended({
-                  seller = owner;
-                  buyer = escrow.buyer;
-                  token = escrow.token;
-                  amount = escrow.amount;
-                  sale_id = null;
-                  extensible = #Option(null);
-                });
-                timestamp = Time.now();
-              },
-              caller,
-            )
-          ) {
-            case (#err(err)) {
-              return async_market_transfer_unlock_fee_account_callback(
-                state,
-                metadata,
-                {
-                  token = escrow.token;
-                  sale_id = internal_sale_id;
-                  fee_accounts = fee_accounts;
-                  fee_schema = ?_fee_schema;
-                  owner = owner;
-                },
-                #err(Types.errors(?state.canistergeekLogger, err.error, "market_transfer_nft_origyn adding transaction" # err.flag_point, ?caller)),
-              );
-            };
-            case (#ok(val)) { val };
-          };
 
+          D.print("adding record : ");
+          D.print("transfer is " # debug_show (transfer));
+          if (transfer == true) {
+            D.print("add owner_transfer");
+            switch (
+              Metadata.add_transaction_record<system>(
+                state,
+                {
+                  token_id = request.token_id;
+                  index = 0; //mint should always be 0
+                  txn_type = #owner_transfer({
+                    from = owner;
+                    to = escrow.buyer;
+                    extensible = #Option(null);
+                  });
+                  timestamp = Time.now();
+                },
+                caller,
+              )
+            ) {
+              case (#err(err)) {
+                return async_market_transfer_unlock_fee_account_callback(
+                  state,
+                  metadata,
+                  {
+                    token = escrow.token;
+                    sale_id = internal_sale_id;
+                    fee_accounts = fee_accounts;
+                    fee_schema = ?_fee_schema;
+                    owner = owner;
+                  },
+                  #err(Types.errors(?state.canistergeekLogger, err.error, "market_transfer_nft_origyn adding transaction" # err.flag_point, ?caller)),
+                );
+              };
+              case (#ok(val)) { val };
+            };
+          } else {
+            D.print("add sale_ended");
+            switch (
+              Metadata.add_transaction_record<system>(
+                state,
+                {
+                  token_id = request.token_id;
+                  index = 0; //mint should always be 0
+                  txn_type = #sale_ended({
+                    seller = owner;
+                    buyer = escrow.buyer;
+                    token = escrow.token;
+                    amount = escrow.amount;
+                    sale_id = null;
+                    extensible = #Option(null);
+                  });
+                  timestamp = Time.now();
+                },
+                caller,
+              )
+            ) {
+              case (#err(err)) {
+                return async_market_transfer_unlock_fee_account_callback(
+                  state,
+                  metadata,
+                  {
+                    token = escrow.token;
+                    sale_id = internal_sale_id;
+                    fee_accounts = fee_accounts;
+                    fee_schema = ?_fee_schema;
+                    owner = owner;
+                  },
+                  #err(Types.errors(?state.canistergeekLogger, err.error, "market_transfer_nft_origyn adding transaction" # err.flag_point, ?caller)),
+                );
+              };
+              case (#ok(val)) { val };
+            };
+          };
         };
+        D.print("done");
+        D.print("txn_record is " # debug_show (txn_record));
 
         Map.set(state.state.nft_metadata, Map.thash, escrow.token_id, metadata);
 

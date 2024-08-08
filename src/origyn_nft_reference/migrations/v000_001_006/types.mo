@@ -434,6 +434,7 @@ module {
   public type InstantFeatureKey = {
     #fee_schema;
     #fee_accounts;
+    #transfer;
   };
 
   public type InstantFeatureMap = Map.Map<InstantFeatureKey, InstantFeature>;
@@ -444,6 +445,7 @@ module {
   public type InstantFeature = {
     #fee_schema : Text;
     #fee_accounts : FeeAccountsParams;
+    #transfer;
   };
 
   public func instantfeatures_to_map(items : [InstantFeature]) : InstantFeatureMap {
@@ -477,7 +479,7 @@ module {
       case (_) (return null);
     };
 
-    let ?(#fee_schema(fee_schema)) = Map.get<InstantFeatureKey, InstantFeature>(config, bid_feature_set_tool, #fee_schema) else {
+    let ?(#fee_schema(fee_schema)) = Map.get<InstantFeatureKey, InstantFeature>(config, instant_feature_set_tool, #fee_schema) else {
       return null;
     };
     return ?fee_schema;
@@ -489,10 +491,22 @@ module {
       case (_) (return null);
     };
 
-    let ?(#fee_accounts(fee_accounts)) = Map.get<InstantFeatureKey, InstantFeature>(config, bid_feature_set_tool, #fee_accounts) else {
+    let ?(#fee_accounts(fee_accounts)) = Map.get<InstantFeatureKey, InstantFeature>(config, instant_feature_set_tool, #fee_accounts) else {
       return null;
     };
     return ?fee_accounts;
+  };
+
+  public func load_transfer_instant_feature(_config : InstantConfig) : Bool {
+    let config = switch (_config) {
+      case (?config) (config);
+      case (_) (return false);
+    };
+
+    let ?(#transfer) = Map.get<InstantFeatureKey, InstantFeature>(config, instant_feature_set_tool, #transfer) else {
+      return false;
+    };
+    return true;
   };
 
   public func ask_feature_set_eq(a : AskFeatureKey, b : AskFeatureKey) : Bool {
@@ -837,6 +851,9 @@ module {
       case (#fee_accounts) {
         return 11311115;
       };
+      case (#transfer) {
+        return 11311116;
+      };
     };
   };
 
@@ -846,6 +863,9 @@ module {
         return true;
       };
       case (#fee_accounts, #fee_accounts) {
+        return true;
+      };
+      case (#transfer, #transfer) {
         return true;
       };
       case (_, _) {
@@ -861,6 +881,9 @@ module {
       };
       case (#fee_accounts(e)) {
         return #fee_accounts;
+      };
+      case (#transfer) {
+        return #transfer;
       };
     };
   };

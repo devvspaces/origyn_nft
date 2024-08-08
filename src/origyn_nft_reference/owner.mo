@@ -458,6 +458,7 @@ module {
             ?[
               #fee_accounts(Royalties.royalties_names),
               #fee_schema(Types.metadata.__system_fixed_royalty),
+              #transfer,
             ]
           );
           broker_id = null;
