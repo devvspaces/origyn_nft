@@ -466,6 +466,30 @@ fn test_update_metadata_node() {
     }
   }
 
+  let ret2: crate::client::origyn_nft_reference::update_metadata_node::Response = update_metadata_node(
+    pic,
+    origyn_nft.clone(),
+    nft_owner.clone(),
+    crate::client::origyn_nft_reference::update_metadata_node::Args {
+      token_id: '0'.to_string(),
+      value: Box::new(CandyShared::Text('0'.to_string())),
+      field_id: '0'.to_string(),
+      _system: true,
+    }
+  );
+  println!("ret2 should return error: {:?}", ret2);
+
+  match ret2 {
+    crate::client::origyn_nft_reference::update_metadata_node::Response::Ok(val) => {
+      panic!("Expected update_metadata_node to return error, but it didn't");
+    }
+    crate::client::origyn_nft_reference::update_metadata_node::Response::Err(err) => {
+      if err.number != 6 {
+        panic!("Expected update_metadata_node to return error, but it didn't");
+      }
+    }
+  }
+
   let nft_metadata_2 = nft_origyn(pic, origyn_nft.clone(), node_principal.clone(), '0'.to_string());
   // println!("nft_metadata_2: {:?}", nft_metadata_2);
 
