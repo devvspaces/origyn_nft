@@ -60,6 +60,17 @@ pub fn execute_query<P: CandidType, R: CandidType + DeserializeOwned>(
   unwrap_response(pic.query_call(canister_id, sender, method_name, Encode!(&payload).unwrap()))
 }
 
+pub fn execute_query_encoded_args<R: CandidType + DeserializeOwned>(
+  pic: &PocketIc,
+  sender: Principal,
+  canister_id: CanisterId,
+  method_name: &str,
+  payload: std::vec::Vec<u8>
+) -> R {
+  pic.advance_time(Duration::from_secs(1));
+  unwrap_response(pic.query_call(canister_id, sender, method_name, payload))
+}
+
 pub fn execute_update<P: CandidType, R: CandidType + DeserializeOwned>(
   pic: &mut PocketIc,
   sender: Principal,

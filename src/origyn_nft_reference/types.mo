@@ -653,14 +653,14 @@ module {
 
   public type NFTUpdateMetadataNode = {
     token_id : Text;
-    _system : Boolean;
+    _system : Bool;
     field_id : Text;
-    value : Text;
+    value : CandyTypes.CandyShared;
   };
 
   public type NFTUpdateMetadataNodeResponse = {
-    property_old : PropertyShared;
-    property_new : PropertyShared;
+    property_old : ?CandyTypes.PropertyShared;
+    property_new : CandyTypes.PropertyShared;
   };
 
   public type NFTUpdateResponse = Bool;
@@ -1894,6 +1894,7 @@ module {
   public type MarketTransferResult = Result.Result<MarketTransferRequestReponse, OrigynError>;
   public type NFTInfoResult = Result.Result<NFTInfoStable, OrigynError>;
   public type NFTUpdateResult = Result.Result<NFTUpdateResponse, OrigynError>;
+  public type NFTUpdateAppResult = Result.Result<NFTUpdateMetadataNodeResponse, OrigynError>;
   public type OwnerUpdateResult = Result.Result<OwnerTransferResponse, OrigynError>;
   public type ManageSaleResult = Result.Result<ManageSaleResponse, OrigynError>;
   public type ManageSaleStar = Star.Star<ManageSaleResponse, OrigynError>;

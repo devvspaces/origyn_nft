@@ -124,16 +124,24 @@ module {
   * @returns a boolean indicating whether the token is in physical escrow.
   */
   public func set_system_var(metaData : CandyTypes.CandyShared, name : Text, value : CandyTypes.CandyShared) : CandyTypes.CandyShared {
+    set_metadata_var(metaData, name, value, Types.metadata.__system);
+  };
+
+  public func set_apps_var(metaData : CandyTypes.CandyShared, name : Text, value : CandyTypes.CandyShared) : CandyTypes.CandyShared {
+    set_metadata_var(metaData, name, value, Types.metadata.__apps);
+  };
+
+  private func set_metadata_var(metaData : CandyTypes.CandyShared, name : Text, value : CandyTypes.CandyShared, key : Text) : CandyTypes.CandyShared {
     var this_metadata = metaData;
     //D.print("Setting System");
-    switch (Properties.getClassPropertyShared(metaData, Types.metadata.__system)) {
+    switch (Properties.getClassPropertyShared(metaData, key)) {
       case (null) {
         let newProp : CandyTypes.CandyShared = #Class([{
           name = name;
           value = value;
           immutable = false;
         }]);
-        this_metadata := switch (Properties.updatePropertiesShared(Conversions.candySharedToProperties(this_metadata), [{ name = Types.metadata.__system; mode = #Set(newProp) }])) {
+        this_metadata := switch (Properties.updatePropertiesShared(Conversions.candySharedToProperties(this_metadata), [{ name = key; mode = #Set(newProp) }])) {
           case (#ok(props)) {
             #Class(props);
           };
@@ -148,7 +156,7 @@ module {
         return this_metadata;
       };
       case (?val) {
-        this_metadata := switch (Properties.updatePropertiesShared(Conversions.candySharedToProperties(this_metadata), [{ name = Types.metadata.__system; mode = #Set(switch (Properties.updatePropertiesShared(Conversions.candySharedToProperties(val.value), [{ name = name; mode = #Set(value) }])) { case (#ok(props)) { #Class(props) }; case (#err(err)) { /* error shouldn't happen */
+        this_metadata := switch (Properties.updatePropertiesShared(Conversions.candySharedToProperties(this_metadata), [{ name = key; mode = #Set(switch (Properties.updatePropertiesShared(Conversions.candySharedToProperties(val.value), [{ name = name; mode = #Set(value) }])) { case (#ok(props)) { #Class(props) }; case (#err(err)) { /* error shouldn't happen */
         assert (false); #Option(null); /* unreachable */ } }) }])) {
           case (#ok(props)) {
             #Class(props);

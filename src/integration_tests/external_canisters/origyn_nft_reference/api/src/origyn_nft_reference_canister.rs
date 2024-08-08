@@ -2107,6 +2107,23 @@ pub enum UpdateSetting {
   #[serde(rename = "maxRecordsInArchiveInstance")] MaxRecordsInArchiveInstance(candid::Nat),
   #[serde(rename = "archiveControllers")] ArchiveControllers(Option<Option<Vec<Principal>>>),
 }
+#[derive(CandidType, Deserialize)]
+pub struct NftUpdateMetadataNode {
+  pub token_id: String,
+  pub value: Box<CandyShared>,
+  pub _system: bool,
+  pub field_id: String,
+}
+#[derive(CandidType, Deserialize, Debug)]
+pub struct NftUpdateMetadataNodeResponse {
+  pub property_new: PropertyShared,
+  pub property_old: Option<PropertyShared>,
+}
+#[derive(CandidType, Deserialize, Debug)]
+pub enum NftUpdateAppResult {
+  #[serde(rename = "ok")] Ok(NftUpdateMetadataNodeResponse),
+  #[serde(rename = "err")] Err(OrigynError),
+}
 candid::define_service!(pub NftCanister : {
   "__advance_time" : candid::func!((candid::Int) -> (candid::Int));
   "__set_time_mode" : candid::func!((NftCanisterSetTimeModeArg) -> (bool));
@@ -2379,6 +2396,9 @@ candid::define_service!(pub NftCanister : {
     (NftUpdateRequest) -> (NftUpdateResult)
   );
   "update_icrc3" : candid::func!((Vec<UpdateSetting>) -> (Vec<bool>));
+  "update_metadata_node" : candid::func!(
+    (NftUpdateMetadataNode) -> (NftUpdateAppResult)
+  );
   "wallet_receive" : candid::func!(() -> (candid::Nat));
   "whoami" : candid::func!(() -> (Principal) query);
 });
@@ -2931,6 +2951,12 @@ impl Service {
   }
   pub async fn update_icrc_3(&self, arg0: Vec<UpdateSetting>) -> Result<(Vec<bool>,)> {
     ic_cdk::call(self.0, "update_icrc3", (arg0,)).await
+  }
+  pub async fn update_metadata_node(
+    &self,
+    arg0: NftUpdateMetadataNode
+  ) -> Result<(NftUpdateAppResult,)> {
+    ic_cdk::call(self.0, "update_metadata_node", (arg0,)).await
   }
   pub async fn wallet_receive(&self) -> Result<(candid::Nat,)> {
     ic_cdk::call(self.0, "wallet_receive", ()).await

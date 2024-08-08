@@ -1,4 +1,9 @@
-use crate::{ generate_query_call, generate_update_call, generate_update_call_encoded_args };
+use crate::{
+  generate_query_call,
+  generate_update_call,
+  generate_update_call_encoded_args,
+  generate_query_call_encoded_args,
+};
 use origyn_nft_reference::origyn_nft_reference_canister::{
   NftCanisterStageNftOrigynArg,
   OrigynTextResult,
@@ -23,6 +28,9 @@ use origyn_nft_reference::origyn_nft_reference_canister::{
   NftInfoResult,
   SaleInfoRequest,
   SaleInfoResult,
+  NftUpdateMetadataNode,
+  NftUpdateAppResult,
+  HistoryResult,
 };
 
 generate_update_call!(stage_nft_origyn);
@@ -63,6 +71,8 @@ generate_update_call!(market_transfer_nft_origyn);
 generate_query_call!(get_nat_as_token_id_origyn);
 generate_query_call!(nft_origyn);
 generate_query_call!(sale_info_nft_origyn);
+generate_update_call!(update_metadata_node);
+generate_query_call_encoded_args!(history_nft_origyn);
 
 pub mod stage_nft_origyn {
   use super::*;
@@ -291,6 +301,21 @@ pub mod sale_info_nft_origyn {
   pub type Args = SaleInfoRequest;
   pub type Response = SaleInfoResult;
 }
+
+pub mod update_metadata_node {
+  use super::*;
+
+  pub type Args = NftUpdateMetadataNode;
+  pub type Response = NftUpdateAppResult;
+}
+
+pub mod history_nft_origyn {
+  use super::*;
+
+  pub type Args = (String, Option<candid::Nat>, Option<candid::Nat>);
+  pub type Response = HistoryResult;
+}
+
 pub mod client {
   use super::*;
   use candid::Principal;
@@ -710,5 +735,28 @@ pub mod client {
     args: sale_info_nft_origyn::Args
   ) -> sale_info_nft_origyn::Response {
     crate::client::origyn_nft_reference::sale_info_nft_origyn(pic, sender, canister_id, &args)
+  }
+
+  pub fn update_metadata_node(
+    pic: &mut PocketIc,
+    canister_id: CanisterId,
+    sender: Principal,
+    args: update_metadata_node::Args
+  ) -> update_metadata_node::Response {
+    crate::client::origyn_nft_reference::update_metadata_node(pic, sender, canister_id, &args)
+  }
+
+  pub fn history_nft_origyn(
+    pic: &PocketIc,
+    canister_id: CanisterId,
+    sender: Principal,
+    args: history_nft_origyn::Args
+  ) -> history_nft_origyn::Response {
+    crate::client::origyn_nft_reference::history_nft_origyn(
+      pic,
+      sender,
+      canister_id,
+      candid::encode_args(args).unwrap()
+    )
   }
 }

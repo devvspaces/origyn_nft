@@ -10,10 +10,12 @@ use crate::client::origyn_nft_reference::client::{
   market_transfer_nft_origyn as market_transfer_nft_origyn_client,
   nft_origyn,
   sale_info_nft_origyn,
+  update_metadata_node,
 };
 use crate::client::origyn_nft_reference::market_transfer_nft_origyn::Args as market_transfer_nft_origynArgs;
 use num_bigint::BigUint;
 use origyn_nft_reference::origyn_nft_reference_canister::{
+  CandyShared,
   SalesConfig,
   PricingConfigShared,
   AskFeature,
@@ -409,4 +411,77 @@ fn test_market_transfer_nft_origyn_timeout_fundback() {
     SaleInfoRequest::Status(sale_id.clone())
   );
   println!("sale_info_status_3: {:?}", sale_info_status_3);
+}
+
+#[test]
+fn test_update_metadata_node() {
+  let mut env = init();
+  let TestEnv {
+    ref mut pic,
+    canister_ids: CanisterIds { origyn_nft, ogy_ledger, ldg_ledger, notify },
+    principal_ids: PrincipalIds { net_principal, controller, originator, nft_owner },
+  } = env;
+
+  let MAX_NFTS = 1;
+  // loop to create multiple nft
+  for i in 0..MAX_NFTS {
+    init_nft_with_premint_nft(
+      pic,
+      origyn_nft.clone(),
+      originator.clone(),
+      net_principal.clone(),
+      nft_owner.clone(),
+      i.to_string()
+    );
+  }
+
+  pic.set_time(SystemTime::now());
+
+  let node_principal = net_principal.clone();
+
+  let nft_metadata = nft_origyn(pic, origyn_nft.clone(), node_principal.clone(), '0'.to_string());
+  // println!("nft_metadata: {:?}", nft_metadata);
+
+  let ret: crate::client::origyn_nft_reference::update_metadata_node::Response = update_metadata_node(
+    pic,
+    origyn_nft.clone(),
+    node_principal.clone(),
+    crate::client::origyn_nft_reference::update_metadata_node::Args {
+      token_id: '0'.to_string(),
+      value: Box::new(CandyShared::Text('0'.to_string())),
+      field_id: '0'.to_string(),
+      _system: true,
+    }
+  );
+  println!("ret: {:?}", ret);
+
+  match ret {
+    crate::client::origyn_nft_reference::update_metadata_node::Response::Ok(val) => {
+      panic!("Expected update_metadata_node to return error, but it didn't");
+    }
+    crate::client::origyn_nft_reference::update_metadata_node::Response::Err(err) => {
+      if err.number != 6 {
+        panic!("Expected update_metadata_node to return error, but it didn't");
+      }
+    }
+  }
+
+  let nft_metadata_2 = nft_origyn(pic, origyn_nft.clone(), node_principal.clone(), '0'.to_string());
+  // println!("nft_metadata_2: {:?}", nft_metadata_2);
+
+  let ret2: crate::client::origyn_nft_reference::update_metadata_node::Response = update_metadata_node(
+    pic,
+    origyn_nft.clone(),
+    node_principal.clone(),
+    crate::client::origyn_nft_reference::update_metadata_node::Args {
+      token_id: '0'.to_string(),
+      value: Box::new(CandyShared::Bool(false)),
+      field_id: "com.origyn.escrow_node".to_string(),
+      _system: true,
+    }
+  );
+  println!("ret2: {:?}", ret2);
+
+  let nft_metadata_3 = nft_origyn(pic, origyn_nft.clone(), node_principal.clone(), '0'.to_string());
+  println!("nft_metadata_3: {:?}", nft_metadata_3);
 }

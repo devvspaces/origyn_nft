@@ -438,6 +438,20 @@ shared (deployer) actor class Nft_Canister() = this {
   };
 
   /**
+    * Updates the entire API nodes with the given NFT update request data.
+    *
+    * @param {Types.NFTUpdateRequest} request - The request data for the NFT update.
+    * @returns {Promise<Types.NFTUpdateResult>} - A promise that resolves to a Result object containing either the NFT update response or an OrigynError.
+    * @throws {Error} - Throws an error if the canister is in maintenance mode.
+    */
+  public shared (msg) func update_metadata_node(request : Types.NFTUpdateMetadataNode) : async Types.NFTUpdateAppResult {
+    if (halt == true) {
+      throw Error.reject("canister is in maintenance mode");
+    };
+    return await* data.update_metadata_node(get_state(), request, msg.caller);
+  };
+
+  /**
     * Stages an NFT for origyn verification.
     *
     * @param {Record{metadata: CandyTypes.CandyShared}} request - The metadata for the NFT being staged.

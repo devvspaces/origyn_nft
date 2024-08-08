@@ -1,4 +1,5 @@
 use crate::client::icrc1_icrc2_token;
+use crate::client::origyn_nft_reference::history_nft_origyn;
 use crate::client::pocket::unwrap_response;
 use crate::origyn_nft_suite::{ CanisterIds, PrincipalIds };
 use crate::origyn_nft_suite::{ init::init, TestEnv };
@@ -11,6 +12,7 @@ use origyn_nft_reference::origyn_nft_reference_canister::{
 use candid::{ Nat, Encode };
 use utils::consts::E8S_FEE_OGY;
 use crate::origyn_nft_suite::tests::utils::init_nft_with_premint_nft;
+use candid::types::value::IDLValue;
 
 /*
 
@@ -518,6 +520,17 @@ fn icrc7_transfer_multiple() {
       None => (),
     }
   }
+
+  // let ret = crate::client::origyn_nft_reference::client::history_nft_origyn(
+  //   pic,
+  //   origyn_nft.clone(),
+  //   net_principal.clone(),
+  //   ("0".to_string(), None, None)
+  // );
+
+  // println!("ret IDLValue {:?}", IDLValue::try_from_candid_type(&&ret).unwrap());
+
+  // println!("ret: {:?}", ret);
 }
 
 #[test]
