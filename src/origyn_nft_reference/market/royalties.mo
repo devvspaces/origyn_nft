@@ -138,18 +138,35 @@ module {
   public func royalty_to_array(properties : CandyTypes.CandyShared, collection : Text) : [CandyTypes.CandyShared] {
     debug if (debug_channel.royalties) D.print("In royalty to array" # debug_show ((properties, collection)));
     switch (Properties.getClassPropertyShared(properties, collection)) {
-      case (null) [];
+      case (null) {};
       case (?list) {
         debug if (debug_channel.royalties) D.print("found list" # debug_show (list));
         switch (list.value) {
           case (#Array(the_array)) {
             debug if (debug_channel.royalties) D.print("found array");
-            the_array;
+            return the_array;
           };
-          case (_) [];
+          case (_) {};
         };
       };
     };
+
+    // by default, load com.origyn.royalties.primary
+    debug if (debug_channel.royalties) D.print("Load the default royalties primary value");
+    switch (Properties.getClassPropertyShared(properties, "com.origyn.royalties.primary")) {
+      case (null) { [] }; // should never happen
+      case (?list) {
+        debug if (debug_channel.royalties) D.print("found list" # debug_show (list));
+        switch (list.value) {
+          case (#Array(the_array)) {
+            debug if (debug_channel.royalties) D.print("found array");
+            return the_array;
+          };
+          case (_) { [] }; // should never happen
+        };
+      };
+    };
+
   };
 
   /**

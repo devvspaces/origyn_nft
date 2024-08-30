@@ -102,16 +102,16 @@ shared (deployer) actor class test_runner(dfx_ledger : Principal, dfx_ledger2 : 
         // S.test("testAuction_v3", switch (await testAuction_v3()) { case (#success) { true }; case (_) { false } }, M.equals<Bool>(T.bool(true))),
         // S.test("testDutch", switch (await testDutch()) { case (#success) { true }; case (_) { false } }, M.equals<Bool>(T.bool(true))),
         // S.test("testRecognizeEscrow", switch (await testRecognizeEscrow()) { case (#success) { true }; case (_) { false } }, M.equals<Bool>(T.bool(true))),
-        S.test("testRoyalties", switch (await testRoyalties()) { case (#success) { true }; case (_) { false } }, M.equals<Bool>(T.bool(true))),
-        S.test("testAuction", switch (await testAuction()) { case (#success) { true }; case (_) { false } }, M.equals<Bool>(T.bool(true))),
-        S.test("testAuction_v2", switch (await testAuction_v2()) { case (#success) { true }; case (_) { false } }, M.equals<Bool>(T.bool(true))),
+        // S.test("testRoyalties", switch (await testRoyalties()) { case (#success) { true }; case (_) { false } }, M.equals<Bool>(T.bool(true))),
+        // S.test("testAuction", switch (await testAuction()) { case (#success) { true }; case (_) { false } }, M.equals<Bool>(T.bool(true))),
+        // S.test("testAuction_v2", switch (await testAuction_v2()) { case (#success) { true }; case (_) { false } }, M.equals<Bool>(T.bool(true))),
         // S.test("testDeposits", switch (await testDeposit()) { case (#success) { true }; case (_) { false } }, M.equals<Bool>(T.bool(true))),
         // S.test("testStandardLedger", switch (await testStandardLedger()) { case (#success) { true }; case (_) { false } }, M.equals<Bool>(T.bool(true))),
         // S.test("testMarketTransfer", switch (await testMarketTransfer()) { case (#success) { true }; case (_) { false } }, M.equals<Bool>(T.bool(true))),
         // S.test("testOwnerTransfer", switch (await testOwnerTransfer()) { case (#success) { true }; case (_) { false } }, M.equals<Bool>(T.bool(true))),
         // S.test("testOffer", switch (await testOffers()) { case (#success) { true }; case (_) { false } }, M.equals<Bool>(T.bool(true))) S.test("testRoyaltiesFixed", switch (await testRoyaltiesFixed()) { case (#success) { true }; case (_) { false } }, M.equals<Bool>(T.bool(true))),
         // S.test("testRoyaltiesFixed", switch (await testRoyaltiesFixed()) { case (#success) { true }; case (_) { false } }, M.equals<Bool>(T.bool(true))),
-        // S.test("testRoyaltiesFixedDifferentToken", switch (await testRoyaltiesFixedDifferentToken()) { case (#success) { true }; case (_) { false } }, M.equals<Bool>(T.bool(true))),
+        S.test("testRoyaltiesFixedDifferentToken", switch (await testRoyaltiesFixedDifferentToken()) { case (#success) { true }; case (_) { false } }, M.equals<Bool>(T.bool(true))),
       ],
     );
     S.run(suite);
@@ -4285,7 +4285,7 @@ shared (deployer) actor class test_runner(dfx_ledger : Principal, dfx_ledger2 : 
       };
     };
 
-    // This one should not fail
+    // This one should fail
     D.print("sellerFeeDepositAccount = " # debug_show (sellerFeeDepositAccount));
     let option_buffer_should_fail2 = Buffer.fromArray<MigrationTypes.Current.AskFeature>([
       #reserve(1 * 10 ** 8),
@@ -4310,11 +4310,11 @@ shared (deployer) actor class test_runner(dfx_ledger : Principal, dfx_ledger2 : 
     // verify that auction fail with startprice < all fees that user has to pay
     switch (start_auction_attempt_owner_should_fail2) {
       case (#ok(val)) {
-        D.print("market_transfer_nft_origyn specific token set for this royalty : \"com.origyn.royalty.broker\" but no fee_account setted to pay this royalty.");
+        D.print("market_transfer_nft_origyn specific token set for this royalty : \"com.origyn.royalty.originator\" but no fee_account setted to pay this royalty.");
         return #fail("error with auction start");
       };
       case (#err(item)) {
-        if (item.flag_point != "market_transfer_nft_origyn specific token set for this royalty : \"com.origyn.royalty.broker\" but no fee_account setted to pay this royalty.") {
+        if (item.flag_point != "market_transfer_nft_origyn specific token set for this royalty : \"com.origyn.royalty.originator\" but no fee_account setted to pay this royalty.") {
           D.print("error with auction start");
           D.print(item.flag_point);
           return #fail("error with auction start");

@@ -25,9 +25,9 @@ class Ledger_Interface() {
   //this file provides services around moving tokens around a standard ledger(ICP/OGY)
 
   let debug_channel = {
-    deposit = false;
-    sale = false;
-    transfer = false;
+    deposit = true;
+    sale = true;
+    transfer = true;
   };
 
   let Conversion = MigrationTypes.Current.Conversions;

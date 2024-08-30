@@ -31,6 +31,8 @@ use origyn_nft_reference::origyn_nft_reference_canister::{
   NftUpdateMetadataNode,
   NftUpdateAppResult,
   HistoryResult,
+  ManageSaleRequest,
+  ManageSaleResult,
 };
 
 generate_update_call!(stage_nft_origyn);
@@ -73,6 +75,7 @@ generate_query_call!(nft_origyn);
 generate_query_call!(sale_info_nft_origyn);
 generate_update_call!(update_metadata_node);
 generate_query_call_encoded_args!(history_nft_origyn);
+generate_update_call!(sale_nft_origyn);
 
 pub mod stage_nft_origyn {
   use super::*;
@@ -314,6 +317,13 @@ pub mod history_nft_origyn {
 
   pub type Args = (String, Option<candid::Nat>, Option<candid::Nat>);
   pub type Response = HistoryResult;
+}
+
+pub mod sale_nft_origyn {
+  use super::*;
+
+  pub type Args = ManageSaleRequest;
+  pub type Response = ManageSaleResult;
 }
 
 pub mod client {
@@ -758,5 +768,14 @@ pub mod client {
       canister_id,
       candid::encode_args(args).unwrap()
     )
+  }
+
+  pub fn sale_nft_origyn(
+    pic: &mut PocketIc,
+    canister_id: CanisterId,
+    sender: Principal,
+    args: sale_nft_origyn::Args
+  ) -> sale_nft_origyn::Response {
+    crate::client::origyn_nft_reference::sale_nft_origyn(pic, sender, canister_id, &args)
   }
 }

@@ -929,6 +929,66 @@ shared (deployer) actor class Nft_Canister() = this {
     return await* Owner.transferExt(get_state(), request, msg.caller);
   };
 
+  public shared (msg) func unlisted_tokens_of(account : ICRC7.Account, prev : ?Nat, take : ?Nat32) : async [Nat] {
+    let list = Metadata.get_NFTs_for_user(get_state(), #account({ owner = account.owner; sub_account = account.subaccount }));
+    let start : Nat = Option.get<Nat>(prev, 0);
+    var limit : Nat = Nat32.toNat(Option.get<Nat32>(take, 100)); // Default limit to 100 if not provided
+    if (limit > 1000) {
+      limit := 1000;
+    };
+    var count = 0;
+    let results = Buffer.Buffer<Nat>(1);
+    let state = get_state();
+
+    label search for (nft_id in list.vals()) {
+      if (count < start) {
+        count += 1;
+        continue search;
+      };
+      if (results.size() >= limit) {
+        break search;
+      };
+      var metadata = switch (Metadata.get_metadata_for_token(state, nft_id, msg.caller, ?state.canister(), state.state.collection_data.owner)) {
+        case (#err(err)) { continue search };
+        case (#ok(val)) val;
+      };
+      switch (Market.is_token_on_sale(state, metadata, msg.caller)) {
+        case (#ok(val)) {
+          if (val == false) {
+            results.add(NFTUtils.get_token_id_as_nat(nft_id));
+          };
+        };
+        case (#err(err)) {};
+      };
+      count += 1;
+    };
+
+    return Buffer.toArray(results);
+  };
+
+  public shared (msg) func count_unlisted_tokens_of(account : ICRC7.Account) : async Nat {
+    let state = get_state();
+    let list = Metadata.get_NFTs_for_user(state, #account({ owner = account.owner; sub_account = account.subaccount }));
+    var count = 0;
+
+    label search for (nft_id in list.vals()) {
+      var metadata = switch (Metadata.get_metadata_for_token(state, nft_id, msg.caller, ?state.canister(), state.state.collection_data.owner)) {
+        case (#err(err)) { continue search };
+        case (#ok(val)) val;
+      };
+      switch (Market.is_token_on_sale(state, metadata, msg.caller)) {
+        case (#ok(val)) {
+          if (val == false) {
+            count += 1;
+          };
+        };
+        case (#err(err)) {};
+      };
+    };
+
+    return count;
+  };
+
   /**
     * Allows the market based transfer of NFTs
     * @param {Object} request - The market transfer request object.
@@ -3345,13 +3405,30 @@ shared (deployer) actor class Nft_Canister() = this {
   };
 
   public query func icrc7_tokens_of(account : ICRC7.Account, prev : ?Nat, take : ?Nat32) : async [Nat] {
-    //prev and take are unimplemented
+    let start = Option.get<Nat>(prev, 0);
+    var limit = Nat32.toNat(Option.get<Nat32>(take, 100)); // Default limit to 100 if not provided
+    if (limit > 1000) {
+      limit := 1000;
+    };
 
     let list = Metadata.get_NFTs_for_user(get_state(), #account({ owner = account.owner; sub_account = account.subaccount }));
 
-    let result = Array.map<Text, Nat>(list, NFTUtils.get_token_id_as_nat);
+    var count = 0;
+    let results = Buffer.Buffer<Nat>(1);
 
-    return result;
+    label search for (nft_id in list.vals()) {
+      if (count < start) {
+        count += 1;
+        continue search;
+      };
+      if (results.size() >= limit) {
+        break search;
+      };
+      results.add(NFTUtils.get_token_id_as_nat(nft_id));
+      count += 1;
+    };
+
+    return Buffer.toArray(results);
   };
 
   public shared (msg) func icrc7_transfer(requests : [ICRC7.TransferArgs]) : async ICRC7.TransferResult {

@@ -45,24 +45,24 @@ import Royalties "market/royalties";
 module {
 
   let debug_channel = {
-    verify_escrow = false;
-    verify_sale = false;
-    ensure = false;
-    invoice = false;
-    end_sale = false;
-    market = false;
-    royalties = false;
-    offers = false;
-    escrow = false;
-    withdraw_escrow = false;
-    withdraw_sale = false;
-    withdraw_reject = false;
-    withdraw_deposit = false;
-    withdraw_fee_deposit = false;
-    notifications = false;
-    dutch = false;
-    bid = false;
-    kyc = false;
+    verify_escrow = true;
+    verify_sale = true;
+    ensure = true;
+    invoice = true;
+    end_sale = true;
+    market = true;
+    royalties = true;
+    offers = true;
+    escrow = true;
+    withdraw_escrow = true;
+    withdraw_sale = true;
+    withdraw_reject = true;
+    withdraw_deposit = true;
+    withdraw_fee_deposit = true;
+    notifications = true;
+    dutch = true;
+    bid = true;
+    kyc = true;
   };
 
   let CandyTypes = MigrationTypes.Current.CandyTypes;
@@ -3591,7 +3591,7 @@ module {
     //can someone escrow for someone else? No. Only a buyer can create an escrow for themselves for now
     //we will also allow a canister/canister owner to create escrows for itself
     if (
-      Types.account_eq(#principal(caller), request.deposit.buyer) == false and
+      MigrationTypes.Current.compare_account(#principal(caller), request.deposit.buyer) == false and
       Types.account_eq(#principal(caller), #principal(state.canister())) == false and
       Types.account_eq(#principal(caller), #principal(state.state.collection_data.owner)) == false and
       Array.filter<Principal>(state.state.collection_data.managers, func(item : Principal) { item == caller }).size() == 0
@@ -4565,7 +4565,7 @@ module {
                     },
                   );
                 };
-                return #err(Types.errors(?state.canistergeekLogger, #low_fee_balance, "market_transfer_nft_origyn low_fee_balance", null));
+                return #err(Types.errors(?state.canistergeekLogger, #low_fee_balance, "market_transfer_nft_origyn low_fee_balance " # debug_show (err) # " fee_schema : " # debug_show (fee_schema) # " loaded_royalty = " # debug_show (loaded_royalty) # " specific_token_set = " # debug_show (specific_token_set), null));
               };
             };
             found := true;
@@ -4575,6 +4575,18 @@ module {
 
       if ((broker_set == true or (broker_set == false and loaded_royalty.tag != "com.origyn.royalty.broker"))) {
         if (specific_token_set == true and found == false) {
+          for ((_token_spec, fees) in tmp_locked_fees.vals()) {
+            let _ = FeeAccount.unlock_token_fee_balance(
+              state,
+              {
+                account = account;
+                token = _token_spec;
+                sale_id = sale_id;
+                update_balance = false;
+              },
+            );
+          };
+
           debug if (debug_channel.market) D.print("Specific token set for this royalty : " # debug_show (loaded_royalty.tag) # " but no fee_account setted to pay this royalty.");
           return #err(Types.errors(?state.canistergeekLogger, #improper_interface, "market_transfer_nft_origyn specific token set for this royalty : " # debug_show (loaded_royalty.tag) # " but no fee_account setted to pay this royalty.", null));
         };

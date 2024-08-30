@@ -10,6 +10,7 @@ use crate::client::origyn_nft_reference::client::{
   market_transfer_nft_origyn as market_transfer_nft_origyn_client,
   nft_origyn,
   sale_info_nft_origyn,
+  sale_nft_origyn,
   update_metadata_node,
 };
 use crate::client::origyn_nft_reference::market_transfer_nft_origyn::Args as market_transfer_nft_origynArgs;
@@ -21,6 +22,8 @@ use origyn_nft_reference::origyn_nft_reference_canister::{
   AskFeature,
   SaleInfoRequest,
   EndingType,
+  ManageSaleRequest,
+  ManageSaleResult,
 };
 use std::time::SystemTime;
 use canister_time::{ NANOS_PER_MILLISECOND, MINUTE_IN_MS };
@@ -509,3 +512,90 @@ fn test_update_metadata_node() {
   let nft_metadata_3 = nft_origyn(pic, origyn_nft.clone(), node_principal.clone(), '0'.to_string());
   println!("nft_metadata_3: {:?}", nft_metadata_3);
 }
+
+// #[test]
+// fn test_market_transfer_nft_origyn_fee_account_bid() {
+//   let mut env = init();
+//   let TestEnv {
+//     ref mut pic,
+//     canister_ids: CanisterIds { origyn_nft, ogy_ledger, ldg_ledger, notify },
+//     principal_ids: PrincipalIds { net_principal, controller, originator, nft_owner },
+//   } = env;
+
+//   let MAX_NFTS = 1;
+
+//   let fee_account = net_principal.clone();
+
+//   // loop to create multiple nft
+//   for i in 0..MAX_NFTS {
+//     init_nft_with_premint_nft(
+//       pic,
+//       origyn_nft.clone(),
+//       originator.clone(),
+//       net_principal.clone(),
+//       nft_owner.clone(),
+//       i.to_string()
+//     );
+//   }
+
+//   pic.set_time(SystemTime::now());
+
+//   let ret: origyn_nft_reference::origyn_nft_reference_canister::MarketTransferResult = market_transfer_nft_origyn_client(
+//     pic,
+//     origyn_nft.clone(),
+//     nft_owner.clone(),
+//     market_transfer_nft_origynArgs {
+//       token_id: '0'.to_string(),
+//       sales_config: SalesConfig {
+//         broker_id: None,
+//         pricing: PricingConfigShared::Ask(
+//           Some(
+//             vec![
+//               AskFeature::StartPrice(Nat::from(100 as u32)),
+//               AskFeature::FeeSchema("com.origyn.royalties.fixed.default".to_string())
+//             ]
+//           )
+//         ),
+//         escrow_receipt: None,
+//       },
+//     }
+//   );
+
+//   let sale_id: String = match ret {
+//     origyn_nft_reference::origyn_nft_reference_canister::MarketTransferResult::Ok(val) => {
+//       match val.txn_type {
+//         origyn_nft_reference::origyn_nft_reference_canister::MarketTransferRequestReponseTxnType::SaleOpened {
+//           pricing,
+//           extensible,
+//           sale_id,
+//         } => {
+//           sale_id
+//         }
+//         _ => {
+//           panic!("TransactionType::Sale not found");
+//         }
+//       }
+//     }
+//     origyn_nft_reference::origyn_nft_reference_canister::MarketTransferResult::Err(err) => {
+//       panic!("MarketTransferResult::Err: {:?}", err);
+//     }
+//   };
+
+//   let ret: origyn_nft_reference::origyn_nft_reference_canister::MarketTransferResult = sale_nft_origyn(
+//     pic,
+//     origyn_nft.clone(),
+//     fee_account.clone(),
+//     ManageSaleRequest::Bid(
+//       escrow_record :: {
+//         token: ,
+//         token_id: "OGY",
+//         seller: nft_owner.clone(),
+//         lock_to_date: None,
+//         buyer: nft_buyer.clone(),
+//         amount: candid::Nat,
+//         pub sale_id: Option<String>,
+//         pub account_hash: Option<serde_bytes::ByteBuf>,
+//       }
+//     )
+//   );
+// }
