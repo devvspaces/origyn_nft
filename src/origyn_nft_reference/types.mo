@@ -1704,13 +1704,6 @@ module {
     };
   };
 
-  public type Account = {
-    #principal : Principal;
-    #account : { owner : Principal; sub_account : ?Blob };
-    #account_id : Text;
-    #extensible : CandyTypes.CandyShared;
-  };
-
   public func account_hash_uncompressed(a : Account) : Nat {
     switch (a) {
       case (#principal(a_principal)) {

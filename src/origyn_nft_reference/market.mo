@@ -4440,21 +4440,7 @@ module {
   private func _get_token_from_sales_status(status : Types.SaleStatus) : Types.TokenSpec {
     switch (status.sale_type) {
       case (#auction(auction_status)) {
-        return switch (auction_status.config) {
-          case (#auction(auction_config)) return auction_config.token;
-          case (#ask(?auction_config)) {
-            let ?(#token(spec)) = Map.get<MigrationTypes.Current.AskFeatureKey, MigrationTypes.Current.AskFeature>(auction_config, MigrationTypes.Current.ask_feature_set_tool, #token) else {
-              debug if (debug_channel.bid) D.print("strange askconfig");
-              D.trap("unreachable");
-            };
-            return spec;
-          };
-          case (_) {
-            debug if (debug_channel.bid) D.print("getTokenfromSalesstatus not configured for type");
-            assert (false);
-            return #extensible(#Option(null));
-          };
-        };
+        return auction_status.token;
       };
       case (_) {
         debug if (debug_channel.bid) D.print("getTokenfromSalesstatus not configured for type");
