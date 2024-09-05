@@ -816,6 +816,7 @@ module {
       #unlocked;
       #locked : {
         sale_id : Text;
+        token_id : Text;
       };
     };
   };

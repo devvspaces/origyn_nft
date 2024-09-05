@@ -356,7 +356,22 @@ module {
             let this_royalty = (total_royalty / principal.size());
             debug if (debug_channel.royalties) D.print("this_royalty =  " # debug_show (this_royalty));
 
-            if (this_royalty > request.fee) {
+            let _fee = switch (loaded_royalty) {
+              case (#fixed(val)) {
+                switch (val.token) {
+                  case (?_token) {
+                    switch (_token) {
+                      case (#ic(token)) { Option.get<Nat>(token.fee, 0) };
+                      case (_) { request.fee };
+                    };
+                  };
+                  case (_) { request.fee };
+                };
+              };
+              case (#dynamic(_)) { request.fee };
+            };
+
+            if (this_royalty > _fee) {
               let send_account : { owner : Principal; sub_account : ?Blob } = if (Principal.fromText("yfhhd-7eebr-axyvl-35zkt-z6mp7-hnz7a-xuiux-wo5jf-rslf7-65cqd-cae") == this_principal.owner) {
                 dev_fund();
               } else {

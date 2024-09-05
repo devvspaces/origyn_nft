@@ -45,24 +45,24 @@ import Royalties "market/royalties";
 module {
 
   let debug_channel = {
-    verify_escrow = true;
-    verify_sale = true;
-    ensure = true;
-    invoice = true;
-    end_sale = true;
-    market = true;
-    royalties = true;
-    offers = true;
-    escrow = true;
-    withdraw_escrow = true;
-    withdraw_sale = true;
-    withdraw_reject = true;
-    withdraw_deposit = true;
-    withdraw_fee_deposit = true;
-    notifications = true;
-    dutch = true;
-    bid = true;
-    kyc = true;
+    verify_escrow = false;
+    verify_sale = false;
+    ensure = false;
+    invoice = false;
+    end_sale = false;
+    market = false;
+    royalties = false;
+    offers = false;
+    escrow = false;
+    withdraw_escrow = false;
+    withdraw_sale = false;
+    withdraw_reject = false;
+    withdraw_deposit = false;
+    withdraw_fee_deposit = false;
+    notifications = false;
+    dutch = false;
+    bid = false;
+    kyc = false;
   };
 
   let CandyTypes = MigrationTypes.Current.CandyTypes;
@@ -1280,7 +1280,7 @@ module {
           withdraw_to = new_sale_balance.seller })));
           for ((thisRoyalty, is_fee_account) in royalty_result.1.vals()) {
             if (is_fee_account) {
-              request_buffer.add(#withdraw(#fee_deposit({ account = thisRoyalty.buyer; token = thisRoyalty.token; amount = thisRoyalty.amount; withdraw_to = thisRoyalty.seller; status = #locked({ sale_id = current_sale.sale_id }) })));
+              request_buffer.add(#withdraw(#fee_deposit({ account = thisRoyalty.buyer; token = thisRoyalty.token; amount = thisRoyalty.amount; withdraw_to = thisRoyalty.seller; status = #locked({ sale_id = current_sale.sale_id; token_id = token_id }) })));
             } else {
               request_buffer.add(#withdraw(#sale({ thisRoyalty with
               withdraw_to = thisRoyalty.seller })));
@@ -2223,7 +2223,7 @@ module {
 
           for ((thisRoyalty, is_fee_account) in royalty_result.1.vals()) {
             if (is_fee_account) {
-              request_buffer.add(#withdraw(#fee_deposit({ account = thisRoyalty.buyer; token = thisRoyalty.token; amount = thisRoyalty.amount; withdraw_to = thisRoyalty.seller; status = #locked({ sale_id = internal_sale_id }) })));
+              request_buffer.add(#withdraw(#fee_deposit({ account = thisRoyalty.buyer; token = thisRoyalty.token; amount = thisRoyalty.amount; withdraw_to = thisRoyalty.seller; status = #locked({ sale_id = internal_sale_id; token_id = request.token_id }) })));
             } else {
               request_buffer.add(#withdraw(#sale({ thisRoyalty with
               withdraw_to = thisRoyalty.seller })));
@@ -4005,8 +4005,7 @@ module {
 
         {
           broker = MigrationTypes.Current.load_broker_bid_feature(?config_map);
-          // fee_schema = MigrationTypes.Current.load_fee_schema_bid_feature(?config_map);
-          _fee_schema = null;
+          _fee_schema = MigrationTypes.Current.load_fee_schema_bid_feature(?config_map);
           fee_accounts = MigrationTypes.Current.load_fee_accounts_bid_feature(?config_map);
           config_map = ?config_map;
         };
@@ -4472,6 +4471,7 @@ module {
     fee_schema : Text,
     fee_accounts : MigrationTypes.Current.FeeAccountsParams,
   ) : Result.Result<(), Types.OrigynError> {
+
     let royalties : [CandyTypes.CandyShared] = switch (Properties.getClassPropertyShared(metadata, Types.metadata.__system)) {
       case (null) { [] };
       case (?val) {
@@ -4487,7 +4487,7 @@ module {
             case (#fixed(v)) { v };
             // case (#dynamic(v)) {v;}; TODO not available now
             case (_) {
-              debug if (debug_channel.market) D.print("but __system_fixed_royalty is not set -> error");
+              debug if (debug_channel.market) D.print("_lock_fee_accounts_according_to_fee_schema but __system_fixed_royalty is not set -> error");
               return #err(Types.errors(?state.canistergeekLogger, #malformed_metadata, "market_transfer_nft_origyn fee_accounts need fixed fee_schema. Not compatible yet others royalties schema.", null));
             };
           };
@@ -4497,9 +4497,18 @@ module {
 
       let (token_spec, specific_token_set) = switch (loaded_royalty.token) {
         case (?val) {
-          if (val == token) { (val, false) } else { (val, true) };
+          if (val == token) {
+            D.print("token is equal");
+            (val, false);
+          } else {
+            D.print("token NOT is equal");
+            (val, true);
+          };
         };
-        case (_) { (token, false) };
+        case (_) {
+          D.print("token is null");
+          (token, false);
+        };
       };
 
       let tmp_locked_fees = Buffer.Buffer<(MigrationTypes.Current.TokenSpec, Nat)>(5);
@@ -4525,6 +4534,7 @@ module {
             let fees : Nat = Int.abs(Float.toInt(Float.ceil(loaded_royalty.fixedXDR)));
 
             debug if (debug_channel.market) D.print("royalties_name = " # debug_show (royalties_name) # " fees " # debug_show (fees));
+            debug if (debug_channel.market) D.print("token_spec = " # debug_show (token_spec));
             switch (
               FeeAccount.lock_token_fee_balance(
                 state,

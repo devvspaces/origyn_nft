@@ -246,11 +246,16 @@ module {
     switch (transaction_id) {
       case (null) return #err(#awaited(Types.errors(?state.canistergeekLogger, #escrow_withdraw_payment_failed, "withdraw_fee_deposit - escrow -  payment failed txid null", ?caller)));
       case (?transaction_id) {
+        let token_id = switch (details.status) {
+          case (#locked(val)) { val.token_id };
+          case (#unlocked) { "" };
+        };
+
         switch (
           Metadata.add_transaction_record<system>(
             state,
             {
-              token_id = "";
+              token_id = token_id;
               index = 0;
               txn_type = #fee_deposit_withdraw({
                 details with
